@@ -1,0 +1,60 @@
+.root {
+    -primary-bg: #f6f8fc;
+    -primary-gradient: linear-gradient(to bottom right, #7a62ff 0%, #523dcc 100%);
+    -primary-color: #725bf5;
+    -secondary-color: #764ba2;
+    -accent-color: #f7971e;
+    -text-color: #666c78;
+    -text-light: #fff;
+    -text-dark: #000;
+    -border-color: #725bf5;
+    -shadow-color: rgba(0,0,0,0.2);
+    -shadow-strong: rgba(0,0,0,0.3);
+    -fx-font-family: "Poppins", Arial, sans-serif;
+}
+
+.title {
+    -fx-text-fill: -text-light;
+    -fx-effect: dropshadow(gaussian, -shadow-strong, 10, 0, 0, 2);
+}
+
+.subtitle {
+    -fx-text-fill: rgba(255,255,255,0.9);
+}
+
+.form-container {
+    -fx-background-color: -text-light;
+    -fx-background-radius: 15;
+    -fx-effect: dropshadow(gaussian, -shadow-color, 20, 0, 0, 5);
+}
+
+.field-label {
+    -fx-text-fill: -text-color;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.text-field {
+    -fx-pref-height: 40;
+    -fx-font-size: 14px;
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-border-color: -border-color;
+    -fx-border-width: 1;
+    -fx-padding: 5 10 5 10;
+    -fx-focus-color: -primary-color;
+    -fx-faint-focus-color: transparent;
+}
+
+.primary-button {
+    -fx-background-color: -primary-color;
+    -fx-text-fill: -text-light;
+    -fx-background-radius: 5;
+    -fx-font-weight: bold;
+}
+
+.secondary-button {
+    -fx-background-color: -secondary-color;
+    -fx-text-fill: -text-light;
+    -fx-background-radius: 5;
+}

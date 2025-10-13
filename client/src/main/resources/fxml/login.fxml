@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.mathspeed.controller.LoginController"
+      alignment="CENTER"
+      spacing="20"
+      styleClass="login-container">
+
+    <padding>
+        <Insets top="40" right="40" bottom="40" left="40"/>
+    </padding>
+
+    <!-- Title -->
+    <VBox alignment="CENTER" spacing="10">
+        <Label text="Sign In to Account" styleClass="title">
+            <font>
+                <Font name="System Bold" size="32"/>
+            </font>
+        </Label>
+        <Label text="Login to access the quiz" styleClass="subtitle">
+            <font>
+                <Font size="14"/>
+            </font>
+        </Label>
+    </VBox>
+
+    <!-- Login Form -->
+    <VBox spacing="15" styleClass="form-container">
+        <padding>
+            <Insets top="20" right="30" bottom="20" left="30"/>
+        </padding>
+
+        <!-- Username Field -->
+        <VBox spacing="5">
+            <Label text="Email" styleClass="field-label"/>
+            <TextField fx:id="usernameField"
+                       promptText="Enter email"
+                       styleClass="text-field"/>
+        </VBox>
+
+        <!-- Password Field -->
+        <VBox spacing="5">
+            <Label text="Password" styleClass="field-label"/>
+            <PasswordField fx:id="passwordField"
+                           promptText="Enter password"
+                           styleClass="text-field"/>
+        </VBox>
+
+        <!-- Remember Me -->
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <CheckBox fx:id="rememberMeCheckBox" text="Remember me"/>
+        </HBox>
+
+        <!-- Error Message -->
+        <Label fx:id="errorLabel"
+               styleClass="error-label"
+               wrapText="true"
+               visible="false"
+               managed="false"/>
+
+        <!-- Buttons -->
+        <HBox spacing="10" alignment="CENTER">
+            <Button fx:id="loginButton"
+                    text="Sign In Now"
+                    onAction="#handleLogin"
+                    styleClass="primary-button"
+                    defaultButton="true"
+                    prefWidth="120"/>
+        </HBox>
+    </VBox>
+
+    <!-- Server Connection Status -->
+    <HBox spacing="10" alignment="CENTER">
+        <Label text="Server:" styleClass="status-label"/>
+        <Label fx:id="serverStatusLabel"
+               text="Connecting..."
+               styleClass="status-connecting"/>
+    </HBox>
+
+    <!-- Loading Indicator -->
+    <ProgressIndicator fx:id="loadingIndicator"
+                       visible="false"
+                       managed="false"
+                       prefWidth="30"
+                       prefHeight="30"/>
+
+</VBox>

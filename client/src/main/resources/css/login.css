@@ -1,0 +1,106 @@
+@import url("theme.css");
+
+.login-container {
+    -fx-background-color: -primary-gradient;
+    -fx-min-width: 450px;
+    -fx-min-height: 550px;
+}
+
+/* Title */
+.title {
+    -fx-text-fill: -text-light;
+    -fx-effect: dropshadow(gaussian, -shadow-strong, 10, 0, 0, 2);
+}
+
+.subtitle {
+    -fx-text-fill: rgba(255, 255, 255, 0.9);
+}
+
+/* Form Container */
+.form-container {
+    -fx-background-color: -text-light;
+    -fx-background-radius: 15;
+    -fx-effect: dropshadow(gaussian, -shadow-color, 20, 0, 0, 5);
+}
+
+/* Field Labels */
+.field-label {
+    -fx-text-fill: -text-color;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+/* Text Fields */
+.text-field {
+    -fx-pref-height: 40;
+    -fx-font-size: 14px;
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-border-color: -border-color;
+    -fx-border-width: 1;
+    -fx-padding: 5 10 5 10;
+}
+
+.text-field:focused {
+    -fx-border-color: -primary-color;
+    -fx-border-width: 2;
+}
+
+/* Buttons */
+.primary-button {
+    -fx-background-color: -primary-color;
+    -fx-text-fill: -text-light;
+    -fx-background-radius: 5;
+    -fx-font-weight: bold;
+}
+
+.secondary-button {
+    -fx-background-color: -secondary-color;
+    -fx-text-fill: -text-light;
+    -fx-background-radius: 5;
+}
+
+/* Error Label */
+.error-label {
+        -fx-text-fill: #d32f2f;
+        -fx-background-color: #ffebee;
+        -fx-padding: 10;
+        -fx-background-radius: 5;
+        -fx-font-size: 13px;
+        }
+
+        /* Status Labels */
+        .status-label {
+        -fx-text-fill: rgba(255, 255, 255, 0.8);
+        -fx-font-size: 12px;
+        }
+
+        .status-connecting {
+        -fx-text-fill: #ffd54f;
+        -fx-font-weight: bold;
+        }
+
+        .status-connected {
+        -fx-text-fill: #66bb6a;
+        -fx-font-weight: bold;
+        }
+
+        .status-disconnected {
+        -fx-text-fill: #ef5350;
+        -fx-font-weight: bold;
+        }
+
+        /* CheckBox */
+        .check-box {
+        -fx-text-fill: #555;
+        }
+
+        .check-box .box {
+        -fx-background-color: white;
+        -fx-border-color: #ddd;
+        -fx-border-radius: 3;
+        }
+
+        .check-box:selected .mark {
+        -fx-background-color: #667eea;
+        }

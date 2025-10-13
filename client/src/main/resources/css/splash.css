@@ -1,0 +1,18 @@
+@import url("theme.css");
+
+.splash-root {
+    -fx-background-color: -primary-gradient;
+}
+
+.splash-title {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-alignment: center;
+    -fx-text-fill: white;
+}
+
+.splash-logo {
+}
+
+.splash-loading {
+}

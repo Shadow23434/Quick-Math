@@ -1,0 +1,8 @@
+/* Temporary lobby styling */
+@import url("theme.css");
+
+.root {
+    /* Sử dụng font và màu nền từ theme */
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-background-color: -primary-bg;
+}
