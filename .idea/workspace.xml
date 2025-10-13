@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="dc3b82dd-1c92-4be1-8cc3-33b8934853ca" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/copilot.data.migration.agent.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/copilot.data.migration.ask.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/copilot.data.migration.ask2agent.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/copilot.data.migration.edit.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/encodings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/client/ClientTestUI.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/client/GameClient.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/client/GameClientUI.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/client/GameRoomUI.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/client/TestGameClient.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/client/UITestRunner.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/client/UserManagementGUI.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/server/ClientHandler.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/server/DatabaseConfig.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/server/GameServer.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/server/GameSession.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/server/MathExpressionEvaluator.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/server/MathPuzzle.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/server/MathPuzzleGenerator.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/server/User.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/server/UserDAO.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/org/example/AppTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/org/example/server/ClientHandlerTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/org/example/server/DatabaseConfigTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/org/example/server/GameServerTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/org/example/server/GameSessionTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/org/example/server/UserDAOTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/org/example/server/UserTest.java" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/src/main/java/org/example/server/UserDAO.java" root0="SKIP_INSPECTION" />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6
+}</component>
+  <component name="ProjectId" id="33rxWw6bQ8pVRy6pqnIOfgKTB6o" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Application.ChallengeTestUI.executor": "Run",
+    "Application.ClientTestUI.executor": "Run",
+    "Application.GameServer.executor": "Run",
+    "Application.SimpleTestClient.executor": "Run",
+    "Application.TestGameClient.executor": "Run",
+    "Application.TwoClientSimulator.executor": "Run",
+    "Application.UITestRunner.executor": "Run",
+    "Application.UserManagementGUI (1).executor": "Run",
+    "Application.UserManagementGUI (2).executor": "Run",
+    "Application.UserManagementGUI (3).executor": "Run",
+    "Application.UserManagementGUI (4).executor": "Run",
+    "Application.UserManagementGUI.executor": "Run",
+    "Application.org.example.client.UITestRunner.executor": "Run",
+    "JUnit.All Tests.executor": "Run",
+    "JUnit.AppTest.executor": "Run",
+    "Maven. [org.apache.maven.plugins:maven-archetype-plugin:RELEASE:generate].executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "git-widget-placeholder": "master",
+    "last_directory_selection": "D:/PTIT_HN/Sem1_2025_26/Lap_trinh_mang/BT_LTM/qcalgame/src/test/java",
+    "last_opened_file_path": "D:/PTIT_HN/Sem1_2025_26/Lap_trinh_mang/BT_LTM/qcalgame",
+    "project.structure.last.edited": "Project",
+    "project.structure.proportion": "0.0",
+    "project.structure.side.proportion": "0.2",
+    "settings.editor.selected.configurable": "com.github.copilot.settings.mcp.McpConfigurable"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
+      <recent name="org.example.server" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Application.TestGameClient">
+    <configuration name="ClientTestUI" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="org.example.client.ClientTestUI" />
+      <module name="qcalgame" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="org.example.client.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="GameServer" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="org.example.server.GameServer" />
+      <module name="qcalgame" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="org.example.server.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="SimpleTestClient" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="org.example.client.SimpleTestClient" />
+      <module name="qcalgame" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="org.example.client.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestGameClient" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="org.example.client.TestGameClient" />
+      <module name="qcalgame" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="org.example.client.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="org.example.client.UITestRunner" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="org.example.client.UITestRunner" />
+      <module name="qcalgame" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="org.example.client.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="All Tests" type="JUnit" factoryName="JUnit">
+      <module name="qcalgame" />
+      <option name="PACKAGE_NAME" value="org.example" />
+      <option name="MAIN_CLASS_NAME" value="" />
+      <option name="METHOD_NAME" value="" />
+      <option name="TEST_OBJECT" value="package" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.TestGameClient" />
+        <item itemvalue="Application.GameServer" />
+        <item itemvalue="Application.SimpleTestClient" />
+        <item itemvalue="Application.ClientTestUI" />
+        <item itemvalue="Application.org.example.client.UITestRunner" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="dc3b82dd-1c92-4be1-8cc3-33b8934853ca" name="Changes" comment="" />
+      <created>1760089028974</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1760089028974</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
