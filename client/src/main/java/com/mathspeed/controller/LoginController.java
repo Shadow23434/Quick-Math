@@ -1,13 +1,17 @@
 package com.mathspeed.controller;
 
-import com.mathspeed.network.NetworkManager;
-import javafx.application.Platform;
+import com.mathspeed.util.ReloadManager;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,146 +21,365 @@ public class LoginController {
     private static final Logger logger = LoggerFactory.getLogger(LoginController.class);
 
     @FXML private TextField usernameField;
-    @FXML private PasswordField passwordField;
+    @FXML private PasswordField passwordHiddenField;
+    @FXML private TextField passwordVisibleField;
+    @FXML private Button toggleShowPassword;
+    @FXML private Button clearPasswordButton;
+    @FXML private Button clearEmailButton;
+    @FXML private Label passwordStrengthLabel;
+    @FXML private Label passwordHintLabel;
     @FXML private CheckBox rememberMeCheckBox;
+    @FXML private Label checkIconLabel;
+    @FXML private Hyperlink forgotPasswordLink;
     @FXML private Label errorLabel;
-    @FXML private Label serverStatusLabel;
     @FXML private Button loginButton;
     @FXML private Button registerButton;
+    @FXML private Label serverStatusLabel;
     @FXML private ProgressIndicator loadingIndicator;
+    @FXML private Button reloadButton;
 
-    private NetworkManager networkManager;
+    private boolean isPasswordVisible = false;
+    private FontIcon eyeIcon;
+    private FontIcon eyeSlashIcon;
+    private FontIcon checkIcon;
 
     @FXML
     public void initialize() {
         logger.info("LoginController initialized");
 
         // Initialize network manager
-        networkManager = NetworkManager.getInstance();
-
-        // Check server connection
-        checkServerConnection();
-
-        // Add enter key listener for password field
-        passwordField.setOnAction(event -> handleLogin());
+        // networkManager = NetworkManager.getInstance();
 
         // Load saved credentials if remember me was checked
         loadSavedCredentials();
+
+        setupIcons();
+        setupPasswordField();
+        setupEmailField();
+        setupEnterKeyLogin();
+        setupReloadShortcut();
+        setupCustomCheckboxIcon();
+    }
+
+    private void setupIcons() {
+        // Setup FontAwesome icons for password toggle
+        eyeIcon = new FontIcon(FontAwesomeSolid.EYE);
+        eyeIcon.setIconSize(18);
+        eyeIcon.getStyleClass().add("icon-view");
+
+        eyeSlashIcon = new FontIcon(FontAwesomeSolid.EYE_SLASH);
+        eyeSlashIcon.setIconSize(18);
+        eyeSlashIcon.getStyleClass().add("icon-view");
+
+        // Set initial icon
+        if (toggleShowPassword != null) {
+            toggleShowPassword.setGraphic(eyeIcon);
+        }
+
+        // Setup clear email icon
+        if (clearEmailButton != null) {
+            FontIcon clearIcon = new FontIcon(FontAwesomeSolid.TIMES);
+            clearIcon.setIconSize(16);
+            clearIcon.getStyleClass().add("icon-view");
+            clearEmailButton.setGraphic(clearIcon);
+        }
+
+        // Setup clear password icon
+        if (clearPasswordButton != null) {
+            FontIcon clearIcon = new FontIcon(FontAwesomeSolid.TIMES);
+            clearIcon.setIconSize(16);
+            clearIcon.getStyleClass().add("icon-view");
+            clearPasswordButton.setGraphic(clearIcon);
+        }
+
+        // Setup reload icon
+        if (reloadButton != null) {
+            FontIcon reloadIcon = new FontIcon(FontAwesomeSolid.SYNC_ALT);
+            reloadIcon.setIconSize(20);
+            reloadIcon.getStyleClass().add("icon-view");
+            reloadButton.setGraphic(reloadIcon);
+            reloadButton.setText("");
+        }
+    }
+
+    private void setupReloadShortcut() {
+        if (reloadButton != null && reloadButton.getScene() != null) {
+            reloadButton.getScene().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+                if (event.getCode() == KeyCode.F5) {
+                    handleReload();
+                    event.consume();
+                }
+            });
+        }
+    }
+
+    private void setupCustomCheckboxIcon() {
+        checkIcon = new FontIcon(FontAwesomeSolid.CHECK);
+        checkIcon.setIconSize(10);
+        checkIcon.setIconColor(javafx.scene.paint.Color.WHITE);
+
+        rememberMeCheckBox.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+            if (isSelected) {
+                checkIconLabel.setGraphic(checkIcon);
+                checkIconLabel.setVisible(true);
+            } else {
+                checkIconLabel.setGraphic(null);
+                checkIconLabel.setVisible(false);
+            }
+        });
+
+        if (rememberMeCheckBox.isSelected()) {
+            checkIconLabel.setGraphic(checkIcon);
+            checkIconLabel.setVisible(true);
+            logger.info("Initial state: checkbox selected, icon added");
+        }
+    }
+
+    @FXML
+    private void handleReload() {
+        ReloadManager.reloadCurrentScene();
+    }
+
+    private void setupPasswordField() {
+        // Sync password hidden field and visible field
+        passwordHiddenField.textProperty().addListener((obs, oldVal, newVal) -> {
+            passwordVisibleField.setText(newVal);
+            updateClearPasswordButtonVisibility();
+            updatePasswordFieldStyle(newVal);
+            checkPasswordStrength(newVal);
+        });
+
+        passwordVisibleField.textProperty().addListener((obs, oldVal, newVal) -> {
+            passwordHiddenField.setText(newVal);
+            updatePasswordFieldStyle(newVal);
+        });
+
+        // Focus handling
+        passwordHiddenField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            updateClearPasswordButtonVisibility();
+        });
+
+        passwordVisibleField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            updateClearPasswordButtonVisibility();
+        });
+    }
+
+    private void setupEmailField() {
+        // Text change listener
+        usernameField.textProperty().addListener((obs, oldVal, newVal) -> {
+            updateClearEmailButtonVisibility();
+        });
+
+        // Focus handling
+        usernameField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            updateClearEmailButtonVisibility();
+        });
+    }
+
+    private void setupEnterKeyLogin() {
+        usernameField.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ENTER) {
+                passwordHiddenField.requestFocus();
+            }
+        });
+
+        passwordHiddenField.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ENTER) {
+                handleLogin();
+            }
+        });
+
+        passwordVisibleField.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ENTER) {
+                handleLogin();
+            }
+        });
+    }
+
+    @FXML
+    private void handleTogglePassword() {
+        isPasswordVisible = !isPasswordVisible;
+
+        if (isPasswordVisible) {
+            // Show password
+            passwordHiddenField.setVisible(false);
+            passwordHiddenField.setManaged(false);
+            passwordVisibleField.setVisible(true);
+            passwordVisibleField.setManaged(true);
+            toggleShowPassword.setGraphic(eyeSlashIcon);
+            passwordVisibleField.requestFocus();
+            passwordVisibleField.positionCaret(passwordVisibleField.getText().length());
+        } else {
+            // Hide password
+            passwordVisibleField.setVisible(false);
+            passwordVisibleField.setManaged(false);
+            passwordHiddenField.setVisible(true);
+            passwordHiddenField.setManaged(true);
+            toggleShowPassword.setGraphic(eyeIcon);
+            passwordHiddenField.requestFocus();
+            passwordHiddenField.positionCaret(passwordHiddenField.getText().length());
+        }
+    }
+
+    @FXML
+    private void handleClearPassword() {
+        passwordHiddenField.clear();
+        passwordVisibleField.clear();
+        updateClearPasswordButtonVisibility();
+
+        // Focus lại vào field
+        if (isPasswordVisible) {
+            passwordVisibleField.requestFocus();
+        } else {
+            passwordHiddenField.requestFocus();
+        }
+    }
+
+    @FXML
+    private void handleClearEmail() {
+        usernameField.clear();
+        usernameField.requestFocus();
+    }
+
+    private void updateClearEmailButtonVisibility() {
+        if (clearEmailButton != null) {
+            boolean hasText = !usernameField.getText().isEmpty();
+            boolean isFocused = usernameField.isFocused();
+
+            clearEmailButton.setVisible(hasText && isFocused);
+            clearEmailButton.setManaged(hasText && isFocused);
+        }
+    }
+
+    private void updateClearPasswordButtonVisibility() {
+        if (clearPasswordButton != null) {
+            boolean hasText = !passwordHiddenField.getText().isEmpty();
+            boolean isFocused = passwordHiddenField.isFocused() || passwordVisibleField.isFocused();
+
+            clearPasswordButton.setVisible(hasText && isFocused);
+            clearPasswordButton.setManaged(hasText && isFocused);
+        }
+    }
+
+    private void updatePasswordFieldStyle(String text) {
+        if (text != null && !text.isEmpty()) {
+            if (!passwordHiddenField.getStyleClass().contains("has-text")) {
+                passwordHiddenField.getStyleClass().add("has-text");
+            }
+            if (!passwordVisibleField.getStyleClass().contains("has-text")) {
+                passwordVisibleField.getStyleClass().add("has-text");
+            }
+        } else {
+            passwordHiddenField.getStyleClass().remove("has-text");
+            passwordVisibleField.getStyleClass().remove("has-text");
+        }
+    }
+
+    private void checkPasswordStrength(String password) {
+        if (password.isEmpty()) {
+            passwordStrengthLabel.setVisible(false);
+            passwordStrengthLabel.setManaged(false);
+            passwordHintLabel.setVisible(false);
+            passwordHintLabel.setManaged(false);
+            return;
+        }
+
+        int strength = calculatePasswordStrength(password);
+
+        passwordStrengthLabel.setVisible(true);
+        passwordStrengthLabel.setManaged(true);
+
+        // Remove all old style classes
+        passwordStrengthLabel.getStyleClass().removeAll(
+                "password-strength-weak",
+                "password-strength-medium",
+                "password-strength-strong"
+        );
+
+        if (strength < 3) {
+            passwordStrengthLabel.setText("Weak");
+            passwordStrengthLabel.getStyleClass().add("password-strength-weak");
+        } else if (strength < 5) {
+            passwordStrengthLabel.setText("Medium");
+            passwordStrengthLabel.getStyleClass().add("password-strength-medium");
+        } else {
+            passwordStrengthLabel.setText("Strong");
+            passwordStrengthLabel.getStyleClass().add("password-strength-strong");
+        }
+    }
+
+    private int calculatePasswordStrength(String password) {
+        int strength = 0;
+
+        if (password.length() >= 8) strength++;
+        if (password.length() >= 12) strength++;
+        if (password.matches(".*[a-z].*")) strength++;
+        if (password.matches(".*[A-Z].*")) strength++;
+        if (password.matches(".*\\d.*")) strength++;
+        if (password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) strength++;
+
+        return strength;
+    }
+
+    @FXML
+    private void handleForgotPassword() {
+        // Implement forgot password logic
+        System.out.println("Forgot password clicked");
     }
 
     @FXML
     private void handleLogin() {
         String username = usernameField.getText().trim();
-        String password = passwordField.getText();
+        String password = passwordHiddenField.getText();
 
-        // Validate input
-        if (username.isEmpty() || password.isEmpty()) {
-            showError("Vui lòng nhập đầy đủ thông tin!");
+        // Clear previous errors
+        errorLabel.setVisible(false);
+        errorLabel.setManaged(false);
+
+        // Validation
+        if (username.isEmpty()) {
+            showError("Please enter your email");
+            usernameField.requestFocus();
             return;
         }
 
-        // Disable buttons during login
+        if (password.isEmpty()) {
+            showError("Please enter your password");
+            passwordHiddenField.requestFocus();
+            return;
+        }
+
+        // Show loading
         setLoading(true);
-        hideError();
 
-        // TODO: Connect to server and authenticate
-        // For now, simulate login
-        new Thread(() -> {
-            try {
-                Thread.sleep(1500); // Simulate network delay
-
-                Platform.runLater(() -> {
-                    // Simulate successful login
-                    if (username.equals("player1") && password.equals("password123")) {
-                        logger.info("Login successful for user: {}", username);
-
-                        // Save credentials if remember me is checked
-                        if (rememberMeCheckBox.isSelected()) {
-                            saveCredentials(username, password);
-                        }
-
-                        // Navigate to lobby
-                        navigateToLobby(username);
-                    } else {
-                        showError("Tên đăng nhập hoặc mật khẩu không đúng!");
-                        setLoading(false);
-                    }
-                });
-            } catch (InterruptedException e) {
-                logger.error("Login interrupted", e);
-                Platform.runLater(() -> {
-                    showError("Lỗi kết nối đến server!");
-                    setLoading(false);
-                });
-            }
-        }).start();
-    }
-
-    @FXML
-    private void handleRegister() {
-        logger.info("Register button clicked");
-
-        // TODO: Open register dialog or navigate to register screen
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Đăng ký");
-        alert.setHeaderText("Chức năng đăng ký");
-        alert.setContentText("Tính năng đăng ký sẽ được cài đặt sau!");
-        alert.showAndWait();
-    }
-
-    private void checkServerConnection() {
-        // TODO: Actually check server connection
-        // For now, simulate connection
-        new Thread(() -> {
-            try {
-                Thread.sleep(1000);
-                Platform.runLater(() -> {
-                    serverStatusLabel.setText("Đã kết nối");
-                    serverStatusLabel.getStyleClass().remove("status-connecting");
-                    serverStatusLabel.getStyleClass().add("status-connected");
-                });
-            } catch (InterruptedException e) {
-                logger.error("Connection check interrupted", e);
-            }
-        }).start();
+        // Login logic
+        System.out.println("Login attempt: " + username);
+        navigateToLobby(username);
     }
 
     private void showError(String message) {
         errorLabel.setText(message);
         errorLabel.setVisible(true);
         errorLabel.setManaged(true);
-
-        // Shake animation effect
-        shakeNode(errorLabel);
-    }
-
-    private void hideError() {
-        errorLabel.setVisible(false);
-        errorLabel.setManaged(false);
     }
 
     private void setLoading(boolean loading) {
         loginButton.setDisable(loading);
-        registerButton.setDisable(loading);
-        usernameField.setDisable(loading);
-        passwordField.setDisable(loading);
         loadingIndicator.setVisible(loading);
         loadingIndicator.setManaged(loading);
     }
 
-    private void shakeNode(javafx.scene.Node node) {
-        javafx.animation.TranslateTransition transition =
-                new javafx.animation.TranslateTransition(javafx.util.Duration.millis(100), node);
-        transition.setFromX(0);
-        transition.setByX(10);
-        transition.setCycleCount(4);
-        transition.setAutoReverse(true);
-        transition.play();
+    @FXML
+    private void handleRegister() {
+        System.out.println("Register button clicked");
+        // TODO: Open register dialog or navigate to register screen
     }
 
     private void saveCredentials(String username, String password) {
         // TODO: Save to preferences file
-        logger.info("Saving credentials for user: {}", username);
+        // Avoid logging the raw password; log only its length for debugging
+        int pwLen = password == null ? 0 : password.length();
+        logger.info("Saving credentials for user: {} (password length={})", username, pwLen);
     }
 
     private void loadSavedCredentials() {
@@ -176,17 +399,22 @@ public class LoginController {
             lobbyController.setUsername(username);
 
             Scene scene = new Scene(root);
-            scene.getStylesheets().add(getClass().getResource("/css/lobby.css").toExternalForm());
+            java.net.URL lobbyCss = getClass().getResource("/css/lobby.css");
+            if (lobbyCss != null) {
+                scene.getStylesheets().add(lobbyCss.toExternalForm());
+            } else {
+                logger.warn("lobby.css not found on classpath");
+            }
 
-            Stage stage = (Stage) loginButton.getScene().getWindow();
-            stage.setScene(scene);
-            stage.setTitle("Math Speed Game - Lobby");
+             Stage stage = (Stage) loginButton.getScene().getWindow();
+             stage.setScene(scene);
+             stage.setTitle("Math Speed Game - Lobby");
 
-            logger.info("Navigated to lobby for user: {}", username);
-        } catch (IOException e) {
-            logger.error("Failed to load lobby screen", e);
-            showError("Không thể tải màn hình lobby!");
-            setLoading(false);
-        }
-    }
+             logger.info("Navigated to lobby for user: {}", username);
+         } catch (IOException e) {
+             logger.error("Failed to load lobby screen", e);
+             showError("Không thể tải màn hình lobby!");
+             setLoading(false);
+         }
+     }
 }

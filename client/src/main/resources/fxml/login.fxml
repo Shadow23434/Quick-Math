@@ -3,91 +3,209 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.*?>
 
-<VBox xmlns="http://javafx.com/javafx/21"
-      xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.mathspeed.controller.LoginController"
-      alignment="CENTER"
-      spacing="20"
-      styleClass="login-container">
+<?import javafx.scene.text.Text?>
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.mathspeed.controller.LoginController"
+           styleClass="login-container">
 
-    <padding>
-        <Insets top="40" right="40" bottom="40" left="40"/>
-    </padding>
+    <!-- BorderPane to control layout -->
+    <BorderPane pickOnBounds="false">
+        <!-- Main Content -->
+        <top>
+            <VBox alignment="TOP_CENTER"
+                  spacing="20"
+                  pickOnBounds="false">
 
-    <!-- Title -->
-    <VBox alignment="CENTER" spacing="10">
-        <Label text="Sign In to Account" styleClass="title">
-            <font>
-                <Font name="System Bold" size="32"/>
-            </font>
-        </Label>
-        <Label text="Login to access the quiz" styleClass="subtitle">
-            <font>
-                <Font size="14"/>
-            </font>
-        </Label>
-    </VBox>
+                <padding>
+                    <Insets top="40" right="20" bottom="20" left="20"/>
+                </padding>
 
-    <!-- Login Form -->
-    <VBox spacing="15" styleClass="form-container">
-        <padding>
-            <Insets top="20" right="30" bottom="20" left="30"/>
-        </padding>
+                <!-- Title -->
+                <VBox alignment="CENTER" spacing="10" pickOnBounds="false">
+                    <Label text="Sign In to Account" styleClass="title"/>
+                    <Label text="Login to access the quiz" styleClass="subtitle"/>
+                </VBox>
 
-        <!-- Username Field -->
-        <VBox spacing="5">
-            <Label text="Email" styleClass="field-label"/>
-            <TextField fx:id="usernameField"
-                       promptText="Enter email"
-                       styleClass="text-field"/>
-        </VBox>
+                <!-- Login Form -->
+                <VBox spacing="15" styleClass="form-container" pickOnBounds="true">
+                    <padding>
+                        <Insets top="20" right="20" bottom="20" left="20"/>
+                    </padding>
 
-        <!-- Password Field -->
-        <VBox spacing="5">
-            <Label text="Password" styleClass="field-label"/>
-            <PasswordField fx:id="passwordField"
-                           promptText="Enter password"
-                           styleClass="text-field"/>
-        </VBox>
+                    <!-- Username Field -->
+                    <VBox spacing="5">
+                        <Label text="Email" styleClass="field-label"/>
 
-        <!-- Remember Me -->
-        <HBox spacing="10" alignment="CENTER_LEFT">
-            <CheckBox fx:id="rememberMeCheckBox" text="Remember me"/>
-        </HBox>
+                        <StackPane>
+                            <TextField fx:id="usernameField"
+                                       promptText="Enter email"
+                                       styleClass="text-field"
+                                       StackPane.alignment="CENTER_LEFT"/>
 
-        <!-- Error Message -->
-        <Label fx:id="errorLabel"
-               styleClass="error-label"
-               wrapText="true"
-               visible="false"
-               managed="false"/>
+                            <!-- Clear button -->
+                            <HBox alignment="CENTER_RIGHT"
+                                  spacing="5"
+                                  StackPane.alignment="CENTER_RIGHT"
+                                  pickOnBounds="false">
 
-        <!-- Buttons -->
-        <HBox spacing="10" alignment="CENTER">
-            <Button fx:id="loginButton"
-                    text="Sign In Now"
-                    onAction="#handleLogin"
-                    styleClass="primary-button"
-                    defaultButton="true"
-                    prefWidth="120"/>
-        </HBox>
-    </VBox>
+                                <Button fx:id="clearEmailButton"
+                                        styleClass="password-action-button"
+                                        focusTraversable="false"
+                                        visible="false"
+                                        managed="false"
+                                        onAction="#handleClearEmail">
+                                    <tooltip>
+                                        <Tooltip text="Clear email"/>
+                                    </tooltip>
+                                </Button>
+                            </HBox>
+                        </StackPane>
+                    </VBox>
 
-    <!-- Server Connection Status -->
-    <HBox spacing="10" alignment="CENTER">
-        <Label text="Server:" styleClass="status-label"/>
-        <Label fx:id="serverStatusLabel"
-               text="Connecting..."
-               styleClass="status-connecting"/>
-    </HBox>
+                    <!-- Password Field -->
+                    <VBox spacing="5">
+                        <HBox alignment="CENTER_LEFT" spacing="5">
+                            <Label text="Password" styleClass="field-label"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <!-- Password strength indicator (optional) -->
+                            <Label fx:id="passwordStrengthLabel"
+                                   text=""
+                                   styleClass="password-strength-label"
+                                   visible="false"
+                                   managed="false"/>
+                        </HBox>
 
-    <!-- Loading Indicator -->
-    <ProgressIndicator fx:id="loadingIndicator"
-                       visible="false"
-                       managed="false"
-                       prefWidth="30"
-                       prefHeight="30"/>
+                        <StackPane>
+                            <!-- Password Field (Hidden) -->
+                            <PasswordField fx:id="passwordHiddenField"
+                                           promptText="Enter password"
+                                           styleClass="password-hidden-field"
+                                           StackPane.alignment="CENTER_LEFT"/>
 
-</VBox>
+                            <!-- Visible Text Field (When toggled) -->
+                            <TextField fx:id="passwordVisibleField"
+                                       promptText="Enter password"
+                                       styleClass="password-visible-field"
+                                       visible="false"
+                                       managed="false"
+                                       StackPane.alignment="CENTER_LEFT"/>
+
+                            <!-- Toggle Button (Better positioned) -->
+                            <HBox alignment="CENTER_RIGHT"
+                                  spacing="5"
+                                  StackPane.alignment="CENTER_RIGHT"
+                                  pickOnBounds="false">
+
+                                <!-- Clear button (optional) -->
+                                <Button fx:id="clearPasswordButton"
+                                        styleClass="password-action-button"
+                                        focusTraversable="false"
+                                        visible="false"
+                                        managed="false"
+                                        onAction="#handleClearPassword">
+                                    <tooltip>
+                                        <Tooltip text="Clear password"/>
+                                    </tooltip>
+                                </Button>
+
+                                <!-- Toggle visibility button -->
+                                <Button fx:id="toggleShowPassword"
+                                        styleClass="password-action-button"
+                                        focusTraversable="false"
+                                        onAction="#handleTogglePassword">
+                                    <tooltip>
+                                        <Tooltip text="Show/Hide password"/>
+                                    </tooltip>
+                                </Button>
+                            </HBox>
+                        </StackPane>
+
+                        <!-- Password hint/error message -->
+                        <Label fx:id="passwordHintLabel"
+                               text=""
+                               styleClass="password-hint"
+                               wrapText="true"
+                               visible="false"
+                               managed="false"/>
+                    </VBox>
+
+                    <!-- Remember Me & Forgot Password -->
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <StackPane>
+                            <CheckBox fx:id="rememberMeCheckBox" text="Remember me"/>
+                            <Label fx:id="checkIconLabel"
+                                   managed="false"
+                                   mouseTransparent="true"
+                                   visible="false"
+                                   StackPane.alignment="CENTER_LEFT">
+                                <padding>
+                                    <Insets left="4" top="24"/>
+                                </padding>
+                            </Label>
+                        </StackPane>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Hyperlink text="Forgot Password?"
+                                   onAction="#handleForgotPassword"
+                                   styleClass="hyper-link"/>
+                    </HBox>
+
+                    <!-- Error Message -->
+                    <Label fx:id="errorLabel"
+                           styleClass="error-label"
+                           wrapText="true"
+                           textAlignment="CENTER"
+                           alignment="CENTER"
+                           maxWidth="Infinity"
+                           visible="false"
+                           managed="false"/>
+                </VBox>
+
+                <!-- Sign In Button -->
+                <Button fx:id="loginButton"
+                        text="Sign In Now"
+                        onAction="#handleLogin"
+                        styleClass="primary-button"
+                        defaultButton="true"
+                        maxWidth="Infinity">
+                </Button>
+
+                <!-- Loading Indicator -->
+                <ProgressIndicator fx:id="loadingIndicator"
+                                   visible="false"
+                                   managed="false"
+                                   prefWidth="30"
+                                   prefHeight="30"/>
+            </VBox>
+        </top>
+
+        <!-- Register Link at Bottom -->
+        <bottom>
+            <HBox spacing="5" alignment="CENTER">
+                <padding>
+                    <Insets top="20" right="20" bottom="30" left="20"/>
+                </padding>
+                <Text styleClass="register-text">Doesn't have an account?</Text>
+                <Hyperlink text="Register Now"
+                           onAction="#handleRegister"
+                           styleClass="hyper-link"/>
+            </HBox>
+        </bottom>
+    </BorderPane>
+
+    <!-- Floating Reload Button (Dev Mode) -->
+    <Button fx:id="reloadButton"
+            text="🔄"
+            onAction="#handleReload"
+            styleClass="reload-button, floating-button"
+            StackPane.alignment="TOP_RIGHT">
+        <StackPane.margin>
+            <Insets top="15" right="15"/>
+        </StackPane.margin>
+        <tooltip>
+            <Tooltip text="Reload (F5)"/>
+        </tooltip>
+    </Button>
+
+</StackPane>
