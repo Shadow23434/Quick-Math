@@ -1,5 +1,6 @@
 package com.mathspeed.controller;
 
+import com.mathspeed.client.SceneManager;
 import com.mathspeed.util.ReloadManager;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -8,7 +9,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
@@ -33,8 +33,7 @@ public class LoginController {
     @FXML private Hyperlink forgotPasswordLink;
     @FXML private Label errorLabel;
     @FXML private Button loginButton;
-    @FXML private Button registerButton;
-    @FXML private Label serverStatusLabel;
+    @FXML private Hyperlink registerButton;
     @FXML private ProgressIndicator loadingIndicator;
     @FXML private Button reloadButton;
 
@@ -354,7 +353,7 @@ public class LoginController {
 
         // Login logic
         System.out.println("Login attempt: " + username);
-        navigateToLobby(username);
+        navigateToDashboard(username);
     }
 
     private void showError(String message) {
@@ -371,8 +370,14 @@ public class LoginController {
 
     @FXML
     private void handleRegister() {
-        System.out.println("Register button clicked");
-        // TODO: Open register dialog or navigate to register screen
+        logger.info("Navigating to register screen");
+        try {
+            Stage stage = (Stage) registerButton.getScene().getWindow();
+            SceneManager.showRegister(stage);
+        } catch (Exception e) {
+            logger.error("Error navigating to register screen", e);
+            showError("Error navigating to register screen");
+        }
     }
 
     private void saveCredentials(String username, String password) {
@@ -389,31 +394,14 @@ public class LoginController {
         // passwordField.setText("password123");
     }
 
-    private void navigateToLobby(String username) {
+    private void navigateToDashboard(String username) {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/lobby.fxml"));
-            Parent root = loader.load();
-
-            // Get the lobby controller and pass username
-            LobbyController lobbyController = loader.getController();
-            lobbyController.setUsername(username);
-
-            Scene scene = new Scene(root);
-            java.net.URL lobbyCss = getClass().getResource("/css/lobby.css");
-            if (lobbyCss != null) {
-                scene.getStylesheets().add(lobbyCss.toExternalForm());
-            } else {
-                logger.warn("lobby.css not found on classpath");
-            }
-
-             Stage stage = (Stage) loginButton.getScene().getWindow();
-             stage.setScene(scene);
-             stage.setTitle("Math Speed Game - Lobby");
-
-             logger.info("Navigated to lobby for user: {}", username);
-         } catch (IOException e) {
-             logger.error("Failed to load lobby screen", e);
-             showError("Không thể tải màn hình lobby!");
+            logger.info("Navigated to dashboard for user: {}", username);
+            Stage stage = (Stage) loginButton.getScene().getWindow();
+            SceneManager.showDashboard(stage, username);
+         } catch (Exception e) {
+             logger.error("Failed to load dashboard screen", e);
+             showError("Fail to load dashboard screen!");
              setLoading(false);
          }
      }

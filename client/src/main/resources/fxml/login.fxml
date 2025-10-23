@@ -8,7 +8,7 @@
 <StackPane xmlns="http://javafx.com/javafx/21"
            xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="com.mathspeed.controller.LoginController"
-           styleClass="login-container">
+           styleClass="container">
 
     <!-- BorderPane to control layout -->
     <BorderPane pickOnBounds="false">
@@ -141,12 +141,12 @@
                                    visible="false"
                                    StackPane.alignment="CENTER_LEFT">
                                 <padding>
-                                    <Insets left="4" top="24"/>
+                                    <Insets left="4" top="26"/>
                                 </padding>
                             </Label>
                         </StackPane>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Hyperlink text="Forgot Password?"
+                        <Hyperlink fx:id="forgotPasswordLink" text="Forgot Password?"
                                    onAction="#handleForgotPassword"
                                    styleClass="hyper-link"/>
                     </HBox>
@@ -187,7 +187,7 @@
                     <Insets top="20" right="20" bottom="30" left="20"/>
                 </padding>
                 <Text styleClass="register-text">Doesn't have an account?</Text>
-                <Hyperlink text="Register Now"
+                <Hyperlink fx:id="registerButton" text="Register Now"
                            onAction="#handleRegister"
                            styleClass="hyper-link"/>
             </HBox>
@@ -199,13 +199,12 @@
             text="🔄"
             onAction="#handleReload"
             styleClass="reload-button, floating-button"
-            StackPane.alignment="TOP_RIGHT">
+            StackPane.alignment="BOTTOM_RIGHT">
         <StackPane.margin>
-            <Insets top="15" right="15"/>
+            <Insets bottom="15" right="15"/>
         </StackPane.margin>
         <tooltip>
             <Tooltip text="Reload (F5)"/>
         </tooltip>
     </Button>
-
 </StackPane>

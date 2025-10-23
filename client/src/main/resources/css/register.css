@@ -1,0 +1,262 @@
+/* ScrollPane styling */
+.register-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.register-scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+.register-scroll-pane > .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-padding: 0 4 0 4;
+}
+
+.register-scroll-pane > .scroll-bar:vertical > .track {
+    -fx-background-color: rgba(0, 0, 0, 0.05);
+    -fx-background-radius: 10;
+}
+
+.register-scroll-pane > .scroll-bar:vertical > .thumb {
+    -fx-background-color: rgba(114, 91, 245, 0.3);
+    -fx-background-radius: 10;
+}
+
+.register-scroll-pane > .scroll-bar:vertical > .thumb:hover {
+    -fx-background-color: rgba(114, 91, 245, 0.5);
+}
+
+.register-scroll-pane > .scroll-bar:vertical > .increment-button,
+.register-scroll-pane > .scroll-bar:vertical > .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+/* Date Picker Styling */
+.container .date-picker {
+    -fx-pref-height: 40;
+    -fx-font-family: "Poppins Medium";
+    -fx-font-size: 13px;
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
+    -fx-border-color: transparent transparent rgba(114, 91, 245, 0.6) transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 5 0 5 0;
+}
+
+.container .date-picker .text-field {
+    -fx-pref-height: 40;
+    -fx-font-family: "Poppins Medium";
+    -fx-font-size: 13px;
+    -fx-text-fill: -text-dark;
+    -fx-prompt-text-fill: -text-dark;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-cursor: hand;
+}
+
+.container .date-picker > .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 5 0 5;
+    -fx-cursor: hand;
+}
+
+/* Customize date-picker icon/arrow */
+.container .date-picker > .arrow-button > .arrow {
+    -fx-background-color: -primary-color;
+    -fx-padding: 7;
+    -fx-shape: "M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5zm2 4h10v2H7v-2zm0 4h7v2H7v-2z";
+}
+
+.container .date-picker > .arrow-button:hover > .arrow {
+    -fx-background-color: #5644e7;
+    -fx-scale-x: 1.1;
+    -fx-scale-y: 1.1;
+}
+
+.container .date-picker > .arrow-button:pressed > .arrow {
+    -fx-scale-x: 0.95;
+    -fx-scale-y: 0.95;
+}
+
+.container .date-picker:focused {
+    -fx-border-width: 0 0 2 0;
+    -fx-border-color: transparent transparent -primary-color transparent;
+}
+
+.container .date-picker:hover {
+    -fx-border-color: transparent transparent -primary-color transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.container .date-picker .text-field:hover {
+    -fx-cursor: hand;
+}
+
+/*Customize the right button background color*/
+.date-picker .arrow-button {
+    -fx-background-color: -primary-color;
+    -fx-background-radius: 0;
+}
+
+.date-picker .arrow-button:hover {
+    -fx-background-color: -secondary-color;
+}
+
+.date-picker .arrow-button .arrow {
+    -fx-background-color: -text-light;
+}
+
+/*Customize popup content*/
+.date-picker .cell {
+    -fx-background-color: -text-light;
+    -fx-cursor: hand;
+}
+
+.date-picker .cell:hover {
+    -fx-background-color: -primary-color;
+}
+
+.date-picker .cell:focused {
+    -fx-background-color: -primary-color;
+}
+
+/*Customize the selected cell*/
+.date-picker .selected {
+    -fx-background-color: -primary-color;
+    -fx-text-fill: -text-light;
+}
+
+.date-picker .selected:focused {
+    -fx-background-color: -primary-color;
+    -fx-text-fill: -text-light;
+}
+
+.date-picker-popup {
+    -fx-border-color: transparent;
+}
+
+.date-picker-popup .month-year-pane {
+    -fx-background-color: -primary-color;
+}
+
+.date-picker-popup .month-year-pane .label {
+    -fx-text-fill: -text-light;
+}
+
+.date-picker-popup .week-number-cell {
+    -fx-text-fill: -secondary-color;
+}
+
+/*Customize left and right arrow*/
+.date-picker-popup .spinner .button {
+    -fx-background-color: transparent;
+}
+
+.date-picker-popup .spinner .button > .left-arrow,
+.date-picker-popup .spinner .button > .right-arrow{
+    -fx-background-color: -text-light;
+}
+
+.date-picker-popup .spinner .button .left-arrow:hover,
+.date-picker-popup .spinner .button .right-arrow:hover {
+    -fx-scale-x: 1.2;
+    -fx-scale-y: 1.2;
+}
+
+.date-picker-popup .spinner .button .left-arrow:pressed,
+.date-picker-popup .spinner .button .right-arrow:pressed {
+    -fx-scale-x: 0.95;
+    -fx-scale-y: 0.95;
+}
+
+/* ComboBox Styling */
+.container .combo-box {
+    -fx-pref-height: 40;
+    -fx-font-family: "Poppins Medium";
+    -fx-font-size: 13px;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent rgba(114, 91, 245, 0.6) transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-border-style: none none solid none;
+}
+
+.container .combo-box:focused {
+    -fx-border-width: 0 0 2 0;
+    -fx-border-color: transparent transparent -primary-color transparent;
+}
+
+.container .combo-box .list-cell {
+    -fx-font-family: "Poppins Medium";
+    -fx-font-size: 13px;
+    -fx-text-fill: -text-dark;
+}
+
+.container .combo-box .cell {
+    -fx-cursor: hand;
+}
+
+.container .combo-box > .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 5 0 5;
+    -fx-cursor: hand;
+}
+
+/* Customize combo-box dropdown arrow icon */
+.container .combo-box > .arrow-button > .arrow {
+    -fx-background-color: -primary-color;
+    -fx-shape: "M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z";
+    -fx-scale-x: 1.5;
+    -fx-scale-y: 1.5;
+}
+
+.container .combo-box > .arrow-button:hover > .arrow {
+    -fx-background-color: #5644e7;
+    -fx-scale-x: 1.7;
+    -fx-scale-y: 1.7;
+}
+
+.container .combo-box > .arrow-button:pressed > .arrow {
+    -fx-scale-x: 1.3;
+    -fx-scale-y: 1.3;
+}
+
+.container .combo-box > .arrow-button:hover {
+    -fx-background-color: rgba(114, 91, 245, 0.1);
+}
+
+.container .combo-box-popup .list-view {
+    -fx-background-color: -text-light;
+    -fx-border-color: rgba(114, 91, 245, 0.3);
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 10, 0, 0, 2);
+}
+
+.container .combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: rgba(114, 91, 245, 0.1);
+}
+
+.container .combo-box-popup .list-view .list-cell:selected {
+    -fx-background-color: rgba(114, 91, 245, 0.2);
+    -fx-text-fill: -primary-color;
+}
+
+/* Error Label */
+.error-label {
+    -fx-font-family: "Poppins Medium";
+    -fx-text-fill: #d32f2f;
+    -fx-background-color: #ffebee;
+    -fx-padding: 10;
+    -fx-background-radius: 5;
+    -fx-font-size: 13px;
+}
+
+.register-text {
+    -fx-font-family: "Poppins Medium";
+    -fx-fill: -text-color;
+    -fx-font-size: 13px;
+}
+

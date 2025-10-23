@@ -1,0 +1,468 @@
+/* ScrollPane styling */
+.dashboard-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.dashboard-scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+.dashboard-scroll-pane > .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-padding: 0 4 0 4;
+}
+
+.dashboard-scroll-pane > .scroll-bar:vertical > .track {
+    -fx-background-color: rgba(0, 0, 0, 0.05);
+    -fx-background-radius: 10;
+}
+
+.dashboard-scroll-pane > .scroll-bar:vertical > .thumb {
+    -fx-background-color: rgba(114, 91, 245, 0.3);
+    -fx-background-radius: 10;
+}
+
+.dashboard-scroll-pane > .scroll-bar:vertical > .thumb:hover {
+    -fx-background-color: rgba(114, 91, 245, 0.5);
+}
+
+.dashboard-scroll-pane > .scroll-bar:vertical > .increment-button,
+.dashboard-scroll-pane > .scroll-bar:vertical > .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+/* Header Section */
+.header-section {
+    -fx-max-width: 360px;
+    -fx-pref-width: 360px;
+    -fx-max-height: 100px;
+    -fx-pref-height: 100px;
+    -fx-padding: 10 10;
+    -fx-background-color: transparent;
+}
+
+.user-avatar {
+    -fx-background-color: -text-light;
+    -fx-background-radius: 50%;
+    -fx-min-width: 40px;
+    -fx-min-height: 40px;
+    -fx-max-width: 40px;
+    -fx-max-height: 40px;
+    -fx-padding: 0;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 5, 0, 0, 2);
+}
+
+.header-section .user-greeting {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-text-fill: -text-light;
+    -fx-font-size: 14px;
+    -fx-max-width: 100px;
+    -fx-text-overrun: ellipsis;
+}
+
+.header-section .user-email {
+    -fx-font-family: "Poppins Medium";
+    -fx-text-fill: #d6d1fc;
+    -fx-font-size: 11px;
+    -fx-max-width: 100px;
+    -fx-text-overrun: ellipsis;
+}
+
+.header-section .icon-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-cursor: hand;
+    -fx-padding: 5;
+    -fx-background-radius: 50%;
+}
+
+.header-section .icon-button:hover {
+    -fx-scale-x: 1.1;
+    -fx-scale-y: 1.1;
+}
+
+.header-section .icon-button:pressed {
+    -fx-scale-x: 0.95;
+    -fx-scale-y: 0.95;
+}
+
+.header-section .header-icon {
+    -fx-font-size: 20px;
+    -fx-icon-color: -text-light;
+}
+
+/* Card */
+.stats-card {
+    -fx-background-color: -text-light;
+    -fx-background-radius: 15;
+    -fx-effect: dropshadow(gaussian, -shadow-color, 1, 0, 2, 2);
+    -fx-padding: 10;
+    -fx-max-width: 320px;
+    -fx-pref-width: 320px;
+}
+
+/* Stats */
+.stat-label {
+    -fx-font-family: "Poppins Medium";
+    -fx-text-fill: #53575a;
+    -fx-font-size: 13px;
+}
+
+.stat-icon-bg {
+    -fx-background-color: rgb(241, 238, 251);
+    -fx-background-radius: 50%;
+    -fx-min-width: 36px;
+    -fx-min-height: 36px;
+    -fx-max-width: 36px;
+    -fx-max-height: 36px;
+    -fx-alignment: center;
+    -fx-padding: 0;
+    -fx-effect: null;
+}
+
+.stat-icon {
+    -fx-font-size: 16px;
+    -fx-icon-color: -primary-color;
+    -fx-effect: dropshadow(gaussian, rgba(114,91,245,0.25), 16, 0.2, 0, 2);
+}
+
+.stat-text {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-text-fill: -text-dark;
+    -fx-font-size: 14px;
+}
+
+/* Find Friend Card */
+.find-friend-card {
+    -fx-background-color: linear-gradient(to bottom right, #ff8475 0%, #ff9d8f 100%);
+    -fx-background-radius: 15;
+    -fx-padding: 0;
+    -fx-effect: dropshadow(gaussian, -shadow-color, 10, 0, 0, 4);
+    -fx-max-width: 300px;
+    -fx-pref-width: 300px;
+    -fx-min-height: 100px;
+}
+
+.find-friend-label {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-text-fill: -text-light;
+    -fx-font-size: 14px;
+}
+
+.progress-indicator {
+    -fx-progress-color: -primary-color;
+}
+
+/* Wave layers - stacked organic shapes */
+.wave1 {
+    /* Back layer - large wave from bottom-center to top-right */
+    -fx-background-color: #ffa99e;
+    -fx-shape: "M 70 140 Q 88 71 142 77 Q 187 75 186 39 Q 169 -36 248 -23 Q 297 -26 297 -90 L 318 -90 Q 341 -92 342 -72 L 341 118 Q 342 140 329 139 L 306 139 Z";
+    -fx-scale-shape: true;
+    -fx-min-width: 150px;
+    -fx-min-height: 130px;
+    -fx-max-width: 150px;
+    -fx-max-height: 130px;
+}
+
+.wave2 {
+    /* Front layer - small wave overlapping wave1 */
+    -fx-background-color: rgba(255, 255, 255, 0.3);
+    -fx-shape: "M 101 140 Q 124 103 172 105 Q 271 110 240 56 Q 210 3 273 -9 Q 326 -5 316 -88 L 318 -90 Q 341 -92 342 -72 L 341 118 Q 342 140 329 139 L 306 139 Z";
+    -fx-scale-shape: true;
+    -fx-min-width: 110px;
+    -fx-min-height: 130px;
+    -fx-max-width: 110px;
+    -fx-max-height: 130px;
+}
+
+/* Discover Quiz Section */
+.section-title {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-text-fill: -text-dark;
+    -fx-font-size: 16px;
+}
+
+.see-all-icon {
+    -fx-icon-color: -primary-color;
+    -fx-font-size: 12px;
+}
+
+/* Quiz Cards ScrollPane */
+.quiz-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-padding: 0;
+}
+
+.quiz-scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+.quiz-scroll-pane > .scroll-bar {
+    -fx-opacity: 0;
+}
+
+.quiz-cards-container {
+    /*-fx-padding: 5 0 10 0;*/
+}
+
+/* Quiz Card */
+.quiz-card {
+    -fx-background-radius: 15;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 8, 0, 0, 3);
+    -fx-pref-width: 280px;
+    -fx-min-width: 280px;
+    -fx-max-width: 280px;
+    -fx-min-height: 80px;
+    -fx-cursor: hand;
+    -fx-padding: 0;
+    -fx-spacing: 0;
+}
+
+.quiz-card:hover {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 12, 0, 0, 5);
+    -fx-translate-y: -3;
+}
+
+.quiz-card-yellow {
+    -fx-background-color: linear-gradient(to bottom, #ffdc92 30%, #92f6e5 100%);
+}
+
+.quiz-card-cyan {
+    -fx-background-color: linear-gradient(to bottom, #9cefe0 0%, #19c2de 100%);
+}
+
+.quiz-card-purple {
+    -fx-background-color: linear-gradient(to bottom, #b39dff 0%, #9b82ff 100%);
+}
+
+/* Quiz Card Icon Area */
+.quiz-card > StackPane {
+    -fx-min-height: 120px;
+    -fx-max-height: 120px;
+    -fx-pref-height: 120px;
+    -fx-background-radius: 15 15 0 0;
+}
+
+.quiz-card-icon {
+    -fx-icon-color:  rgba(255, 255, 255, 0.5);
+    -fx-font-size: 60px;
+}
+
+/* Question Badge */
+.question-badge {
+    -fx-background-color: white;
+    -fx-background-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 5, 0, 0, 2);
+    -fx-max-width: 50;
+    -fx-max-height: 30;
+}
+
+.question-badge .badge-icon {
+    -fx-icon-color: -primary-color;
+    -fx-font-size: 12px;
+}
+
+.question-badge .badge-text {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-text-fill: -text-dark;
+    -fx-font-size: 12px;
+}
+
+/* Quiz Info Section */
+.quiz-info {
+    -fx-background-color: white;
+    -fx-background-radius: 0 0 15 15;
+    -fx-padding: 10;
+}
+
+.quiz-title {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-text-fill: -text-dark;
+    -fx-font-size: 13px;
+    -fx-line-spacing: 2;
+}
+
+/* Author Info */
+.author-avatar {
+    -fx-background-color: #f5f5f5;
+    -fx-background-radius: 50%;
+    -fx-min-width: 24px;
+    -fx-min-height: 24px;
+    -fx-max-width: 24px;
+    -fx-max-height: 24px;
+    -fx-padding: 0;
+}
+
+.avatar-image {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 3, 0, 0, 1);
+    -fx-background-radius: 50%;
+    -fx-border-radius: 50%;
+}
+
+.avatar-initials {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-text-fill: -primary-color;
+    -fx-font-size: 10px;
+}
+
+.author-name {
+    -fx-font-family: "Poppins Medium";
+    -fx-text-fill: #888;
+    -fx-font-size: 11px;
+}
+
+/* --- Bottom AppBar Styles --- */
+.bottom-appbar-stack {
+    -fx-background-color: transparent;
+}
+
+.bottom-appbar {
+    -fx-background-color: #fff;
+    -fx-padding: 4 0;
+    -fx-min-height: 60px;
+    -fx-max-height: 60px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.07), 8, 0.2, 0, -2);
+    -fx-border-width: 1 0 0 0;
+    -fx-border-color: #ececec transparent transparent transparent;
+}
+
+.bottom-appbar-item {
+    -fx-alignment: center;
+    -fx-spacing: 4;
+    -fx-padding: 0 4;
+}
+
+.bottom-appbar-icon {
+    -fx-icon-size: 22px;
+    -fx-fill: -text-color;
+    -fx-padding: 0 0 2 0;
+}
+
+.bottom-appbar-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: -text-color;
+    -fx-font-family: "Poppins Medium";
+}
+
+.bottom-appbar-icon-active {
+    -fx-fill: -primary-color;
+    -fx-icon-size: 26px;
+    -fx-padding: 0 0 2 0;
+}
+
+.bottom-appbar-label-active {
+    -fx-text-fill: -primary-color;
+    -fx-font-size: 13px;
+}
+
+.bottom-appbar-item:hover .bottom-appbar-icon,
+.bottom-appbar-item:hover .bottom-appbar-label {
+    -fx-fill: -primary-color;
+    -fx-text-fill: -primary-color;
+}
+
+/* Ensure floating button overlaps the curve */
+.floating-quiz-button {
+    -fx-background-color: #725bf5;
+    -fx-min-width: 56px;
+    -fx-min-height: 56px;
+    -fx-max-width: 56px;
+    -fx-max-height: 56px;
+    -fx-background-radius: 28px;
+    -fx-effect: dropshadow(gaussian, rgba(114,91,245,0.18), 12, 0.3, 0, 2);
+    -fx-translate-y: -24px;
+    -fx-cursor: hand;
+    -fx-z-index: 1;
+}
+.floating-quiz-button:hover {
+    -fx-background-color: #523dcc;
+}
+.floating-quiz-icon {
+    -fx-icon-size: 26px;
+    -fx-fill: #fff;
+}
+
+/* Handle Bar (for mobile look) */
+.bottom-appbar-handle {
+    -fx-translate-y: 10px;
+}
+
+/* Friends Horizontal Scroll */
+.friends-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-padding: 0 0 10 0;
+}
+
+.friends-scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+.friends-scroll-pane > .scroll-bar:horizontal {
+    -fx-background-color: rgba(0, 0, 0, 0.05);
+    -fx-padding: 0 4 0 4;
+}
+
+.friends-scroll-pane > .scroll-bar:horizontal > .thumb {
+    -fx-background-color: rgba(114, 91, 245, 0.3);
+    -fx-background-radius: 10;
+}
+
+.friends-scroll-pane > .scroll-bar:horizontal > .thumb:hover {
+    -fx-background-color: rgba(114, 91, 245, 0.5);
+}
+
+.friends-scroll-pane > .scroll-bar:horizontal > .track {
+    -fx-background-color: rgba(0, 0, 0, 0.05);
+    -fx-background-radius: 10;
+}
+
+.friends-scroll-pane > .scroll-bar:horizontal > .thumb {
+    -fx-background-color: rgba(114, 91, 245, 0.3);
+    -fx-background-radius: 10;
+}
+
+.friends-scroll-pane > .scroll-bar:horizontal > .thumb:hover {
+    -fx-background-color: rgba(114, 91, 245, 0.5);
+}
+
+.friends-cards-container {
+    -fx-alignment: center-left;
+    -fx-padding: 10 0 10 10;
+}
+
+.friend-card {
+    -fx-background-color: -text-light;
+    -fx-background-radius: 16;
+    -fx-padding: 10;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 6, 0, 0, 2);
+    -fx-alignment: center;
+    -fx-spacing: 8;
+    -fx-min-width: 110px;
+    -fx-max-width: 110px;
+    -fx-transition: -fx-background-color 0.2s;
+}
+.friend-card:hover {
+    -fx-background-color: #f3f0ff;
+}
+.friend-avatar {
+    -fx-background-color: #eaeaea;
+    -fx-background-radius: 50%;
+    -fx-min-width: 48px;
+    -fx-min-height: 48px;
+    -fx-max-width: 48px;
+    -fx-max-height: 48px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 4, 0, 0, 1);
+    -fx-alignment: center;
+}
+.friend-name {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-font-size: 13px;
+    -fx-text-fill: #23262F;
+    -fx-alignment: center;
+    -fx-padding: 2 0 0 0;
+}
