@@ -11,8 +11,10 @@ public class Main extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+        SceneManager.getInstance().setPrimaryStage(primaryStage);
+
         ReloadManager.setPrimaryStage(primaryStage);
-        SceneManager.showSplash(primaryStage, () -> SceneManager.showLogin(primaryStage));
+        SceneManager.showSplash(primaryStage, () -> SceneManager.showDashboard(primaryStage));
     }
 
     @Override
