@@ -11,20 +11,10 @@ import com.mathspeed.protocol.MessageType;
 import java.io.*;
 import java.net.Socket;
 import java.net.SocketException;
-import java.net.SocketTimeoutException;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Robust ClientHandler: safer resource management and non-fatal read timeouts.
- *
- * Changes applied to avoid "Unhandled exception from auto-closeable resource: java.io.IOException":
- * - Do NOT rely on try-with-resources for socket streams here (close explicitly in finally with try/catch).
- * - Catch SocketTimeoutException separately and treat it as non-fatal (log & continue).
- * - Catch and log IOExceptions thrown either during read loop or during close operations.
- * - Ensure cleanup() is idempotent and safe to call even if streams were already closed.
- *
- * Keep other command handling logic unchanged.
+ * ClientHandler: xử lý 1 kết nối client trên 1 worker thread.
  */
 public class ClientHandler implements Runnable {
     private final Socket socket;
@@ -66,123 +56,76 @@ public class ClientHandler implements Runnable {
         System.out.println("ClientHandler started for " + remote + " on " + Thread.currentThread().getName());
 
         try {
-            // keep a reasonably large read timeout to avoid spurious timeouts during gameplay
-            socket.setSoTimeout(120_000); // 120 seconds
+            socket.setSoTimeout(120_000); // default read timeout; can be adjusted
         } catch (IOException ignored) {}
 
-        InputStream is = null;
-        InputStreamReader isr = null;
-        BufferedReader br = null;
-        OutputStream os = null;
-        OutputStreamWriter osw = null;
-        BufferedWriter bw = null;
-
-        try {
-            is = socket.getInputStream();
-            isr = new InputStreamReader(is);
-            br = new BufferedReader(isr);
-            os = socket.getOutputStream();
-            osw = new OutputStreamWriter(os);
-            bw = new BufferedWriter(osw);
-
+        try (InputStream is = socket.getInputStream();
+             InputStreamReader isr = new InputStreamReader(is);
+             BufferedReader br = new BufferedReader(isr);
+             OutputStream os = socket.getOutputStream();
+             OutputStreamWriter osw = new OutputStreamWriter(os);
+        ) {
             this.in = br;
-            this.out = bw;
-
-            // Testing convenience: try to auto-assign "alice" or "bob" if client hasn't logged in.
-            autoAssignTestUsernameIfNeeded();
+            this.out = new BufferedWriter(osw);
 
             String line;
-            // Read loop: treat SocketTimeoutException as non-fatal (continue waiting).
-            while (running) {
+            while (running && (line = br.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+
+                // split by whitespace for command + args
+                String[] parts = line.split(" ", 3);
+                String cmd = parts[0].toUpperCase();
+
                 try {
-                    line = br.readLine();
-                    if (line == null) {
-                        // client closed connection cleanly
-                        break;
+                    switch (cmd) {
+                        case "LOGIN":
+                            handleLogin(parts);
+                            break;
+                        case "JOIN_QUEUE":
+                            handleJoinQueue();
+                            break;
+                        case "LEAVE_QUEUE":
+                            handleLeaveQueue();
+                            break;
+                        case "CHALLENGE":
+                            handleChallenge(parts);
+                            break;
+                        case "ACCEPT":
+                            handleAccept(parts);
+                            break;
+                        case "DECLINE":
+                            handleDecline(parts);
+                            break;
+                        case "SUBMIT_ANSWER":
+                            handleSubmitAnswer(parts);
+                            break;
+                        case "PING":
+                            sendType(MessageType.PONG, null);
+                            break;
+                        case "QUIT":
+                            sendType(MessageType.DISCONNECT, null);
+                            running = false; // will exit loop and cleanup
+                            break;
+                        default:
+                            // Unknown command
+                            sendType(MessageType.ERROR, "Unknown command");
+                            break;
                     }
-                    line = line.trim();
-                    if (line.isEmpty()) continue;
-
-                    // split by whitespace for command + args
-                    String[] parts = line.split(" ", 3);
-                    String cmd = parts[0].toUpperCase();
-
-                    try {
-                        switch (cmd) {
-                            case "LOGIN":
-                                handleLogin(parts);
-                                break;
-                            case "GUEST":
-                                handleGuest(parts);
-                                break;
-                            case "JOIN_QUEUE":
-                                handleJoinQueue();
-                                break;
-                            case "LEAVE_QUEUE":
-                                handleLeaveQueue();
-                                break;
-                            case "CHALLENGE":
-                                handleChallenge(parts);
-                                break;
-                            case "ACCEPT":
-                                handleAccept(parts);
-                                break;
-                            case "DECLINE":
-                                handleDecline(parts);
-                                break;
-                            case "SUBMIT_ANSWER":
-                                handleSubmitAnswer(parts);
-                                break;
-                            case "PING":
-                                sendType(MessageType.PONG, null);
-                                break;
-                            case "QUIT":
-                                sendType(MessageType.DISCONNECT, null);
-                                running = false; // will exit loop and cleanup
-                                break;
-                            default:
-                                // Unknown command
-                                sendType(MessageType.ERROR, "Unknown command");
-                                break;
-                        }
-                    } catch (Exception e) {
-                        // Protect handler thread: log and send error to client
-                        System.err.println("Error processing command from " + remote + ": " + e.getMessage());
-                        e.printStackTrace();
-                        try { sendType(MessageType.ERROR, "Internal server error"); } catch (Exception ignored) {}
-                    }
-                } catch (SocketTimeoutException ste) {
-                    // Read timed out waiting for client activity.
-                    // This is NOT fatal by itself for our use-case: the client may be idle between questions.
-                    // Log at debug level and continue waiting.
-                    System.out.println("Read timeout for " + remote + " (ignoring one timeout and continuing).");
-                    continue;
-                } catch (SocketException se) {
-                    // Socket closed or other socket-level error; break and cleanup
-                    System.out.println("Socket exception for " + remote + ": " + se.getMessage());
-                    break;
-                } catch (IOException ioe) {
-                    // Other I/O error -> log and break (will cleanup)
-                    System.err.println("I/O error for client " + remote + ": " + ioe.getMessage());
-                    ioe.printStackTrace();
-                    break;
+                } catch (Exception e) {
+                    // Protect handler thread: log and send error to client
+                    System.err.println("Error processing command from " + remote + ": " + e.getMessage());
+                    e.printStackTrace();
+                    try { sendType(MessageType.ERROR, "Internal server error"); } catch (Exception ignored) {}
                 }
             }
-        } catch (Exception e) {
-            // Catch any unexpected runtime exceptions to avoid thread death
-            System.err.println("Unexpected exception in ClientHandler for " + remote + ": " + e.getMessage());
-            e.printStackTrace();
+        } catch (SocketException se) {
+            // Socket closed/timeout
+            System.out.println("Socket exception for " + remote + ": " + se.getMessage());
+        } catch (IOException ioe) {
+            System.err.println("I/O error for client " + remote + ": " + ioe.getMessage());
         } finally {
-            // Close resources explicitly, each in its own try/catch to avoid unhandled exceptions during close()
-            try { if (bw != null) bw.close(); } catch (IOException e) { System.err.println("Error closing writer: " + e.getMessage()); }
-            try { if (osw != null) osw.close(); } catch (IOException ignored) {}
-            try { if (os != null) os.close(); } catch (IOException ignored) {}
-            try { if (br != null) br.close(); } catch (IOException e) { System.err.println("Error closing reader: " + e.getMessage()); }
-            try { if (isr != null) isr.close(); } catch (IOException ignored) {}
-            try { if (is != null) is.close(); } catch (IOException ignored) {}
-            try { if (!socket.isClosed()) socket.close(); } catch (IOException e) { System.err.println("Error closing socket: " + e.getMessage()); }
-
-            cleanup(); // idempotent cleanup (unregister, DAO logout, leave queue)
+            cleanup();
             System.out.println("ClientHandler stopped for " + remote);
         }
     }
@@ -242,80 +185,6 @@ public class ClientHandler implements Runnable {
         clientRegistry.broadcastOnlinePlayers();
 
         sendType(MessageType.LOGIN_SUCCESS, null);
-    }
-
-    /**
-     * Handle a GUEST login - create a temporary user id and register in registry without DB auth.
-     *
-     * Usage: GUEST <username>
-     *
-     * This is for testing only. Guest accounts are ephemeral and not persisted.
-     */
-    private void handleGuest(String[] parts) {
-        if (parts.length < 2) {
-            sendType(MessageType.LOGIN_FAILED, "Usage: GUEST <username>");
-            return;
-        }
-        if (username != null) {
-            sendType(MessageType.ERROR, "Already logged in");
-            return;
-        }
-        String user = parts[1].trim();
-        if (user.isEmpty()) {
-            sendType(MessageType.LOGIN_FAILED, "Invalid username");
-            return;
-        }
-
-        // create ephemeral id
-        String ephemeralId = UUID.randomUUID().toString();
-        this.username = user;
-        this.userId = ephemeralId;
-
-        // register in client registry
-        boolean registered = clientRegistry.registerClient(username, this);
-        if (!registered) {
-            this.username = null;
-            this.userId = null;
-            sendType(MessageType.LOGIN_FAILED, "User already online");
-            return;
-        }
-
-        // broadcast updated online players
-        clientRegistry.broadcastOnlinePlayers();
-
-        // notify client success (reuse LOGIN_SUCCESS)
-        sendType(MessageType.LOGIN_SUCCESS, "GUEST");
-    }
-
-    /**
-     * Attempt to auto-assign a test username ("alice" then "bob") if client hasn't authenticated.
-     * This is a convenience for rapid local testing only.
-     */
-    private void autoAssignTestUsernameIfNeeded() {
-        if (this.username != null) return; // already logged in
-
-        String[] testNames = {"alice", "bob"};
-        for (String candidate : testNames) {
-            boolean registered = false;
-            try {
-                registered = clientRegistry.registerClient(candidate, this);
-            } catch (Exception e) {
-                // ignore and continue to next candidate
-                registered = false;
-            }
-            if (registered) {
-                this.username = candidate;
-                this.userId = UUID.randomUUID().toString();
-                // broadcast updated online players
-                try { clientRegistry.broadcastOnlinePlayers(); } catch (Exception ignored) {}
-                // notify client (use LOGIN_SUCCESS with payload AUTO to indicate auto-assigned)
-                sendType(MessageType.LOGIN_SUCCESS, "AUTO");
-                System.out.println("Auto-assigned username '" + candidate + "' for testing to connection " + socket.getRemoteSocketAddress());
-                return;
-            }
-        }
-
-        // if none available, do nothing; client can still send GUEST or LOGIN manually
     }
 
     private void handleJoinQueue() {
@@ -420,7 +289,7 @@ public class ClientHandler implements Runnable {
 
     private boolean ensureLoggedIn() {
         if (username == null) {
-            sendType(MessageType.ERROR, "Not authenticated. Send: LOGIN <username> <password> or GUEST <username>");
+            sendType(MessageType.ERROR, "Not authenticated. Send: LOGIN <username> <password>");
             return false;
         }
         return true;
@@ -442,7 +311,7 @@ public class ClientHandler implements Runnable {
             out.flush();
         } catch (IOException e) {
             System.err.println("Failed to send to " + (username != null ? username : "unknown") + ": " + e.getMessage());
-            // sending failed: disconnect to cleanup resources
+            // sending failed: consider disconnecting this client
             try { disconnect(); } catch (Exception ignored) {}
         }
     }
@@ -502,11 +371,9 @@ public class ClientHandler implements Runnable {
                 System.err.println("Error removing client " + username + ": " + e.getMessage());
             }
             try {
-                // Only attempt DAO logout/update if this was a persisted user
-                // If you want to avoid PlayerDAO calls for guests, you can detect by payload of LOGIN_SUCCESS "GUEST"
                 playerDAO.logout(username);
             } catch (Exception e) {
-                // It's OK if this fails for guest or when DAO not configured
+                System.err.println("Error logging out " + username + ": " + e.getMessage());
             }
         }
 
@@ -520,7 +387,7 @@ public class ClientHandler implements Runnable {
             // challengeManager.notifyDisconnect(username); // implement if needed
         } catch (Exception ignored) {}
 
-        // close streams/socket if not already closed (safe/no-throw)
+        // close streams/socket if not already closed
         try {
             if (out != null) out.close();
         } catch (IOException ignored) {}

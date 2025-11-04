@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Rectangle?>
+
+<!--
+  GamePlay.fxml
+  - Main gameplay UI for the fast math game.
+  - It references the CountDownOverlay and the RoundResultBanner as separate components.
+  - Controller: com.mathspeed.controller.GameController
+-->
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.mathspeed.controller.GameController"
+           styleClass="game-root"
+           prefWidth="630" prefHeight="420">
+
+    <!-- Main game card -->
+    <VBox spacing="16" alignment="TOP_CENTER" style="-fx-padding: 16;">
+        <!-- Top: Round & Target -->
+        <HBox spacing="12" alignment="CENTER_LEFT" style="-fx-padding: 6 8;">
+            <VBox spacing="2">
+                <Label text="Round" fx:id="roundLabel" styleClass="game-round-label"/>
+                <Label text="Mục tiêu" styleClass="game-target-label"/>
+            </VBox>
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <!-- Target number big -->
+            <StackPane styleClass="target-number-bg" alignment="CENTER_RIGHT">
+                <Label fx:id="targetNumberLabel" text="57" style="-fx-font-size: 28px; -fx-font-weight: bold;"/>
+            </StackPane>
+        </HBox>
+
+        <!-- Middle: Input and controls -->
+        <VBox spacing="8" alignment="CENTER" style="-fx-padding: 0 12;">
+            <Label text="Kết quả của bạn" styleClass="input-label"/>
+            <TextField fx:id="resultTextField"
+                       promptText="Nhập kết quả hoặc lựa chọn các nút bên dưới"
+                       maxWidth="260"
+                       styleClass="result-input"
+                       editable="true"/>
+            <HBox spacing="8" alignment="CENTER">
+                <Button fx:id="clearButton" text="Clear" onAction="#handleClear" styleClass="secondary-button" />
+                <Button fx:id="submitButton" text="Submit" onAction="#handleSubmit" styleClass="primary-button" />
+            </HBox>
+
+            <Label fx:id="attemptsLabel" text="Attempts: 0" styleClass="muted-label"/>
+        </VBox>
+
+        <Region VBox.vgrow="ALWAYS"/>
+
+        <!-- Bottom: Operators and Server numbers -->
+        <VBox spacing="10" alignment="CENTER" style="-fx-padding: 0 12 12 12;">
+            <!-- Operators row -->
+            <HBox spacing="10" alignment="CENTER">
+                <ToggleButton fx:id="plusOp" text="+" styleClass="operator-button"/>
+                <ToggleButton fx:id="minusOp" text="-" styleClass="operator-button"/>
+                <ToggleButton fx:id="multiplyOp" text="×" styleClass="operator-button"/>
+                <ToggleButton fx:id="divideOp" text="÷" styleClass="operator-button"/>
+            </HBox>
+
+            <!-- Server numbers row (controller will populate/update these) -->
+            <HBox spacing="10" alignment="CENTER" fx:id="serverNumbersRow">
+                <!-- Placeholders (controller can replace/create actual buttons dynamically) -->
+                <ToggleButton fx:id="numBtn0" text="3" styleClass="number-button" />
+                <ToggleButton fx:id="numBtn1" text="8" styleClass="number-button" />
+                <ToggleButton fx:id="numBtn2" text="5" styleClass="number-button" />
+                <ToggleButton fx:id="numBtn3" text="2" styleClass="number-button" />
+                <ToggleButton fx:id="numBtn4" text="9" styleClass="number-button" />
+            </HBox>
+        </VBox>
+    </VBox>
+
+    <!-- Include the countdown overlay component (initially hidden). Controller toggles visibility. -->
+    <fx:include source="CountDownOverlay.fxml" fx:id="countdownInclude" />
+
+    <!-- Include the round result banner (initially hidden). Controller toggles visibility. -->
+    <StackPane StackPane.alignment="TOP_RIGHT" style="-fx-padding: 12;">
+        <fx:include source="RoundResultBanner.fxml" fx:id="roundResultInclude" />
+    </StackPane>
+
+</StackPane>

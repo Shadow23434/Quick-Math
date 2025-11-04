@@ -13,22 +13,7 @@ import java.util.Scanner;
  * - DECLINE <challengerUsername>
  * - SUBMIT_ANSWER <questionId> <answer>
  * - PING / QUIT
- *
- * Usage:
- *   java com.mathspeed.client.MatchChallengeClient <host> <port> <username> <password> [mode] [opponent-if-auto-challenge]
- *
- * Modes:
- *   interactive     -> type commands manually
- *   auto-challenge  -> send CHALLENGE <opponent> after successful login (requires opponent arg)
- *   auto-accept     -> automatically ACCEPT incoming challenges
- *
- * Behavior changes from previous version:
- * - Reader thread is started first so the client can receive server auto-login (LOGIN_SUCCESS|AUTO).
- * - Client no longer exits immediately when receiving LOGIN_FAILED; allows interactive retry or fallback to GUEST.
- * - For auto modes, if no LOGIN_SUCCESS is received shortly after connect, the client will send GUEST <username>
- *   to register as an ephemeral user (so you can test without DB users).
- * - Client will not send duplicate LOGIN/GUEST if server already auto-assigned the username.
- */
+**/
 public class MatchChallengeClient {
     private final String host;
     private final int port;
