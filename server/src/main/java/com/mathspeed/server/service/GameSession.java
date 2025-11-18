@@ -3,617 +3,691 @@ package com.mathspeed.server.service;
 import com.mathspeed.dao.GameDAO;
 import com.mathspeed.network.ClientHandler;
 import com.mathspeed.protocol.MessageType;
-import com.mathspeed.puzzle.*;
-
-import static com.mathspeed.puzzle.MathPuzzleUtils.*;
+import com.mathspeed.puzzle.MathPuzzleFormat;
+import com.mathspeed.puzzle.MathPuzzleGenerator;
+import com.mathspeed.puzzle.MathExpressionEvaluator;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
-import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-/**
- * GameSession - sends questions to two players, scores answers and optionally persists final results.
- *
- * Behavior:
- * - Uses PuzzleQuestionProvider (or injected provider) to get full JSON payload + canonical answer.
- * - Parses the provider payload to extract the exact target and the numbers set for validation.
- * - Sends to clients ONLY the "display" and the "numbers" fields (compact JSON) with questionId and difficulty.
- * - Uses MathExpressionEvaluator to evaluate client-submitted expressions and compare exactly with the stored target.
- * - First correct submission wins the round immediately (awarded 1 point), timeout for round is cancelled,
- *   and session proceeds to the next round (no waiting for remaining time).
- */
 public class GameSession {
 
-    private static final int DEFAULT_PUZZLE_DIFFICULTY = 1;
-
-    // Difficulty constants
-    private static final int DIFF_EASY = 1;
-    private static final int DIFF_MEDIUM = 2;
-    private static final int DIFF_HARD = 3;
-
-    // desired distribution (as fractions)
-    private static final double PCT_EASY = 0.50;   // 50%
-    private static final double PCT_MEDIUM = 0.30; // 30%
-//    private static final double PCT_HARD = 0.20;   // 20%
-
-    private final String id;
-    private final ClientHandler p1;
-    private final ClientHandler p2;
-    private final ScheduledExecutorService scheduler;
-    private final QuestionProvider injectedQuestionProvider;
-    private final GameDAO gameDAO; // may be null (no persistence)
-
-    private final int totalQuestions;
+    private final String sessionId;
+    private final ClientHandler playerA;
+    private final ClientHandler playerB;
+    private final int totalRounds;
     private final long questionTimeoutSeconds;
-    private final AtomicInteger currentIndex = new AtomicInteger(0);
+    private final MathPuzzleGenerator generator;
 
-    // schedule of difficulties for each round (length == totalQuestions)
-    private final List<Integer> difficultySchedule;
+    // Scheduler: single-thread executor to serialize state mutations and avoid races.
+    private final ScheduledExecutorService scheduler;
 
-    // runtime state
-    private final ConcurrentMap<String, String> currentAnswers = new ConcurrentHashMap<>(); // questionId -> provider answer string (legacy)
-    private final ConcurrentMap<String, Integer> scores = new ConcurrentHashMap<>(); // userKey -> score
-    private final ConcurrentMap<String, Long> totalElapsedMs = new ConcurrentHashMap<>(); // userKey -> total elapsed ms
-    private final ConcurrentMap<String, String> firstCorrectAnswerByQuestion = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, Instant> roundStartTimes = new ConcurrentHashMap<>(); // questionId -> start instant
+    // State that is only mutated on scheduler thread:
+    private final AtomicInteger currentRound = new AtomicInteger(0);
+    private final Map<ClientHandler, Integer> scores = new HashMap<>();
+    private final Map<ClientHandler, Duration> totalPlayTime = new HashMap<>();
+    private final List<Integer> difficultySequence;
 
-    // NEW: store per-question allowed numbers and numeric target (if present)
-    private final ConcurrentMap<String, List<Integer>> currentQuestionNumbers = new ConcurrentHashMap<>(); // questionId -> allowed numbers
-    private final ConcurrentMap<String, MathPuzzleUtils.Fraction> currentQuestionTargets = new ConcurrentHashMap<>(); // questionId -> exact fraction target
+    // Per-round history for each player (kept on scheduler thread)
+    private final Map<ClientHandler, List<RoundResult>> roundHistory = new HashMap<>();
 
-    // timeout future per active question (so we can cancel when a player answers first-correct)
-    private final ConcurrentMap<String, ScheduledFuture<?>> questionTimeoutFutures = new ConcurrentHashMap<>();
+    // Futures scheduled on scheduler thread
+    private ScheduledFuture<?> roundTimeoutFuture;
+    private ScheduledFuture<?> startFuture;
 
-    private volatile String currentQuestionId = null;
-    private volatile ScheduledFuture<?> questionFuture; // for scheduling next send
-    private final Object endLock = new Object();
-    private volatile boolean ended = false;
+    private MathPuzzleFormat currentPuzzle;
+    private Instant roundStart;
+    private boolean roundActive = false;
+    private int activeRoundIndex = -1; // index of the currently active round
 
-    // evaluator for expressions
-    private final MathExpressionEvaluator evaluator = new MathExpressionEvaluator();
+    private final boolean persistResults;
+    private final GameDAO gameDAO;
 
-    /**
-     * Constructor with persistence support.
-     *
-     * @param id                    game id (UUID string) or null to generate one
-     * @param p1                    player1 handler
-     * @param p2                    player2 handler
-     * @param questionProvider      provider for questions (may be null => PuzzleQuestionProvider used)
-     * @param totalQuestions        total rounds in this match
-     * @param questionTimeoutSeconds seconds for each question (pass 40 for your requested behaviour)
-     * @param gameDAO               DAO used to persist final game summary (may be null)
-     */
-    public GameSession(String id,
-                       ClientHandler p1,
-                       ClientHandler p2,
-                       QuestionProvider questionProvider,
-                       int totalQuestions,
+    private final int matchSeed;
+    private long matchStartTimeMs = -1L;
+    private final AtomicBoolean finished = new AtomicBoolean(false);
+
+    private final Map<ClientHandler, Boolean> readyMap = new HashMap<>();
+    private final int initialCountdownMs = 5000; // 5s default
+    private final int fastStartBufferMs = 500;
+
+    public GameSession(ClientHandler playerA,
+                       ClientHandler playerB,
+                       int totalRounds,
                        long questionTimeoutSeconds,
                        GameDAO gameDAO) {
-        this.id = id != null ? id : UUID.randomUUID().toString();
-        this.p1 = p1;
-        this.p2 = p2;
-        this.injectedQuestionProvider = questionProvider;
-        this.totalQuestions = Math.max(1, totalQuestions);
-        this.questionTimeoutSeconds = Math.max(1, questionTimeoutSeconds);
+        this.sessionId = UUID.randomUUID().toString();
+        this.playerA = Objects.requireNonNull(playerA);
+        this.playerB = Objects.requireNonNull(playerB);
+        this.totalRounds = totalRounds;
+        this.questionTimeoutSeconds = questionTimeoutSeconds;
+        this.generator = new MathPuzzleGenerator(1);
+        this.persistResults = true;
         this.gameDAO = gameDAO;
+
+        this.matchSeed = new Random().nextInt(Integer.MAX_VALUE);
+
+        // scheduler thread named for easier debugging
         this.scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "game-session-" + this.id);
+            Thread t = new Thread(r, "GameSession-" + sessionId);
             t.setDaemon(true);
             return t;
         });
 
-        // prepare difficulty schedule according to desired distribution
-        this.difficultySchedule = buildDifficultySchedule(this.totalQuestions);
+        scores.put(playerA, 0);
+        scores.put(playerB, 0);
+        totalPlayTime.put(playerA, Duration.ZERO);
+        totalPlayTime.put(playerB, Duration.ZERO);
 
-        // initialize scores and elapsed for both players
-        String u1 = resolvePlayerKey(p1);
-        String u2 = resolvePlayerKey(p2);
-        scores.put(u1, 0);
-        scores.put(u2, 0);
-        totalElapsedMs.put(u1, 0L);
-        totalElapsedMs.put(u2, 0L);
+        roundHistory.put(playerA, new ArrayList<>());
+        roundHistory.put(playerB, new ArrayList<>());
+
+        try { playerA.setCurrentGame(this); } catch (Exception ignored) {}
+        try { playerB.setCurrentGame(this); } catch (Exception ignored) {}
+
+        readyMap.put(playerA, false);
+        readyMap.put(playerB, false);
+
+        // Generate difficulty sequence, shuffle deterministically with matchSeed
+        this.difficultySequence = generateDifficultyList(totalRounds, matchSeed);
     }
 
-    public GameSession(String id, ClientHandler p1, ClientHandler p2) {
-        this(id, p1, p2, null, 10, 40L, null); // default 40s per your requirement
+    private List<Integer> generateDifficultyList(int rounds, int seed) {
+        int easyCount = (int) Math.round(rounds * 0.45);
+        int mediumCount = (int) Math.round(rounds * 0.40);
+        int hardCount = rounds - easyCount - mediumCount;
+
+        List<Integer> list = new ArrayList<>(rounds);
+        repeatAdd(list, 1, easyCount);
+        repeatAdd(list, 2, mediumCount);
+        repeatAdd(list, 3, hardCount);
+
+        // Shuffle to avoid grouping all easy/medium/hard together, deterministic by seed
+        Collections.shuffle(list, new Random(seed));
+        return Collections.unmodifiableList(list);
     }
 
-    public String getId() { return id; }
-    public ClientHandler getPlayer1() { return p1; }
-    public ClientHandler getPlayer2() { return p2; }
+    private void repeatAdd(List<Integer> list, int value, int times) {
+        for (int i = 0; i < times; i++) list.add(value);
+    }
 
-    /**
-     * Start session and persist header (game + players) if DAO available.
-     */
-    public void start() {
-        if (gameDAO != null) {
-            try {
-                gameDAO.insertGame(id, totalQuestions);
-                List<String> userIds = Arrays.asList(resolvePlayerKey(p1), resolvePlayerKey(p2));
-                gameDAO.insertGamePlayersByIds(id, userIds);
-            } catch (Exception e) {
-                System.err.println("GameSession: failed to persist game header: " + e.getMessage());
-            }
+    public String getSessionId() { return sessionId; }
+    public ClientHandler getPlayerA() { return playerA; }
+    public ClientHandler getPlayerB() { return playerB; }
+    public int getMatchSeed() { return matchSeed; }
+
+    public void beginGame() {
+        this.matchStartTimeMs = System.currentTimeMillis() + initialCountdownMs;
+
+        // Broadcast initial info immediately
+        broadcastMatchInfo();
+
+        // Schedule countdown messages on scheduler (they will execute on scheduler thread)
+        for (int i = 5; i >= 1; i--) {
+            final int sec = i;
+            scheduler.schedule(() -> {
+                String msg = "Bắt đầu sau " + sec + " giây...";
+                safeSendInfo(playerA, msg);
+                safeSendInfo(playerB, msg);
+            }, (5 - i), TimeUnit.SECONDS);
         }
 
-        try { p1.sendType(MessageType.GAME_START, id + "|" + resolvePlayerKey(p2)); } catch (Exception e) { p1.sendMessage("GAME_START|" + id + "|" + resolvePlayerKey(p2)); }
-        try { p2.sendType(MessageType.GAME_START, id + "|" + resolvePlayerKey(p1)); } catch (Exception e) { p2.sendMessage("GAME_START|" + id + "|" + resolvePlayerKey(p1)); }
-
-        scheduleNextQuestion(0);
-    }
-
-    private void scheduleNextQuestion(long delaySeconds) {
-        questionFuture = scheduler.schedule(this::sendNextQuestion, delaySeconds, TimeUnit.SECONDS);
+        long delay = Math.max(0, matchStartTimeMs - System.currentTimeMillis());
+        startFuture = scheduler.schedule(this::runStartMatch, delay, TimeUnit.MILLISECONDS);
     }
 
     /**
-     * sendNextQuestion: obtains a full provider payload but sends to clients only:
-     *   { "display": "...", "numbers": [...] }
-     * accompanied by questionId and difficulty.
+     * Broadcast match start info to both players.
+     * Includes:
+     *  - MATCH_START_INFO type
+     *  - seed
+     *  - start_time (epoch ms when match is scheduled to start)
+     *  - server_time (epoch ms of the server when sending this message)  <-- ADDED
+     *  - countdown_ms (computed remaining milliseconds)
+     *  - question_count, per_question_seconds
      *
-     * The full provider payload is parsed server-side to obtain exact target and allowed numbers for validation.
+     * Clients should use start_time and server_time to compute a local offset and run client-side countdown.
      */
-    private void sendNextQuestion() {
-        int idx = currentIndex.getAndIncrement();
-        if (idx >= totalQuestions) {
-            end();
+    private void broadcastMatchInfo() {
+        long now = System.currentTimeMillis();
+        Map<String, Object> msg = new LinkedHashMap<>();
+        msg.put("type", MessageType.MATCH_START_INFO.name());
+        msg.put("seed", matchSeed);
+        msg.put("start_time", matchStartTimeMs);
+        msg.put("server_time", now); // <-- added field for client clock sync
+        msg.put("countdown_ms", Math.max(0, matchStartTimeMs - now));
+        msg.put("question_count", totalRounds);
+        msg.put("per_question_seconds", questionTimeoutSeconds);
+
+        String json = JsonUtil.toJson(msg);
+        safeSendMessage(playerA, json);
+        safeSendMessage(playerB, json);
+    }
+
+    private void runStartMatch() {
+        // runs on scheduler thread
+        safeSendInfo(playerA, "Trận đấu bắt đầu!");
+        safeSendInfo(playerB, "Trận đấu bắt đầu!");
+        runStartNextRound();
+    }
+
+    private void runStartNextRound() {
+        // runs on scheduler thread
+        if (finished.get()) return;
+
+        int roundIndex = currentRound.getAndIncrement();
+        if (roundIndex >= totalRounds) {
+            finishGameInternal();
             return;
         }
 
-        // determine provider: prefer injected provider; if absent use PuzzleQuestionProvider(default difficulty)
-        QuestionProvider provider = this.injectedQuestionProvider;
+        activeRoundIndex = roundIndex;
 
-        // Determine difficulty for this round from schedule
-        int difficultyForRound = DEFAULT_PUZZLE_DIFFICULTY;
-        if (idx < difficultySchedule.size()) {
-            difficultyForRound = difficultySchedule.get(idx);
+        int difficulty = difficultySequence.get(roundIndex);
+        long roundSeed = mixSeed(matchSeed, roundIndex);
+        Random puzzleRnd = new Random(roundSeed);
+        currentPuzzle = generator.generatePuzzle(difficulty, puzzleRnd);
+
+        try {
+            System.out.printf("DEBUG new_round: session=%s round=%d seed=%d target=%d%n",
+                    sessionId, roundIndex, roundSeed, currentPuzzle.getTarget());
+        } catch (Exception ignored) {}
+
+        Duration roundTime = Duration.ofSeconds(questionTimeoutSeconds);
+        roundStart = Instant.now();
+        roundActive = true;
+
+        sendPuzzleToPlayers(currentPuzzle, difficulty, roundTime, roundIndex + 1, roundIndex, roundSeed, roundStart);
+
+        // cancel previous timeout if any
+        if (roundTimeoutFuture != null && !roundTimeoutFuture.isDone()) {
+            roundTimeoutFuture.cancel(false);
+        }
+        roundTimeoutFuture = scheduler.schedule(this::onRoundTimeout, roundTime.toMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    private static long mixSeed(int matchSeed, int roundIndex) {
+        long a = Integer.toUnsignedLong(matchSeed);
+        long b = Integer.toUnsignedLong(roundIndex);
+        long mixed = a * 0x9E3779B97F4A7C15L + ((b << 32) | b);
+        return mixed ^ (mixed >>> 32);
+    }
+
+    private void sendPuzzleToPlayers(MathPuzzleFormat puzzle, int difficulty, Duration roundTime,
+                                     int roundNumber, int roundIndex, long roundSeed, Instant roundStartInstant) {
+        Map<String, Object> msg = new LinkedHashMap<>();
+        msg.put("type", MessageType.NEW_ROUND.name());
+        msg.put("round", roundNumber);
+        msg.put("difficulty", difficulty);
+        msg.put("target", puzzle.getTarget());
+        msg.put("time", roundTime.getSeconds());
+        msg.put("seed", matchSeed);          // match seed (global)
+        msg.put("round_seed", roundSeed);   // per-round seed for reproducibility
+        msg.put("round_index", roundIndex);
+        msg.put("server_round_start", roundStartInstant.toEpochMilli());
+
+        String json = JsonUtil.toJson(msg);
+        safeSendMessage(playerA, json);
+        safeSendMessage(playerB, json);
+    }
+
+    /**
+     * Public API called from client threads. We enqueue the processing on the scheduler thread
+     * so that state changes (scores, round transitions) are serialized.
+     */
+    public void submitAnswer(ClientHandler player, String expression) {
+        if (finished.get()) {
+            sendSimpleAnswerResult(player, false, "match_finished");
+            return;
+        }
+        final Instant serverRecv = Instant.now();
+        scheduler.execute(() -> processAnswer(player, expression, serverRecv));
+    }
+
+    private void processAnswer(ClientHandler player, String expression, Instant serverRecv) {
+        // runs on scheduler thread
+        if (currentPuzzle == null || roundStart == null || !roundActive) {
+            sendSimpleAnswerResult(player, false, "no_active_round");
+            return;
         }
 
-        List<String> qs;
+        if (serverRecv.isBefore(roundStart)) {
+            sendSimpleAnswerResult(player, false, "too_early");
+            return;
+        }
+
+        int result;
         try {
-            PuzzleQuestionProvider prov = new PuzzleQuestionProvider();
-            qs = prov.getQuestions(1, difficultyForRound);
+            List<Integer> deck = new ArrayList<>();
+            for(int a = 1; a < 10; a++) deck.add(a);
+            result = MathExpressionEvaluator.evaluate(expression, deck);
+        } catch (IllegalArgumentException evalEx) {
+            Map<String, Object> err = new HashMap<>();
+            err.put("type", MessageType.ANSWER_RESULT.name());
+            err.put("accepted", false);
+            err.put("reason", "invalid_expression");
+            err.put("message", evalEx.getMessage());
+            safeSendMessage(player, JsonUtil.toJson(err));
+            System.err.println("Invalid expression from " + player.getUsername() + ": \"" + expression + "\" -> " + evalEx.getMessage());
+            return;
         } catch (Exception ex) {
-            System.err.println("GameSession: question provider failed: " + ex.getMessage());
-            end();
+            Map<String, Object> err = new HashMap<>();
+            err.put("type", MessageType.ANSWER_RESULT.name());
+            err.put("accepted", false);
+            err.put("reason", "internal_error");
+            err.put("message", ex.getClass().getSimpleName());
+            safeSendMessage(player, JsonUtil.toJson(err));
+            ex.printStackTrace();
             return;
         }
 
-        if (qs == null || qs.isEmpty()) {
-            end();
+        boolean correct = result == currentPuzzle.getTarget();
+
+        Map<String, Object> resMsg = new HashMap<>();
+        resMsg.put("type", MessageType.ANSWER_RESULT.name());
+        resMsg.put("correct", correct);
+        resMsg.put("accepted", true);
+        resMsg.put("server_time", serverRecv.toEpochMilli());
+        safeSendMessage(player, JsonUtil.toJson(resMsg));
+
+        if (!correct) return;
+
+        // If already closed by another correct answer or timeout, ignore
+        if (!roundActive) return;
+        roundActive = false;
+
+        Instant now = serverRecv;
+        Duration playTime = Duration.between(roundStart, now);
+        totalPlayTime.put(player, totalPlayTime.getOrDefault(player, Duration.ZERO).plus(playTime));
+        scores.put(player, scores.getOrDefault(player, 0) + 1);
+
+        // record round result for both players
+        recordRoundResultsOnCorrect(player, activeRoundIndex, playTime);
+
+        // cancel timeout and start next round immediately
+        if (roundTimeoutFuture != null && !roundTimeoutFuture.isDone()) {
+            roundTimeoutFuture.cancel(false);
+        }
+
+        // Broadcast summary for this round (scores and times)
+        broadcastRoundSummary(activeRoundIndex);
+
+        // start next round immediately on scheduler thread
+        runStartNextRound();
+    }
+
+    private void recordRoundResultsOnCorrect(ClientHandler winner, int roundIndex, Duration winnerPlayTime) {
+        // winner: correct=true and playTime
+        // loser: correct=false, playTime=0
+        ClientHandler loser = (winner == playerA) ? playerB : playerA;
+
+        RoundResult rWinner = new RoundResult(roundIndex, true, winnerPlayTime.toMillis(), Instant.now().toEpochMilli());
+        roundHistory.get(winner).add(rWinner);
+
+        RoundResult rLoser = new RoundResult(roundIndex, false, 0L, Instant.now().toEpochMilli());
+        roundHistory.get(loser).add(rLoser);
+    }
+
+    private void onRoundTimeout() {
+        // runs on scheduler thread when a round times out
+        if (!roundActive) {
+            // Already closed by correct answer
             return;
         }
+        roundActive = false;
 
-        String raw = qs.get(0);
-        String questionPayload = raw;
-        String correctAnswer = "";
-        if (raw != null && raw.contains("@@")) {
-            String[] parts = raw.split("@@", 2);
-            questionPayload = parts[0];
-            correctAnswer = parts[1];
-        }
+        // record both players as incorrect with playTime=0
+        RoundResult rA = new RoundResult(activeRoundIndex, false, 0L, Instant.now().toEpochMilli());
+        RoundResult rB = new RoundResult(activeRoundIndex, false, 0L, Instant.now().toEpochMilli());
+        roundHistory.get(playerA).add(rA);
+        roundHistory.get(playerB).add(rB);
 
-        String questionId = "q" + idx;
-        currentQuestionId = questionId;
-        currentAnswers.put(questionId, correctAnswer);
-        firstCorrectAnswerByQuestion.remove(questionId);
+        // Broadcast summary for this round (scores and times)
+        broadcastRoundSummary(activeRoundIndex);
 
-        // Extract allowed numbers and exact target fraction from payload using helper methods
-        List<Integer> numbers = extractNumbersFromPayload(questionPayload);
-        MathPuzzleUtils.Fraction targetFraction = extractFractionTargetFromPayload(questionPayload);
+        // start next round
+        runStartNextRound();
+    }
 
-        if (numbers != null && !numbers.isEmpty()) currentQuestionNumbers.put(questionId, numbers); else currentQuestionNumbers.remove(questionId);
-        if (targetFraction != null) currentQuestionTargets.put(questionId, targetFraction); else currentQuestionTargets.remove(questionId);
+    public void handleReady(ClientHandler from) {
+        if (from == null) return;
+        // perform ready handling on scheduler thread
+        scheduler.execute(() -> {
+            readyMap.put(from, true);
+            ClientHandler other = (from == playerA) ? playerB : playerA;
+            if (other != null) safeSendInfo(other, "Đối thủ đã sẵn sàng");
 
-        // record round start time
-        roundStartTimes.put(questionId, Instant.now());
-
-        // Build a minimal JSON for clients containing only "display" and "numbers".
-        // We extract display value from the provider payload if present; fallback to canonical display from MathPuzzleFormat if needed.
-        String displayValue = extractDisplayFromPayload(questionPayload);
-        if (displayValue == null) {
-            // fallback: use canonical display built from targetFraction
-            if (targetFraction != null) {
-                // build simple display: whole + fractional or just fraction
-                long whole = targetFraction.wholePart();
-                MathPuzzleUtils.Fraction frac = targetFraction.fractionalPart();
-                if (targetFraction.isWhole()) {
-                    displayValue = String.valueOf(targetFraction.getNumerator() / targetFraction.getDenominator());
-                } else if (whole != 0) {
-                    displayValue = whole + " " + Math.abs(frac.getNumerator()) + "/" + frac.getDenominator();
-                } else {
-                    displayValue = frac.toString();
+            boolean aReady = Boolean.TRUE.equals(readyMap.get(playerA));
+            boolean bReady = Boolean.TRUE.equals(readyMap.get(playerB));
+            if (aReady && bReady && startFuture != null && !startFuture.isDone()) {
+                long now = System.currentTimeMillis();
+                long potentialStart = now + fastStartBufferMs;
+                if (potentialStart + 50 < matchStartTimeMs) {
+                    startFuture.cancel(false);
+                    matchStartTimeMs = potentialStart;
+                    long delay = Math.max(0, matchStartTimeMs - System.currentTimeMillis());
+                    startFuture = scheduler.schedule(this::runStartMatch, delay, TimeUnit.MILLISECONDS);
+                    broadcastMatchInfo();
                 }
-            } else {
-                displayValue = ""; // unknown
             }
-        }
+        });
+    }
 
-        // Build client JSON: {"display":"...","numbers":[...]}
-        StringBuilder clientJson = new StringBuilder(128);
-        clientJson.append("{");
-        clientJson.append("\"display\":\"").append(escapeForJson(displayValue)).append("\",");
-        clientJson.append("\"numbers\":[");
-        if (numbers != null && !numbers.isEmpty()) {
-            for (int i = 0; i < numbers.size(); i++) {
-                if (i > 0) clientJson.append(',');
-                clientJson.append(numbers.get(i));
-            }
-        }
-        clientJson.append("]");
-        clientJson.append("}");
-
-        // send to both players: questionId|<clientJson>|difficulty:<level>
-        String payloadToClients = questionId + "|" + clientJson.toString() + "|" + "difficulty:" + difficultyForRound;
-        safeSend(p1, MessageType.NEW_QUESTION, payloadToClients);
-        safeSend(p2, MessageType.NEW_QUESTION, payloadToClients);
-
-        // schedule question timeout handler for this round and keep future so it can be cancelled if needed
-        ScheduledFuture<?> timeoutFuture = scheduler.schedule(() -> {
-            // on timeout, handle end of round and schedule next question after 0s
-            handleQuestionTimeout(questionId);
-            scheduleNextQuestion(0);
-        }, questionTimeoutSeconds, TimeUnit.SECONDS);
-
-        questionTimeoutFutures.put(questionId, timeoutFuture);
+    public void handleRequestMatchInfo(ClientHandler from) {
+        // Just broadcast latest info - safe to call from any thread
+        scheduler.execute(this::broadcastMatchInfo);
     }
 
     /**
-     * Submit an answer for the currently active question.
-     *
-     * Rules:
-     * - Only submissions for the active questionId are accepted.
-     * - If a player submits the first correct answer, they get 1 point immediately,
-     *   the round ends immediately (timeout cancelled) and session proceeds to next question.
-     * - Other player's subsequent submissions for same round cannot earn points.
+     * Handle explicit forfeit (player pressed "Hủy" / forfeit) while still connected.
+     * This will treat the player as having forfeited the match: opponent is awarded the win.
+     * The forfeiting player remains connected (socket not closed) but is removed from the current game.
      */
-    public boolean submitAnswer(String usernameOrId, String questionId, String answer) {
-        if (ended) return false;
-        String currQ = currentQuestionId;
-        if (currQ == null || !currQ.equals(questionId)) return false;
+    public void handleForfeit(ClientHandler who) {
+        if (who == null) return;
+        scheduler.execute(() -> {
+            if (finished.get()) return;
 
-        String correct = currentAnswers.get(questionId);
-        if (correct == null) return false;
+            ClientHandler other = (who == playerA) ? playerB : playerA;
 
-        String a = answer == null ? "" : answer.trim();
-        String corr = correct == null ? "" : correct.trim();
+            safeSendInfo(who, "Bạn đã hủy trận. Bạn thua.");
+            if (other != null) safeSendInfo(other, "Đối thủ đã hủy, bạn thắng (forfeit).");
 
-        // compute elapsed_ms from roundStartTimes
-        Instant start = roundStartTimes.get(questionId);
-        long elapsed = 0L;
-        if (start != null) elapsed = Duration.between(start, Instant.now()).toMillis();
+            // award opponent a point (or apply your tournament rules)
+            if (other != null) {
+                scores.put(other, scores.getOrDefault(other, 0) + 1);
+            }
 
-        String key1 = resolvePlayerKey(p1);
-        String key2 = resolvePlayerKey(p2);
-        String playerKey = mapSubmittedKey(usernameOrId, key1, key2);
+            // record current round result if a round is active
+            if (activeRoundIndex >= 0) {
+                // forfeiter loses current round
+                RoundResult rForfeit = new RoundResult(activeRoundIndex, false, 0L, Instant.now().toEpochMilli());
+                roundHistory.get(who).add(rForfeit);
 
-        // If round already has a first correct, reject awarding points to others
-        if (firstCorrectAnswerByQuestion.containsKey(questionId)) {
-            // still record submission and elapsed but no points
-            totalElapsedMs.merge(playerKey, elapsed, Long::sum);
-            broadcastAnswerResult(playerKey, questionId, false, 0);
-            return true;
-        }
-
-        boolean isCorrect = false;
-        try {
-            MathPuzzleUtils.Fraction targetFraction = currentQuestionTargets.get(questionId);
-            List<Integer> allowedNumbers = currentQuestionNumbers.get(questionId);
-
-            if (targetFraction != null) {
-                // Validate using evaluator. evaluator expects expression string and allowedNumbers and target (as Fraction)
-                if (evaluator.isExpressionValid(a, allowedNumbers != null ? allowedNumbers : Collections.emptyList(), targetFraction)) {
-                    isCorrect = true;
-                } else {
-                    // fallback: try parse numeric literal exactly (client may have sent "10/3" or "3 1/3")
-                    MathPuzzleUtils.Fraction clientVal = null;
-                    try {
-                        clientVal = evaluator.evaluateExpression(a); // returns Fraction or throws
-                    } catch (Exception ignored) {}
-                    if (clientVal != null && clientVal.equals(targetFraction)) isCorrect = true;
-                }
-            } else {
-                // No exact target in payload: try evaluating both provider answer and client expression
-                MathPuzzleUtils.Fraction clientVal = null;
-                MathPuzzleUtils.Fraction providerVal = null;
-                try { clientVal = evaluator.evaluateExpression(a); } catch (Exception ignored) {}
-                try { providerVal = evaluator.evaluateExpression(corr); } catch (Exception ignored) {}
-
-                if (clientVal != null && providerVal != null && clientVal.equals(providerVal)) {
-                    isCorrect = true;
-                } else {
-                    // fallback to case-insensitive string equality
-                    if (!corr.isEmpty() && corr.equalsIgnoreCase(a)) isCorrect = true;
+                // opponent wins current round (playTime 0 or as per rule)
+                if (other != null) {
+                    RoundResult rOther = new RoundResult(activeRoundIndex, true, 0L, Instant.now().toEpochMilli());
+                    roundHistory.get(other).add(rOther);
                 }
             }
-        } catch (Exception e) {
-            System.err.println("submitAnswer: evaluation failed for '" + a + "': " + e.getMessage());
-            isCorrect = false;
-        }
 
-        int points = isCorrect ? 1 : 0;
-        if (isCorrect) {
-            // award point only if first correct; use atomic check via putIfAbsent
-            String prev = firstCorrectAnswerByQuestion.putIfAbsent(questionId, playerKey);
-            if (prev == null) {
-                // we are the first correct
-                scores.merge(playerKey, points, Integer::sum);
-                // update total elapsed
-                totalElapsedMs.merge(playerKey, elapsed, Long::sum);
-                // cancel timeout for this question and remove future
-                ScheduledFuture<?> f = questionTimeoutFutures.remove(questionId);
-                if (f != null) f.cancel(false);
+            // mark game finished and persist/send results
+            finishGameInternal();
 
-                // broadcast immediate result indicating the round winner
-                broadcastAnswerResult(playerKey, questionId, true, points);
+            // keep socket open: do not call disconnected/clearCurrentGame here explicitly beyond finishGameInternal cleanup
+            // (finishGameInternal will call playerX.clearCurrentGame()).
+        });
+    }
 
-                // cleanup round state and schedule next question immediately
-                finishRoundAndScheduleNext(questionId);
-                return true;
-            } else {
-                // somehow another thread just beat us; treat as wrong for scoring but still ack
-                totalElapsedMs.merge(playerKey, elapsed, Long::sum);
-                broadcastAnswerResult(playerKey, questionId, false, 0);
-                return true;
+    public void handlePlayerDisconnect(ClientHandler disconnected) {
+        if (disconnected == null) return;
+        scheduler.execute(() -> {
+            if (finished.get()) return;
+            ClientHandler other = (disconnected == playerA) ? playerB : playerA;
+            if (other != null) safeSendInfo(other, "Đối thủ đã ngắt kết nối. Bạn thắng (forfeit).");
+            if (other != null) scores.put(other, scores.getOrDefault(other, 0) + 1);
+
+            // record disconnect as a loss for disconnected player for current round if active
+            if (roundActive && activeRoundIndex >= 0) {
+                RoundResult rDisc = new RoundResult(activeRoundIndex, false, 0L, Instant.now().toEpochMilli());
+                roundHistory.get(disconnected).add(rDisc);
+
+                RoundResult rOther = new RoundResult(activeRoundIndex, true, 0L, Instant.now().toEpochMilli());
+                roundHistory.get(other).add(rOther);
             }
-        } else {
-            // incorrect submission: record elapsed and notify
-            totalElapsedMs.merge(playerKey, elapsed, Long::sum);
-            broadcastAnswerResult(playerKey, questionId, false, 0);
-            return true;
-        }
+
+            finishGameInternal();
+        });
     }
 
-    // Called when a player is first-correct: cleanup and advance immediately
-    private void finishRoundAndScheduleNext(String questionId) {
-        // clean current round state
-        currentAnswers.remove(questionId);
-        roundStartTimes.remove(questionId);
-        currentQuestionNumbers.remove(questionId);
-        currentQuestionTargets.remove(questionId);
-        currentQuestionId = null;
-        // schedule next question immediately (0 seconds)
-        scheduleNextQuestion(0);
-    }
+    private void finishGameInternal() {
+        if (!finished.compareAndSet(false, true)) return;
 
-    private void handleQuestionTimeout(String questionId) {
-        // timeout: no one answered correctly in time (or no first-correct)
-        String first = firstCorrectAnswerByQuestion.get(questionId);
-        String winnerInfo = first == null ? "NONE" : first;
-        String scorePayload = scoreSnapshot();
-        String payload = questionId + "|" + winnerInfo + "|" + scorePayload;
-        safeSend(p1, MessageType.ANSWER_RESULT, payload);
-        safeSend(p2, MessageType.ANSWER_RESULT, payload);
+        ClientHandler winner = null;
+        int scoreA = scores.getOrDefault(playerA, 0);
+        int scoreB = scores.getOrDefault(playerB, 0);
 
-        // cleanup
-        currentAnswers.remove(questionId);
-        roundStartTimes.remove(questionId);
-        currentQuestionNumbers.remove(questionId);
-        currentQuestionTargets.remove(questionId);
-        currentQuestionId = null;
-        firstCorrectAnswerByQuestion.remove(questionId);
-        questionTimeoutFutures.remove(questionId);
-    }
-
-    private String scoreSnapshot() {
-        String k1 = resolvePlayerKey(p1);
-        String k2 = resolvePlayerKey(p2);
-        int s1 = scores.getOrDefault(k1, 0);
-        int s2 = scores.getOrDefault(k2, 0);
-        return k1 + ":" + s1 + "|" + k2 + ":" + s2;
-    }
-
-    /**
-     * End the game: compute final summary (final_score, total_time_ms, result) and persist via GameDAO if available.
-     */
-    public void end() {
-        synchronized (endLock) {
-            if (ended) return;
-            ended = true;
+        if (scoreA > scoreB) winner = playerA;
+        else if (scoreB > scoreA) winner = playerB;
+        else {
+            Duration timeA = totalPlayTime.getOrDefault(playerA, Duration.ZERO);
+            Duration timeB = totalPlayTime.getOrDefault(playerB, Duration.ZERO);
+            if (timeA.compareTo(timeB) < 0) winner = playerA;
+            else if (timeB.compareTo(timeA) < 0) winner = playerB;
         }
 
-        // cancel any outstanding timeouts
-        for (ScheduledFuture<?> f : questionTimeoutFutures.values()) {
-            if (f != null) f.cancel(false);
-        }
-        questionTimeoutFutures.clear();
-        if (questionFuture != null) questionFuture.cancel(false);
+        Map<String, Object> msg = new HashMap<>();
+        msg.put("type", MessageType.GAME_OVER.name());
+        msg.put("scores", exportScores());
+        msg.put("total_play_time_ms", exportPlayTime());
+        msg.put("winner", winner != null ? safeGetPlayerId(winner) : null);
+        msg.put("round_history", exportRoundHistory()); // per-player round-by-round history
 
-        // prepare final summary
-        String key1 = resolvePlayerKey(p1);
-        String key2 = resolvePlayerKey(p2);
-        int score1 = scores.getOrDefault(key1, 0);
-        int score2 = scores.getOrDefault(key2, 0);
-        long time1 = totalElapsedMs.getOrDefault(key1, 0L);
-        long time2 = totalElapsedMs.getOrDefault(key2, 0L);
+        String json = JsonUtil.toJson(msg);
+        safeSendMessage(playerA, json);
+        safeSendMessage(playerB, json);
 
-        String result1, result2;
-        if (score1 > score2) {
-            result1 = "win"; result2 = "lose";
-        } else if (score2 > score1) {
-            result1 = "lose"; result2 = "win";
-        } else {
-            if (time1 < time2) { result1 = "win"; result2 = "lose"; }
-            else if (time2 < time1) { result1 = "lose"; result2 = "win"; }
-            else { result1 = "draw"; result2 = "draw"; }
-        }
-
-        String finalPayload = id + "|" + key1 + ":" + score1 + ":" + time1 + "|" + key2 + ":" + score2 + ":" + time2 + "|" + result1 + "|" + result2;
-        safeSend(p1, MessageType.GAME_END, finalPayload);
-        safeSend(p2, MessageType.GAME_END, finalPayload);
-
-        if (gameDAO != null) {
+        if (persistResults) {
             try {
-                GameDAO.PlayerSummary ps1 = new GameDAO.PlayerSummary(key1, score1, time1, result1);
-                GameDAO.PlayerSummary ps2 = new GameDAO.PlayerSummary(key2, score2, time2, result2);
-                gameDAO.persistGameFinal(id, Arrays.asList(ps1, ps2));
+                // Pass winner userId (String) instead of ClientHandler to match GameDAO API
+                String winnerId = (winner != null) ? safeGetPlayerId(winner) : null;
+                gameDAO.persistGameFinal(sessionId, exportScores(), exportPlayTime(), exportRoundHistory(), winnerId);
             } catch (Exception e) {
-                System.err.println("GameSession: failed to persist final game: " + e.getMessage());
+                e.printStackTrace();
             }
         }
 
-        try { p1.setCurrentGame(null); } catch (Exception ignored) {}
-        try { p2.setCurrentGame(null); } catch (Exception ignored) {}
+        try { playerA.clearCurrentGame(); } catch (Exception ignored) {}
+        try { playerB.clearCurrentGame(); } catch (Exception ignored) {}
 
+        try { if (roundTimeoutFuture != null && !roundTimeoutFuture.isDone()) roundTimeoutFuture.cancel(false); } catch (Exception ignored) {}
+        try { if (startFuture != null && !startFuture.isDone()) startFuture.cancel(false); } catch (Exception ignored) {}
         try { scheduler.shutdownNow(); } catch (Exception ignored) {}
     }
 
-    private void safeSend(ClientHandler ch, MessageType t, String payload) {
+
+    public void finishGame() {
+        scheduler.execute(this::finishGameInternal);
+    }
+
+    private Map<String, Integer> exportScores() {
+        Map<String, Integer> out = new HashMap<>();
+        out.put(safeGetPlayerId(playerA), scores.getOrDefault(playerA, 0));
+        out.put(safeGetPlayerId(playerB), scores.getOrDefault(playerB, 0));
+        return out;
+    }
+
+    private Map<String, Long> exportPlayTime() {
+        Map<String, Long> out = new HashMap<>();
+        out.put(safeGetPlayerId(playerA), totalPlayTime.getOrDefault(playerA, Duration.ZERO).toMillis());
+        out.put(safeGetPlayerId(playerB), totalPlayTime.getOrDefault(playerB, Duration.ZERO).toMillis());
+        return out;
+    }
+
+    private Map<String, List<Map<String, Object>>> exportRoundHistory() {
+        Map<String, List<Map<String, Object>>> out = new HashMap<>();
+        out.put(safeGetPlayerId(playerA), exportRoundList(roundHistory.getOrDefault(playerA, Collections.emptyList())));
+        out.put(safeGetPlayerId(playerB), exportRoundList(roundHistory.getOrDefault(playerB, Collections.emptyList())));
+        return out;
+    }
+
+    private List<Map<String, Object>> exportRoundList(List<RoundResult> list) {
+        List<Map<String, Object>> out = new ArrayList<>(list.size());
+        for (RoundResult r : list) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("round_index", r.roundIndex);
+            m.put("correct", r.correct);
+            m.put("round_play_time_ms", r.playTimeMillis);
+            m.put("timestamp", r.timestampMs);
+            out.add(m);
+        }
+        return out;
+    }
+
+    private void broadcastRoundSummary(int roundIndex) {
+        String idA = safeGetPlayerId(playerA);
+        String idB = safeGetPlayerId(playerB);
+
+        Map<String, Object> msg = new LinkedHashMap<>();
+        msg.put("type", MessageType.ROUND_RESULT.name());
+        msg.put("round_index", roundIndex);
+        msg.put("round_number", roundIndex + 1);
+
+        String roundWinner = null;
+        List<RoundResult> histA = roundHistory.getOrDefault(playerA, Collections.emptyList());
+        List<RoundResult> histB = roundHistory.getOrDefault(playerB, Collections.emptyList());
+        RoundResult lastA = histA.isEmpty() ? null : histA.get(histA.size() - 1);
+        RoundResult lastB = histB.isEmpty() ? null : histB.get(histB.size() - 1);
+        if (lastA != null && lastA.roundIndex == roundIndex && lastA.correct) roundWinner = idA;
+        else if (lastB != null && lastB.roundIndex == roundIndex && lastB.correct) roundWinner = idB;
+
+        msg.put("round_winner", roundWinner);
+
+        List<Map<String, Object>> players = new ArrayList<>(2);
+        players.add(makePlayerRoundSummary(playerA, lastA));
+        players.add(makePlayerRoundSummary(playerB, lastB));
+        msg.put("players", players);
+
+        msg.put("scores", exportScores());
+        msg.put("total_play_time_ms", exportPlayTime());
+
+        String json = JsonUtil.toJson(msg);
+        safeSendMessage(playerA, json);
+        safeSendMessage(playerB, json);
+    }
+
+    private Map<String, Object> makePlayerRoundSummary(ClientHandler p, RoundResult last) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        String id = safeGetPlayerId(p);
+        m.put("id", id);
+        m.put("username", safeGetUsername(p));
+        if (last != null) {
+            m.put("correct", last.correct);
+            m.put("round_play_time_ms", last.playTimeMillis);
+        } else {
+            m.put("correct", false);
+            m.put("round_play_time_ms", 0L);
+        }
+        m.put("total_score", scores.getOrDefault(p, 0));
+        m.put("total_play_time_ms", totalPlayTime.getOrDefault(p, Duration.ZERO).toMillis());
+        return m;
+    }
+
+    private String safeGetPlayerId(ClientHandler p) {
         try {
-            ch.sendType(t, payload);
+            return p.getPlayer() != null ? String.valueOf(p.getPlayer().getId()) : p.getUsername();
         } catch (Exception e) {
-            try { ch.sendMessage(t.name() + (payload != null ? ("|" + payload) : "")); } catch (Exception ignored) {}
+            return p.getUsername();
         }
     }
 
-    // Utility: prefer user id if available, otherwise fallback to username
-    private String resolvePlayerKey(ClientHandler ch) {
-        if (ch == null) return "";
+    private String safeGetUsername(ClientHandler p) {
         try {
-            String id = ch.getUserId();
-            if (id != null && !id.isEmpty()) return id;
-        } catch (NoSuchMethodError | AbstractMethodError | Exception ignored) {}
-        return ch.getUsername();
+            return p.getUsername();
+        } catch (Exception e) {
+            return "unknown";
+        }
     }
 
-    // Helper to map submitted username/id into internal player key (use user id if available)
-    private String mapSubmittedKey(String submitted, String key1, String key2) {
-        if (submitted == null) return key1;
-        if (submitted.equals(key1) || submitted.equals(key2)) return submitted;
-        if (submitted.equalsIgnoreCase(p1.getUsername())) return key1;
-        if (submitted.equalsIgnoreCase(p2.getUsername())) return key2;
-        return submitted;
+    private void sendSimpleAnswerResult(ClientHandler player, boolean accepted, String reason) {
+        Map<String, Object> resMsg = new HashMap<>();
+        resMsg.put("type", MessageType.ANSWER_RESULT.name());
+        resMsg.put("accepted", accepted);
+        resMsg.put("reason", reason);
+        safeSendMessage(player, JsonUtil.toJson(resMsg));
     }
 
-    // Helper to extract numbers array from a JSON-like payload: looks for "numbers":[...]
-    private List<Integer> extractNumbersFromPayload(String payload) {
-        if (payload == null) return Collections.emptyList();
-        List<Integer> nums = new ArrayList<>();
-        try {
-            Pattern p = Pattern.compile("\"numbers\"\\s*:\\s*\\[([^\\]]*)\\]");
-            Matcher m = p.matcher(payload);
-            if (m.find()) {
-                String inside = m.group(1);
-                Matcher numMatcher = Pattern.compile("-?\\d+").matcher(inside);
-                while (numMatcher.find()) {
-                    nums.add(Integer.parseInt(numMatcher.group()));
-                }
-            }
-        } catch (Exception ignored) {}
-        return nums;
+    private void safeSendInfo(ClientHandler p, String text) {
+        try { if (p != null) p.sendType(MessageType.INFO, text); } catch (Exception ignored) {}
     }
 
-    // Helper to extract exact fraction target from JSON-like payload produced by PuzzleQuestionProvider
-    private MathPuzzleUtils.Fraction extractFractionTargetFromPayload(String payload) {
-        if (payload == null) return null;
-        try {
-            // try to find "target":{ ... "numerator":X, "denominator":Y ...}
-            Pattern p = Pattern.compile("\"target\"\\s*:\\s*\\{[^}]*\"numerator\"\\s*:\\s*(-?\\d+)\\s*,[^}]*\"denominator\"\\s*:\\s*(\\d+)[^}]*\\}");
-            Matcher m = p.matcher(payload);
-            if (m.find()) {
-                long num = Long.parseLong(m.group(1));
-                long den = Long.parseLong(m.group(2));
-                return new MathPuzzleUtils.Fraction(num, den);
-            }
-
-            // fallback: try "target": "3 1/3" or "target":"10/3" or "target":3.333
-            Pattern p2 = Pattern.compile("\"target\"\\s*:\\s*\"([^\"]+)\"");
-            Matcher m2 = p2.matcher(payload);
-            if (m2.find()) {
-                String t = m2.group(1).trim();
-                // try "a b/c" mixed
-                Matcher mm = Pattern.compile("(-?\\d+)\\s+[ _]?(\\d+)/(\\d+)").matcher(t);
-                if (mm.matches()) {
-                    long whole = Long.parseLong(mm.group(1));
-                    long num = Long.parseLong(mm.group(2));
-                    long den = Long.parseLong(mm.group(3));
-                    long total = whole * den + (whole >= 0 ? num : -num);
-                    return new MathPuzzleUtils.Fraction(total, den);
-                }
-                // try a/b
-                Matcher mm2 = Pattern.compile("(-?\\d+)/(\\d+)").matcher(t);
-                if (mm2.matches()) {
-                    long num = Long.parseLong(mm2.group(1));
-                    long den = Long.parseLong(mm2.group(2));
-                    return new MathPuzzleUtils.Fraction(num, den);
-                }
-                // try decimal
-                try {
-                    double dv = Double.parseDouble(t);
-                    // convert decimal approx to fraction with limited precision (use 1e-6)
-                    long pwr = 1_000_000L;
-                    long numerator = Math.round(dv * pwr);
-                    return new MathPuzzleUtils.Fraction(numerator, pwr);
-                } catch (NumberFormatException ignored) {}
-            }
-        } catch (Exception ignored) {}
-        return null;
+    private void safeSendMessage(ClientHandler p, String json) {
+        try { if (p != null) p.sendMessage(json); } catch (Exception ignored) {}
     }
 
-    // Helper to extract "display" string from provider payload if present
-    private String extractDisplayFromPayload(String payload) {
-        if (payload == null) return null;
-        try {
-            Pattern p = Pattern.compile("\"display\"\\s*:\\s*\"([^\"]*)\"");
-            Matcher m = p.matcher(payload);
-            if (m.find()) {
-                return m.group(1);
-            }
-        } catch (Exception ignored) {}
-        return null;
-    }
-
-    /**
-     * Build a shuffled schedule of difficulty levels matching the configured distribution.
-     */
-    private static List<Integer> buildDifficultySchedule(int totalQuestions) {
-        if (totalQuestions <= 0) return Collections.emptyList();
-
-        int easyCount = (int) Math.round(totalQuestions * PCT_EASY);
-        int mediumCount = (int) Math.round(totalQuestions * PCT_MEDIUM);
-        int hardCount = totalQuestions - easyCount - mediumCount;
-
-        if (hardCount < 0) {
-            int deficit = -hardCount;
-            mediumCount = Math.max(0, mediumCount - deficit);
-            hardCount = totalQuestions - easyCount - mediumCount;
+    private static class JsonUtil {
+        static String toJson(Object obj) {
+            StringBuilder sb = new StringBuilder(256);
+            serialize(obj, sb);
+            return sb.toString();
         }
 
-        int sum = easyCount + mediumCount + hardCount;
-        if (sum != totalQuestions) {
-            int diff = totalQuestions - sum;
-            easyCount += diff;
+        private static void serialize(Object obj, StringBuilder sb) {
+            if (obj == null) { sb.append("null"); return; }
+            if (obj instanceof Number || obj instanceof Boolean) {
+                sb.append(obj.toString());
+            } else if (obj instanceof String) {
+                sb.append('"').append(escape((String) obj)).append('"');
+            } else if (obj instanceof Map) {
+                sb.append('{');
+                Map<?, ?> m = (Map<?, ?>) obj;
+                Iterator<? extends Map.Entry<?,?>> it = m.entrySet().iterator();
+                while (it.hasNext()) {
+                    Map.Entry<?,?> e = it.next();
+                    sb.append('"').append(escape(String.valueOf(e.getKey()))).append("\":");
+                    serialize(e.getValue(), sb);
+                    if (it.hasNext()) sb.append(',');
+                }
+                sb.append('}');
+            } else if (obj instanceof Collection) {
+                sb.append('[');
+                Iterator<?> it = ((Collection<?>) obj).iterator();
+                while (it.hasNext()) {
+                    serialize(it.next(), sb);
+                    if (it.hasNext()) sb.append(',');
+                }
+                sb.append(']');
+            } else if (obj.getClass().isArray()) {
+                sb.append('[');
+                int len = java.lang.reflect.Array.getLength(obj);
+                for (int i = 0; i < len; i++) {
+                    serialize(java.lang.reflect.Array.get(obj, i), sb);
+                    if (i + 1 < len) sb.append(',');
+                }
+                sb.append(']');
+            } else {
+                // Fallback to string representation
+                sb.append('"').append(escape(String.valueOf(obj))).append('"');
+            }
         }
 
-        List<Integer> schedule = new ArrayList<>(totalQuestions);
-        for (int i = 0; i < easyCount; i++) schedule.add(DIFF_EASY);
-        for (int i = 0; i < mediumCount; i++) schedule.add(DIFF_MEDIUM);
-        for (int i = 0; i < hardCount; i++) schedule.add(DIFF_HARD);
-
-//        Collections.shuffle(schedule, new Random(System.nanoTime()));
-        System.out.println(schedule);
-        return schedule;
+        private static String escape(String s) {
+            StringBuilder out = new StringBuilder(s.length() + 8);
+            for (int i = 0; i < s.length(); i++) {
+                char c = s.charAt(i);
+                switch (c) {
+                    case '"': out.append("\\\""); break;
+                    case '\\': out.append("\\\\"); break;
+                    case '\b': out.append("\\b"); break;
+                    case '\f': out.append("\\f"); break;
+                    case '\n': out.append("\\n"); break;
+                    case '\r': out.append("\\r"); break;
+                    case '\t': out.append("\\t"); break;
+                    default:
+                        if (c < 0x20 || c > 0x7E) {
+                            out.append(String.format("\\u%04x", (int) c));
+                        } else out.append(c);
+                }
+            }
+            return out.toString();
+        }
     }
 
-    // Add this method into the GameSession class
-    private void broadcastAnswerResult(String usernameKey, String questionId, boolean correct, int pointsAwarded) {
-        String scorePayload = scoreSnapshot();
-        // payload format: questionId|usernameKey|CORRECT/WRONG|points|scoreSnapshot
-        String payload = questionId + "|" + usernameKey + "|" + (correct ? "CORRECT" : "WRONG") + "|" + pointsAwarded + "|" + scorePayload;
-        safeSend(p1, MessageType.ANSWER_RESULT, payload);
-        safeSend(p2, MessageType.ANSWER_RESULT, payload);
-    }
+    private static class RoundResult {
+        final int roundIndex;
+        final boolean correct;
+        final long playTimeMillis;
+        final long timestampMs;
 
-    // escape for minimal JSON strings
-    private static String escapeForJson(String s) {
-        if (s == null) return "";
-        return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
+        RoundResult(int roundIndex, boolean correct, long playTimeMillis, long timestampMs) {
+            this.roundIndex = roundIndex;
+            this.correct = correct;
+            this.playTimeMillis = playTimeMillis;
+            this.timestampMs = timestampMs;
+        }
     }
 }

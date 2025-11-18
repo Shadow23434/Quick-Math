@@ -1,327 +1,202 @@
 package com.mathspeed.puzzle;
 
 import java.util.*;
-import java.util.regex.*;
 
-/**
- * Evaluator biểu thức client gửi lên và so sánh chính xác với target (MathPuzzleUtils.Fraction).
- *
- * Client gửi ví dụ:
- * {
- *   "qCode": "q1",
- *   "answerExpress": "34+7"
- * }
- *
- * Sử dụng:
- *   MathPuzzleUtils.Fraction target = new MathPuzzleUtils.Fraction(10, 3);
- *   boolean ok = new MathExpressionEvaluator().isExpressionValid("3 1/3", allowedNumbers, target);
- *
- * Tính năng:
- * - Hỗ trợ số nguyên, literal fraction "a/b", mixed number "3 1/3" (hoặc "3_1/3" nếu client dùng underscore),
- *   toán tử + - * /, ngoặc (), unary minus.
- * - So sánh chính xác bằng MathPuzzleUtils.Fraction.equals (không dùng double).
- * - Kiểm tra số sử dụng: mỗi số nguyên trong biểu thức phải xuất hiện trong allowedNumbers (mỗi phần tử chỉ dùng một lần).
- *   (Nếu biểu thức chứa literal fraction "1/3", cả 1 và 3 được coi là số và sẽ tiêu thụ allowedNumbers nếu có.)
- */
 public class MathExpressionEvaluator {
 
-    /**
-     * Kiểm tra biểu thức của client có hợp lệ (chỉ dùng các số cho phép) và cho kết quả đúng bằng target.
-     *
-     * @param expression biểu thức client gửi (ví dụ "34+7", "3+1/3", "3 1/3", "(2+3)*4")
-     * @param allowedNumbers danh sách số nguyên được phép sử dụng (mỗi phần tử chỉ dùng 1 lần)
-     * @param targetFraction target chính xác để so sánh
-     * @return true nếu hợp lệ và bằng target, false otherwise
-     */
-    public boolean isExpressionValid(String expression, List<Integer> allowedNumbers, MathPuzzleUtils.Fraction targetFraction) {
-        try {
-            String normalized = normalizeExpression(expression);
-
-            // Kiểm tra sử dụng số
-            if (!validateNumbersUsed(normalized, allowedNumbers)) {
-                return false;
-            }
-
-            // Parse và evaluate -> trả về Fraction chính xác
-            MathPuzzleUtils.Fraction result = parseAndEvaluate(normalized);
-
-            // So sánh exact
-            return result.equals(targetFraction);
-        } catch (Exception e) {
-            // tuỳ log policy, có thể log debug
-            System.err.println("Error evaluating expression: " + e.getMessage());
-            return false;
+    public static int evaluate(String expression, List<Integer> deck) {
+        if (expression == null || expression.trim().isEmpty()) {
+            throw new IllegalArgumentException("empty_expression");
         }
-    }
-
-    /**
-     * Trả về kết quả đánh giá biểu thức dưới dạng Fraction (dùng cho hiển thị / debug).
-     */
-    public MathPuzzleUtils.Fraction evaluateExpression(String expression) {
-        String normalized = normalizeExpression(expression);
-        return parseAndEvaluate(normalized);
-    }
-
-    // ========================
-    // Normalization & helpers
-    // ========================
-
-    /**
-     * Chuẩn hóa biểu thức:
-     * - Chuyển các ký tự nhân/chia phổ biến
-     * - Biến các dạng hỗn số "W N/D" hoặc "W_N/D" thành "W+(N/D)" để dễ parse
-     * - Bỏ khoảng trắng
-     */
-    private String normalizeExpression(String expression) {
-        if (expression == null) return "";
-        // Trước hết chuyển ký tự nhân/chia Unicode về * và /
-        expression = expression.replace('×', '*').replace('÷', '/');
-
-        // Hỗ trợ hỗn số dạng "3 1/3" hoặc "3_1/3" -> convert to "3+(1/3)"
-        // Pattern: whole (space or underscore) num/den
-        Pattern mixed = Pattern.compile("(\\d+)[ _]+(\\d+)/(\\d+)");
-        Matcher m = mixed.matcher(expression);
-        StringBuffer sb = new StringBuffer();
-        while (m.find()) {
-            String whole = m.group(1);
-            String num = m.group(2);
-            String den = m.group(3);
-            String replacement = whole + "+(" + num + "/" + den + ")";
-            m.appendReplacement(sb, replacement);
+        if (deck == null) {
+            throw new IllegalArgumentException("deck_null");
         }
-        m.appendTail(sb);
-        expression = sb.toString();
 
-        // Loại bỏ whitespace sau xử lý hỗn số
-        expression = expression.replaceAll("\\s+", "");
+        String expr = expression.trim();
+        List<String> tokens = tokenize(expr);
+        if (tokens.isEmpty()) throw new IllegalArgumentException("no_tokens");
 
-        return expression;
+        // Validate number usage against deck counts (use absolute value for negative literals)
+        validateNumbersAgainstDeck(tokens, deck);
+
+        List<String> rpn = toRPN(tokens);
+        return evalRPN(rpn);
     }
 
-    /**
-     * Tách ra các số nguyên xuất hiện trong biểu thức để so khớp với allowedNumbers.
-     * - Nhận dạng cả các số trong literal fraction "a/b" (a và b sẽ được lấy)
-     * - Nhận dạng các số âm (ví dụ "-3")
-     */
-    private List<Integer> extractIntegers(String expression) {
-        List<Integer> nums = new ArrayList<>();
-        // Tìm cả mẫu số hoặc số nguyên: -?digits (đơn giản)
-        // Regex đảm bảo không bắt các phần trong số thập phân vì chúng không được hỗ trợ
-        Matcher m = Pattern.compile("-?\\d+").matcher(expression);
-        while (m.find()) {
-            String g = m.group();
-            try {
-                int v = Integer.parseInt(g);
-                nums.add(v);
-            } catch (NumberFormatException ignored) {
-            }
-        }
-        return nums;
-    }
-
-    private boolean validateNumbersUsed(String expression, List<Integer> allowedNumbers) {
-        if (allowedNumbers == null) return false;
-        List<Integer> available = new ArrayList<>(allowedNumbers);
-        List<Integer> used = extractIntegers(expression);
-
-        for (Integer u : used) {
-            if (!available.remove(u)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    // ========================
-    // Parsing & evaluation
-    // ========================
-
-    /**
-     * Parse expression (supports integer, literal fraction a/b, + - * /, parentheses, unary minus)
-     * and evaluate to MathPuzzleUtils.Fraction.
-     */
-    private MathPuzzleUtils.Fraction parseAndEvaluate(String expression) {
-        List<String> tokens = tokenizeExpressionForFractions(expression);
-        List<String> postfix = infixToPostfix(tokens);
-        return evaluatePostfix(postfix);
-    }
-
-    /**
-     * Tokenizer:
-     * - integer: digits, optionally with leading '-'
-     * - fraction literal: digits '/' digits or -digits/digits
-     * - operators: + - * /
-     * - parentheses: ( )
-     *
-     * Handles unary minus by attaching it to number tokens or transforming "-(" into "-1*("
-     */
-    private List<String> tokenizeExpressionForFractions(String expr) {
+    // Tokenization: returns list of tokens: numbers (possibly with leading '-') , operators (+ - * /), parentheses
+    private static List<String> tokenize(String s) {
         List<String> tokens = new ArrayList<>();
-        if (expr == null || expr.isEmpty()) return tokens;
-
         int i = 0;
-        while (i < expr.length()) {
-            char c = expr.charAt(i);
-            if (c == '+' || c == '*' || c == '/' || c == '(' || c == ')') {
-                tokens.add(String.valueOf(c));
+        String noSpace = s.replaceAll("\\s+", "");
+        int n = noSpace.length();
+        String prev = null;
+
+        while (i < n) {
+            char c = noSpace.charAt(i);
+
+            if (c == '(') {
+                tokens.add("(");
+                prev = "(";
                 i++;
-            } else if (c == '-') {
-                // decide unary or binary
-                boolean unary = tokens.isEmpty()
-                        || "(".equals(tokens.get(tokens.size() - 1))
-                        || "+".equals(tokens.get(tokens.size() - 1))
-                        || "-".equals(tokens.get(tokens.size() - 1))
-                        || "*".equals(tokens.get(tokens.size() - 1))
-                        || "/".equals(tokens.get(tokens.size() - 1));
-                if (unary) {
-                    // if next is digit, parse signed number/fraction
-                    int j = i + 1;
-                    if (j < expr.length() && Character.isDigit(expr.charAt(j))) {
-                        StringBuilder sb = new StringBuilder();
-                        sb.append('-');
-                        while (j < expr.length() && Character.isDigit(expr.charAt(j))) {
-                            sb.append(expr.charAt(j++));
-                        }
-                        if (j < expr.length() && expr.charAt(j) == '/') {
-                            j++;
-                            StringBuilder den = new StringBuilder();
-                            while (j < expr.length() && Character.isDigit(expr.charAt(j))) {
-                                den.append(expr.charAt(j++));
-                            }
-                            sb.append('/').append(den);
-                        }
-                        tokens.add(sb.toString());
-                        i = j;
-                    } else {
-                        // unary minus before parenthesis: convert to (-1)*(...)
-                        tokens.add("-1");
-                        tokens.add("*");
-                        i++;
-                    }
-                } else {
-                    tokens.add("-");
-                    i++;
-                }
-            } else if (Character.isDigit(c)) {
-                int j = i;
-                StringBuilder num = new StringBuilder();
-                while (j < expr.length() && Character.isDigit(expr.charAt(j))) {
-                    num.append(expr.charAt(j++));
-                }
-                if (j < expr.length() && expr.charAt(j) == '/') {
-                    // fraction literal
-                    j++;
-                    StringBuilder den = new StringBuilder();
-                    while (j < expr.length() && Character.isDigit(expr.charAt(j))) {
-                        den.append(expr.charAt(j++));
-                    }
-                    tokens.add(num.toString() + "/" + den.toString());
-                } else {
-                    tokens.add(num.toString());
-                }
-                i = j;
-            } else {
-                // skip unknown characters tolerant
-                i++;
+                continue;
             }
+            if (c == ')') {
+                tokens.add(")");
+                prev = ")";
+                i++;
+                continue;
+            }
+
+            if (isOperatorChar(c)) {
+                // handle unary minus
+                if (c == '-' && (prev == null || prev.equals("(") || isOperatorToken(prev))) {
+                    // unary minus: if followed by digits, parse a signed number literal
+                    if (i + 1 < n && Character.isDigit(noSpace.charAt(i + 1))) {
+                        int j = i + 1;
+                        while (j < n && Character.isDigit(noSpace.charAt(j))) j++;
+                        String num = "-" + noSpace.substring(i + 1, j);
+                        tokens.add(num);
+                        prev = num;
+                        i = j;
+                        continue;
+                    } else if (i + 1 < n && noSpace.charAt(i + 1) == '(') {
+                        // unary minus before parenthesis: transform "-(" into "0", "-", "("
+                        tokens.add("0");
+                        tokens.add("-");
+                        prev = "-";
+                        i++; // move to '(' next iteration
+                        continue;
+                    } else {
+                        throw new IllegalArgumentException("invalid_unary_minus_at_pos:" + i);
+                    }
+                } else {
+                    tokens.add(String.valueOf(c));
+                    prev = String.valueOf(c);
+                    i++;
+                    continue;
+                }
+            }
+
+            if (Character.isDigit(c)) {
+                tokens.add(String.valueOf(c));
+                prev = String.valueOf(c);
+                i++;
+                continue;
+            }
+
+            throw new IllegalArgumentException("invalid_char:" + c + " at pos " + i);
         }
 
         return tokens;
     }
 
-    /**
-     * Convert infix tokens to postfix using Shunting-yard.
-     */
-    private List<String> infixToPostfix(List<String> tokens) {
-        List<String> out = new ArrayList<>();
-        Deque<String> ops = new ArrayDeque<>();
-        Map<String, Integer> prec = new HashMap<>();
-        prec.put("+", 1);
-        prec.put("-", 1);
-        prec.put("*", 2);
-        prec.put("/", 2);
+    private static boolean isOperatorChar(char c) {
+        return c == '+' || c == '-' || c == '*' || c == '/';
+    }
 
-        for (String tok : tokens) {
-            if (isNumberOrFractionToken(tok)) {
-                out.add(tok);
-            } else if ("(".equals(tok)) {
-                ops.push(tok);
-            } else if (")".equals(tok)) {
-                while (!ops.isEmpty() && !"(".equals(ops.peek())) {
-                    out.add(ops.pop());
+    private static boolean isOperatorToken(String tok) {
+        return tok.length() == 1 && isOperatorChar(tok.charAt(0));
+    }
+
+    // Validate numeric tokens against deck availability (absolute values considered, only check existence)
+    private static void validateNumbersAgainstDeck(List<String> tokens, List<Integer> deck) {
+        if (deck == null) return;
+        Set<Integer> deckSet = new HashSet<>(deck);
+
+        for (String t : tokens) {
+            if (isNumberToken(t)) {
+                int val;
+                try {
+                    val = Integer.parseInt(t);
+                } catch (NumberFormatException ex) {
+                    throw new IllegalArgumentException("invalid_number_token:" + t);
                 }
-                if (ops.isEmpty() || !"(".equals(ops.peek())) throw new IllegalArgumentException("Mismatched parentheses");
-                ops.pop();
-            } else if (prec.containsKey(tok)) {
-                while (!ops.isEmpty() && prec.containsKey(ops.peek()) && prec.get(ops.peek()) >= prec.get(tok)) {
-                    out.add(ops.pop());
+                int abs = Math.abs(val);
+                if (!deckSet.contains(abs)) {
+                    throw new IllegalArgumentException("number_not_in_deck:" + abs);
                 }
-                ops.push(tok);
+            }
+        }
+    }
+
+    private static boolean isNumberToken(String t) {
+        return t.matches("-?\\d+");
+    }
+
+    // Convert to RPN using shunting-yard
+    private static List<String> toRPN(List<String> tokens) {
+        List<String> output = new ArrayList<>();
+        Deque<String> ops = new ArrayDeque<>();
+
+        for (String t : tokens) {
+            if (isNumberToken(t)) {
+                output.add(t);
+            } else if (isOperatorToken(t)) {
+                while (!ops.isEmpty() && isOperatorToken(ops.peek())) {
+                    String top = ops.peek();
+                    if (precedence(top) >= precedence(t)) {
+                        output.add(ops.pop());
+                    } else break;
+                }
+                ops.push(t);
+            } else if (t.equals("(")) {
+                ops.push(t);
+            } else if (t.equals(")")) {
+                boolean found = false;
+                while (!ops.isEmpty()) {
+                    String top = ops.pop();
+                    if (top.equals("(")) { found = true; break; }
+                    output.add(top);
+                }
+                if (!found) throw new IllegalArgumentException("mismatched_parentheses");
             } else {
-                throw new IllegalArgumentException("Unknown token: " + tok);
+                throw new IllegalArgumentException("unknown_token:" + t);
             }
         }
 
         while (!ops.isEmpty()) {
-            String op = ops.pop();
-            if ("(".equals(op) || ")".equals(op)) throw new IllegalArgumentException("Mismatched parentheses");
-            out.add(op);
+            String top = ops.pop();
+            if (top.equals("(") || top.equals(")")) throw new IllegalArgumentException("mismatched_parentheses");
+            output.add(top);
         }
-        return out;
+
+        return output;
     }
 
-    private boolean isNumberOrFractionToken(String tok) {
-        return tok.matches("-?\\d+") || tok.matches("-?\\d+/\\d+");
+    private static int precedence(String op) {
+        if (op.equals("+") || op.equals("-")) return 1;
+        if (op.equals("*") || op.equals("/")) return 2;
+        return 0;
     }
 
-    /**
-     * Evaluate postfix to MathPuzzleUtils.Fraction.
-     */
-    private MathPuzzleUtils.Fraction evaluatePostfix(List<String> postfix) {
-        Deque<MathPuzzleUtils.Fraction> stack = new ArrayDeque<>();
-
-        for (String tok : postfix) {
-            if (isNumberOrFractionToken(tok)) {
-                stack.push(parseTokenToFraction(tok));
-            } else {
-                if (stack.size() < 2) throw new IllegalArgumentException("Invalid expression");
-                MathPuzzleUtils.Fraction b = stack.pop();
-                MathPuzzleUtils.Fraction a = stack.pop();
-                MathPuzzleUtils.Fraction res;
-                switch (tok) {
-                    case "+":
-                        res = a.add(b);
-                        break;
-                    case "-":
-                        res = a.subtract(b);
-                        break;
-                    case "*":
-                        res = a.multiply(b);
-                        break;
-                    case "/":
-                        res = a.divide(b);
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Unsupported operator: " + tok);
+    // Evaluate RPN, integer arithmetic
+    private static int evalRPN(List<String> rpn) {
+        Deque<Integer> stack = new ArrayDeque<>();
+        for (String t : rpn) {
+            if (isNumberToken(t)) {
+                stack.push(Integer.parseInt(t));
+            } else if (isOperatorToken(t)) {
+                if (stack.size() < 2) throw new IllegalArgumentException("malformed_expression");
+                int b = stack.pop();
+                int a = stack.pop();
+                int res;
+                switch (t) {
+                    case "+" -> res = a + b;
+                    case "-" -> res = a - b;
+                    case "*" -> res = a * b;
+                    case "/" -> {
+                        if (b == 0) throw new IllegalArgumentException("division_by_zero");
+                        if(a % b != 0) throw new IllegalArgumentException("non_integer_division");
+                        res = a / b; // integer division
+                    }
+                    default -> throw new IllegalArgumentException("unknown_operator:" + t);
                 }
                 stack.push(res);
+            } else {
+                throw new IllegalArgumentException("unexpected_token_in_rpn:" + t);
             }
         }
-
-        if (stack.size() != 1) throw new IllegalArgumentException("Invalid expression");
+        if (stack.size() != 1) throw new IllegalArgumentException("malformed_expression");
         return stack.pop();
-    }
-
-    private MathPuzzleUtils.Fraction parseTokenToFraction(String tok) {
-        // formats: "12", "-12", "1/3", "-1/3"
-        if (tok.contains("/")) {
-            String[] parts = tok.split("/");
-            long num = Long.parseLong(parts[0]);
-            long den = Long.parseLong(parts[1]);
-            return new MathPuzzleUtils.Fraction(num, den);
-        } else {
-            long num = Long.parseLong(tok);
-            return MathPuzzleUtils.Fraction.whole(num);
-        }
     }
 }

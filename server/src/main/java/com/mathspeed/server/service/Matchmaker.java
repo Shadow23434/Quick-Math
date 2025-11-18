@@ -1,7 +1,7 @@
 package com.mathspeed.server.service;
 
-
 import com.mathspeed.network.ClientHandler;
+import com.mathspeed.network.ClientRegistry;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -20,11 +20,16 @@ public class Matchmaker {
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private volatile boolean running = true;
 
+    // Mặc định số vòng và thời gian mỗi round
+    private final int DEFAULT_TOTAL_ROUNDS = 10;
+    private final long DEFAULT_ROUND_TIME_SECONDS = 25;
+
     public Matchmaker(ClientRegistry clientRegistry, GameSessionManager sessionManager) {
         this.clientRegistry = clientRegistry;
         this.sessionManager = sessionManager;
         scheduler.scheduleAtFixedRate(this::matchLoop, 0, 1, TimeUnit.SECONDS);
     }
+
 
     public void joinQueue(ClientHandler client) {
         waitingQueue.offer(client);
@@ -40,7 +45,9 @@ public class Matchmaker {
             ClientHandler p1 = waitingQueue.poll();
             ClientHandler p2 = waitingQueue.poll();
             if (p1 == null || p2 == null) continue;
-            sessionManager.createSessionSafely(p1, p2);
+
+            // Gọi GameSessionManager với tham số mặc định
+            sessionManager.createSessionSafely(p1, p2, DEFAULT_TOTAL_ROUNDS, DEFAULT_ROUND_TIME_SECONDS);
         }
     }
 

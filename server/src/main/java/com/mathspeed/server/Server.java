@@ -4,6 +4,7 @@ import com.mathspeed.dao.GameDAO;
 import com.mathspeed.dao.PlayerDAO;
 import com.mathspeed.dao.impl.GameDAOImpl;
 import com.mathspeed.dao.impl.PlayerDAOImpl;
+import com.mathspeed.network.ClientRegistry;
 import com.mathspeed.server.service.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

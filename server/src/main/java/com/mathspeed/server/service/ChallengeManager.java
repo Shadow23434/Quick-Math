@@ -1,47 +1,58 @@
 package com.mathspeed.server.service;
 
 import com.mathspeed.network.ClientHandler;
+import com.mathspeed.network.ClientRegistry;
+import com.mathspeed.protocol.MessageType;
 
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.*;
 
-/**
- * Manages one-to-one challenge flow with pending sets and expiration.
- */
 public class ChallengeManager {
+
     private final ClientRegistry clientRegistry;
     private final GameSessionManager sessionManager;
-    private final ConcurrentMap<String, Set<String>> pendingChallenges = new ConcurrentHashMap<>();
+
+    private final ConcurrentMap<String, Map<String, Integer>> pendingChallenges = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+    private final int DEFAULT_TIME_PER_ROUNDS = 40;
 
     public ChallengeManager(ClientRegistry clientRegistry, GameSessionManager sessionManager) {
         this.clientRegistry = clientRegistry;
         this.sessionManager = sessionManager;
     }
 
-    public void sendChallenge(String challenger, String target) {
+    public void sendChallenge(String challenger, String target, int totalRounds) {
         ClientHandler chHandler = clientRegistry.getClientHandler(challenger);
         ClientHandler targetHandler = clientRegistry.getClientHandler(target);
+
         if (chHandler == null) return;
+
         if (targetHandler == null) {
-            chHandler.sendMessage("CHALLENGE_FAILED|Player not online");
-            return;
-        }
-        if (isPlayerInGame(target) || isPlayerInGame(challenger)) {
-            chHandler.sendMessage("CHALLENGE_FAILED|Player busy or you are busy");
+            chHandler.sendType(MessageType.CHALLENGE_FAILED, "Player not online");
             return;
         }
 
-        pendingChallenges.computeIfAbsent(challenger, k -> ConcurrentHashMap.newKeySet()).add(target);
-        targetHandler.sendMessage("CHALLENGE_RECEIVED|" + challenger);
-        chHandler.sendMessage("CHALLENGE_SENT|" + target);
+        if (isPlayerInGame(challenger) || isPlayerInGame(target)) {
+            chHandler.sendType(MessageType.CHALLENGE_FAILED, "Player busy or you are busy");
+            return;
+        }
 
-        // expiration
+        pendingChallenges
+                .computeIfAbsent(challenger, k -> new ConcurrentHashMap<>())
+                .put(target, totalRounds);
+
+        System.out.println("Challenge sent from " + challenger + " to " + target + " for " + totalRounds + " rounds.");
+
+        targetHandler.sendType(MessageType.CHALLENGE_REQUEST, challenger + "|" + totalRounds);
+        chHandler.sendType(MessageType.CHALLENGE_SENT, target + "|" + totalRounds);
+
         scheduler.schedule(() -> {
-            Set<String> set = pendingChallenges.get(challenger);
-            if (set != null && set.remove(target)) {
+            Map<String, Integer> map = pendingChallenges.get(challenger);
+            if (map != null && map.remove(target) != null) {
+                if (map.isEmpty()) pendingChallenges.remove(challenger);
                 ClientHandler c = clientRegistry.getClientHandler(challenger);
-                if (c != null) c.sendMessage("CHALLENGE_EXPIRED|" + target);
+                if (c != null) c.sendType(MessageType.CHALLENGE_EXPIRED, target);
             }
         }, 30, TimeUnit.SECONDS);
     }
@@ -49,41 +60,76 @@ public class ChallengeManager {
     public void acceptChallenge(String accepter, String challenger) {
         ClientHandler chHandler = clientRegistry.getClientHandler(challenger);
         ClientHandler accepterHandler = clientRegistry.getClientHandler(accepter);
+
         if (chHandler == null || accepterHandler == null) {
-            if (accepterHandler != null) accepterHandler.sendMessage("CHALLENGE_FAILED|Other player offline");
+            if (accepterHandler != null)
+                accepterHandler.sendType(MessageType.CHALLENGE_FAILED, "Other player offline");
             return;
         }
 
-        Set<String> set = pendingChallenges.get(challenger);
-        if (set == null || !set.contains(accepter)) {
-            accepterHandler.sendMessage("CHALLENGE_FAILED|No pending challenge");
+        Map<String, Integer> map = pendingChallenges.get(challenger);
+        if (map == null || !map.containsKey(accepter)) {
+            accepterHandler.sendType(MessageType.CHALLENGE_FAILED, "No pending challenge");
             return;
         }
-        set.remove(accepter);
-        if (set.isEmpty()) pendingChallenges.remove(challenger);
 
-        chHandler.sendMessage("CHALLENGE_ACCEPTED|" + accepter);
-        accepterHandler.sendMessage("CHALLENGE_ACCEPTED|" + challenger);
+        int totalRounds = map.remove(accepter);
+        if (map.isEmpty()) pendingChallenges.remove(challenger);
 
-        // Start game after 5s
-        scheduler.schedule(() -> sessionManager.createSessionSafely(chHandler, accepterHandler), 5, TimeUnit.SECONDS);
+        chHandler.sendType(MessageType.CHALLENGE_ACCEPTED, accepter + "|" + totalRounds);
+        accepterHandler.sendType(MessageType.CHALLENGE_ACCEPTED, challenger + "|" + totalRounds);
+
+        chHandler.sendType(MessageType.INFO, "Game starts in 5 seconds...");
+        accepterHandler.sendType(MessageType.INFO, "Game starts in 5 seconds...");
+
+        scheduler.schedule(() -> {
+            GameSession session = sessionManager.createSessionSafely(
+                    chHandler,
+                    accepterHandler,
+                    totalRounds,
+                    DEFAULT_TIME_PER_ROUNDS
+            );
+
+            if (session == null) {
+                chHandler.sendType(MessageType.CHALLENGE_FAILED, "Cannot start game");
+                accepterHandler.sendType(MessageType.CHALLENGE_FAILED, "Cannot start game");
+                return;
+            }
+
+            try {
+                session.beginGame();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                chHandler.sendType(MessageType.CHALLENGE_FAILED, "Failed to begin game");
+                accepterHandler.sendType(MessageType.CHALLENGE_FAILED, "Failed to begin game");
+            }
+
+            System.out.println("Game session " + session.getSessionId() + " started between " +
+                    chHandler.getUsername() + " and " + accepterHandler.getUsername());
+
+        }, 2, TimeUnit.SECONDS);
     }
+
 
     public void declineChallenge(String challenger, String decliner) {
         ClientHandler chHandler = clientRegistry.getClientHandler(challenger);
         ClientHandler declinerHandler = clientRegistry.getClientHandler(decliner);
-        Set<String> set = pendingChallenges.get(challenger);
-        if (set != null) {
-            set.remove(decliner);
-            if (set.isEmpty()) pendingChallenges.remove(challenger);
+
+        Map<String, Integer> map = pendingChallenges.get(challenger);
+        if (map != null) {
+            map.remove(decliner);
+            if (map.isEmpty()) pendingChallenges.remove(challenger);
         }
-        if (chHandler != null) chHandler.sendMessage("CHALLENGE_DECLINED|" + decliner);
-        if (declinerHandler != null) declinerHandler.sendMessage("CHALLENGE_DECLINED|" + challenger);
+
+        if (chHandler != null) chHandler.sendType(MessageType.CHALLENGE_DECLINED, decliner);
+        if (declinerHandler != null) declinerHandler.sendType(MessageType.CHALLENGE_DECLINED, challenger);
+
+        System.out.println(decliner + " declined challenge from " + challenger);
     }
 
     private boolean isPlayerInGame(String username) {
         ClientHandler h = clientRegistry.getClientHandler(username);
-        return h != null && h.getCurrentGame() != null;
+        return h != null && h.getGameSession() != null;
     }
 
     public void shutdown() {

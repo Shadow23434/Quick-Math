@@ -1,65 +1,71 @@
 package com.mathspeed.dao;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * DAO interface for QuickMath persistence operations required by GameSession.
  *
- * This interface is tailored to the minimal schema:
- * - games (id)
- * - game_players (game_id, user_id, final_score, total_time, result)
+ * Notes on types:
+ * - user IDs are application-level identifiers (String) — avoid passing network-layer objects (ClientHandler) into DAO APIs.
+ * - scores: Map<userId, finalScore>
+ * - totalPlayTimeMs: Map<userId, totalPlayTimeInMilliseconds>
+ * - roundHistory: Map<userId, List<Map<String,Object>>> where each inner map represents a round:
+ *     {
+ *       "round_index": Integer,
+ *       "correct": Boolean,
+ *       "round_play_time_ms": Long,
+ *       "timestamp": Long
+ *     }
  *
  * Implementations should perform transactional updates where appropriate.
  */
 public interface GameDAO {
 
     /**
-     * Insert a new game header row.
+     * Insert a new game record (minimal info).
      *
-     * @param gameId      UUID string for game.id
-     * @param totalRounds number of rounds in the match
-     * @throws Exception on DB error
+     * @param gameId      unique id for the game/session
+     * @param totalRounds number of rounds in the game
+     * @throws Exception on persistence errors
      */
     void insertGame(String gameId, int totalRounds) throws Exception;
 
     /**
-     * Insert game_players rows for the given user ids.
-     * Implementation should insert one row per user with default final_score=0,total_time=0,result=NULL.
+     * Insert player->game relationships using user ids.
      *
-     * @param gameId game id
-     * @param userIds list of user id strings (UUID)
-     * @throws Exception on DB error
+     * @param gameId  the game/session id
+     * @param userIds ordered list of user ids participating in the game
+     * @throws Exception on persistence errors
      */
     void insertGamePlayersByIds(String gameId, List<String> userIds) throws Exception;
 
     /**
-     * Persist final per-player summary for a finished game.
-     * Implementation MUST run these updates in a single transaction:
-     *  - update game_players set final_score=?, total_time=?, result=? for each player
-     *  - update games set status='finished', ended_at = NOW()
+     * Persist the final game result including per-player final scores, total play times and per-round history.
      *
-     * The method receives PlayerSummary objects containing the user id, final score, total time (ms) and result.
-     *
-     * @param gameId   game id
-     * @param players  list of PlayerSummary for the two players
-     * @throws Exception on DB error
+     * @param gameId           game/session id
+     * @param scores           map of userId -> final score
+     * @param totalPlayTimeMs  map of userId -> total play time in milliseconds
+     * @param roundHistory     map of userId -> list of per-round maps (round_index, correct, round_play_time_ms, timestamp)
+     * @param winnerUserId     userId of the winner (nullable for draw)
+     * @throws Exception on persistence errors
      */
-    void persistGameFinal(String gameId, List<PlayerSummary> players) throws Exception;
+    void persistGameFinal(String gameId,
+                          Map<String, Integer> scores,
+                          Map<String, Long> totalPlayTimeMs,
+                          Map<String, List<Map<String, Object>>> roundHistory,
+                          String winnerUserId) throws Exception;
 
     /**
-     * Player summary DTO used to persist final results.
+     * Optional: persist a single round summary incrementally.
+     * Implementations can choose to persist per-round data as rounds complete.
+     *
+     * @param gameId         game/session id
+     * @param roundIndex     zero-based round index
+     * @param playersSummary list of per-player summary maps (id, username, correct, round_play_time_ms, total_score, total_play_time_ms)
+     * @throws Exception on persistence errors
      */
-    class PlayerSummary {
-        public final String userId;
-        public final int finalScore;
-        public final long totalTimeMs;
-        public final String result; // "win"|"lose"|"draw"
-
-        public PlayerSummary(String userId, int finalScore, long totalTimeMs, String result) {
-            this.userId = userId;
-            this.finalScore = finalScore;
-            this.totalTimeMs = totalTimeMs;
-            this.result = result;
-        }
+    default void persistRound(String gameId, int roundIndex, List<Map<String, Object>> playersSummary) throws Exception {
+        // default no-op; implementations may override to support incremental persistence
     }
 }

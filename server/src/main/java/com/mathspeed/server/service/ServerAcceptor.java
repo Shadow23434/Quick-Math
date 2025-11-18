@@ -2,6 +2,7 @@ package com.mathspeed.server.service;
 
 import com.mathspeed.network.ClientHandler;
 import com.mathspeed.dao.PlayerDAO;
+import com.mathspeed.network.ClientRegistry;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -11,19 +12,6 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.util.concurrent.*;
 
-/**
- * Accept connections and spawn ClientHandler tasks.
- *
- * Improvements over original:
- * - Uses a bounded ThreadPoolExecutor for client handling (prevents unlimited threads / OOM).
- * - Handles RejectedExecution by closing the socket and sending a "server busy" message.
- * - Improved graceful shutdown: closes ServerSocket to unblock accept(), then attempts graceful pool shutdown
- *   before forcing shutdownNow().
- * - Consistent use of PlayerDAO.
- * - Better handling of exceptions from accept() (ignores expected exception on shutdown).
- * Lang nghe ket noi TCP moi tu client va phan phoi moi ket noi cho mot task (ClientHandler) chay tren mot pool worker
- * de xu ly I/O va logic.
- */
 public class ServerAcceptor {
     private final int port;
     private final ClientRegistry clientRegistry;
@@ -148,10 +136,6 @@ public class ServerAcceptor {
         }
     }
 
-    /**
-     * Graceful shutdown: stop accepting new connections, close ServerSocket to unblock accept(),
-     * then attempt graceful shutdown of pools before forcing shutdown.
-     */
     public void shutdown() {
         running = false;
 
@@ -174,8 +158,7 @@ public class ServerAcceptor {
             Thread.currentThread().interrupt();
         }
 
-        // Stop client pool gracefully, then force if necessary
-        clientPool.shutdown(); // stop accepting new tasks
+        clientPool.shutdown();
         try {
             // wait for handlers to finish (adjust timeout as appropriate)
             if (!clientPool.awaitTermination(30, TimeUnit.SECONDS)) {

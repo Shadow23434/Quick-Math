@@ -192,4 +192,42 @@ public class SceneManager {
             e.printStackTrace();
         }
     }
+
+    public static void showGame(Stage stage) {
+        getInstance().setPrimaryStage(stage);
+        ReloadManager.setCurrentSceneReloader(SceneManager::showGame);
+        try {
+            // Use classpath resource paths (leading slash) instead of src/... filesystem paths
+            Parent root = ResourceLoader.loadFXML("/fxml/gameplay.fxml", SceneManager.class);
+
+            Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
+
+            // Load CSS safely: only add when not null
+            String themeCss = ResourceLoader.loadCSS("/css/theme.css", SceneManager.class);
+            if (themeCss != null) {
+                scene.getStylesheets().add(themeCss);
+            } else {
+                System.err.println("Warning: /css/theme.css not found; skipping.");
+            }
+
+            String gameCss = ResourceLoader.loadCSS("/css/game.css", SceneManager.class);
+            if (gameCss != null) {
+                scene.getStylesheets().add(gameCss);
+            } else {
+                System.err.println("Warning: /css/game.css not found; skipping.");
+            }
+
+            stage.setTitle("Math Speed Game - Game");
+            stage.setScene(scene);
+            stage.setResizable(false);
+            stage.setWidth(WINDOW_WIDTH);
+            stage.setHeight(WINDOW_HEIGHT);
+            stage.show();
+            logger.info("Game screen shown");
+            System.out.println("Hot Reload");
+        } catch (Exception e) {
+            logger.error("Failed to show game screen", e);
+            e.printStackTrace();
+        }
+    }
 }

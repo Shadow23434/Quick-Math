@@ -4,9 +4,9 @@ import com.mathspeed.model.Player;
 
 public interface PlayerDAO {
 
-    boolean register(String username, String password);
-    String hashPassword(String password);
-    Player login(String username, String password);
-    void updateLastLogin(String username);
-    void logout(String username);
+    boolean insertPlayer(Player player) throws Exception;
+    String hashPassword(String password) throws Exception;
+    boolean checkPassword(String plain, String hashed) throws Exception;
+    Player findPlayer(String username, String password) throws Exception;
+    void updateLastLogin(String username) throws Exception;
 }

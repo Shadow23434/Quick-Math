@@ -9,6 +9,7 @@ import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
 import java.io.IOException;
@@ -16,23 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-/**
- * GameController - manages the GamePlay view composed from:
- *  - CountDownOverlay.fxml
- *  - RoundResultBanner.fxml
- *  - GamePlay.fxml (this file)
- *
- * Responsibilities:
- *  - Show a 5s countdown overlay then enable inputs.
- *  - Populate server-sent numbers (ToggleButtons) and operators.
- *  - Allow multiple submits; Clear resets selection and text input.
- *  - Show round result banner (+1 / -1 and scores).
- *
- * Hook networking / game logic into:
- *  - populateServerNumbers(...)
- *  - handleSubmit(...)
- *  - showRoundResult(...)
- */
 public class GameController {
 
     // Root includes
@@ -55,7 +39,7 @@ public class GameController {
     @FXML private HBox serverNumbersRow;
 
     // Result banner fields (included)
-    @FXML private StackPane roundResultBanner; // wrapper from the include
+    @FXML private VBox roundResultBanner; // wrapper from the include
     @FXML private Label youScoreLabel;
     @FXML private Label opponentScoreLabel;
     @FXML private Label yourOutcomeLabel;
