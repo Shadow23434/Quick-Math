@@ -2,7 +2,7 @@ package com.mathspeed.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-
+import java.io.Serializable;
 @Entity
 @Table(name = "players")
 public class Player {
