@@ -16,8 +16,11 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 import org.kordamp.ikonli.javafx.FontIcon;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HorizontalCarousel extends StackPane {
+    private static final Logger logger = LoggerFactory.getLogger(HorizontalCarousel.class);
     private final HBox container;
     private double scrollAmount = 200; // Pixels to scroll per action
     private Button prevBtn, nextBtn;
@@ -37,9 +40,14 @@ public class HorizontalCarousel extends StackPane {
         this.setMinWidth(0);
 
         this.layoutBoundsProperty().addListener((obs, oldVal, newVal) -> {
-            Rectangle clip = new Rectangle(newVal.getWidth(), newVal.getHeight());
-            clip.setMouseTransparent(true);
-            container.setClip(clip);
+            double width = newVal.getWidth();
+            double height = newVal.getHeight();
+            if (width > 0 && height > 0) {
+                Rectangle clip = new Rectangle(0, 0, width, height);
+                clip.setMouseTransparent(true);
+                this.setClip(clip);  // Clip the carousel itself, not just container
+                logger.debug("Carousel clipped to: {}x{}", width, height);
+            }
             updateNavButtonVisibility();
             updateScrollAmount();
         });
@@ -58,9 +66,7 @@ public class HorizontalCarousel extends StackPane {
             javafx.scene.Node firstChild = container.getChildren().get(0);
             double cardWidth = firstChild.getBoundsInParent().getWidth();
             double spacing = container.getSpacing();
-            // Scroll 1 card + spacing
             this.scrollAmount = cardWidth + spacing;
-            System.out.println("Updated scrollAmount to: " + scrollAmount);
         }
     }
 
@@ -75,13 +81,6 @@ public class HorizontalCarousel extends StackPane {
         double visibleWidth = this.getWidth();
         int totalCards = container.getChildren().size();
 
-        System.out.println("=== ScrollRight Debug ===");
-        System.out.println("Current translateX: " + container.getTranslateX());
-        System.out.println("Current translate (abs): " + currentTranslate);
-        System.out.println("Total cards: " + totalCards);
-        System.out.println("Max scroll: " + maxScroll);
-        System.out.println("Visible width: " + visibleWidth);
-
         double[] cardPositions = new double[totalCards];
         double[] cardWidths = new double[totalCards];
         double cumulativePosition = 0;
@@ -91,14 +90,10 @@ public class HorizontalCarousel extends StackPane {
             double childWidth = child.getBoundsInParent().getWidth();
             cardWidths[i] = childWidth;
             cumulativePosition += childWidth + container.getSpacing();
-            System.out.println("Card " + i + " actual position: " + cardPositions[i] + " (width: " + childWidth + ")");
         }
 
-        // Viewport hiện tại
         double viewportStart = currentTranslate;
         double viewportEnd = currentTranslate + visibleWidth;
-
-        System.out.println("Viewport: " + viewportStart + " to " + viewportEnd);
 
         int nextCardIndex = -1;
         for (int i = 0; i < totalCards; i++) {
@@ -106,7 +101,6 @@ public class HorizontalCarousel extends StackPane {
             double cardEnd = cardStart + cardWidths[i];
 
             if (cardStart < viewportStart - 1) {
-                System.out.println("Card " + i + ": cardStart=" + cardStart + " < viewportStart=" + viewportStart + ", skipping (card already passed)");
                 continue;
             }
 
@@ -115,36 +109,20 @@ public class HorizontalCarousel extends StackPane {
             double visibleAmount = Math.max(0, visibleEnd - visibleStart);
             double visiblePercentage = visibleAmount / cardWidths[i];
 
-            System.out.println("Card " + i + ": cardStart=" + cardStart + ", cardEnd=" + cardEnd +
-                             ", visible=" + visibleAmount + "px (" + (visiblePercentage * 100) + "%)");
-
-
             if (visiblePercentage < 0.8) {
                 nextCardIndex = i;
-                System.out.println("Found next card to scroll to: " + i + " (only " + (visiblePercentage * 100) + "% visible)");
                 break;
             }
         }
 
-        // Nếu không tìm thấy card nào cần scroll, tức là đã ở cuối
         if (nextCardIndex == -1) {
-            System.out.println("All cards in/after viewport are fully visible, already at the end");
             return;
         }
 
-        // Scroll để card này hiển thị đầy đủ
         double targetPosition = cardPositions[nextCardIndex];
-
-        System.out.println("Next card index: " + nextCardIndex);
-        System.out.println("Calculated target position: " + targetPosition);
-
-        // Clamp target position trong phạm vi hợp lệ [0, maxScroll]
         if (targetPosition > maxScroll) {
-            System.out.println("Target exceeds maxScroll, using maxScroll instead");
             targetPosition = maxScroll;
         }
-
-        System.out.println("Final target position: " + targetPosition);
 
         scrollToPosition(-targetPosition);
     }
@@ -154,10 +132,6 @@ public class HorizontalCarousel extends StackPane {
         double visibleWidth = this.getWidth();
         int totalCards = container.getChildren().size();
 
-        System.out.println("=== ScrollLeft Debug ===");
-        System.out.println("Current translateX: " + container.getTranslateX());
-
-        // Tính vị trí thực tế của từng card
         double[] cardPositions = new double[totalCards];
         double cumulativePosition = 0;
         for (int i = 0; i < totalCards; i++) {
@@ -167,33 +141,25 @@ public class HorizontalCarousel extends StackPane {
             cumulativePosition += childWidth + container.getSpacing();
         }
 
-        // Tìm card trước đó chưa hiển thị đầy đủ
         int prevCardIndex = -1;
         for (int i = totalCards - 1; i >= 0; i--) {
             javafx.scene.Node child = container.getChildren().get(i);
             double cardStart = cardPositions[i];
 
-            // Vị trí card trong viewport hiện tại
             double cardStartInViewport = cardStart - currentTranslate;
 
-            // Nếu card này bị cắt bên trái viewport hoặc nằm ngoài viewport bên trái
             if (cardStartInViewport < 1) {
                 prevCardIndex = Math.max(0, i - 1);
-                System.out.println("Found prev card to scroll to: " + prevCardIndex);
                 break;
             }
         }
 
-        // Nếu không tìm thấy, scroll về đầu
         if (prevCardIndex == -1) {
-            System.out.println("Already at the start, scrolling to 0");
             scrollToPosition(0);
             return;
         }
 
         double targetPosition = cardPositions[prevCardIndex];
-        System.out.println("Target position: " + targetPosition);
-
         scrollToPosition(-targetPosition);
     }
 
@@ -211,11 +177,6 @@ public class HorizontalCarousel extends StackPane {
     }
 
     private void scrollHorizontal(double amount) {
-        System.out.println("=== scrollHorizontal() ENTERED ===");
-        System.out.println("Amount: " + amount);
-        System.out.println("Container: " + container);
-        System.out.println("Current translateX: " + container.getTranslateX());
-
         TranslateTransition transition = new TranslateTransition(
                 Duration.millis(300),
                 container
@@ -223,19 +184,13 @@ public class HorizontalCarousel extends StackPane {
         double currentTranslate = container.getTranslateX();
         double newTranslate = currentTranslate + amount;
 
-        System.out.println("New translate (before clamp): " + newTranslate);
-
         newTranslate = Math.max(-getMaxScroll(), Math.min(0, newTranslate));
-
-        System.out.println("New translate (after clamp): " + newTranslate);
 
         transition.setToX(newTranslate);
         transition.setOnFinished(e -> {
-            System.out.println("Transition finished");
             updateNavButtonVisibility();
         });
         transition.play();
-        System.out.println("=== scrollHorizontal() COMPLETED ===");
     }
 
     private double getMaxScroll() {
@@ -243,27 +198,20 @@ public class HorizontalCarousel extends StackPane {
 
         // Tính tổng width thực tế của children
         double contentWidth = 0;
-        System.out.println("=== getMaxScroll Debug ===");
-        System.out.println("Visible width: " + visibleWidth);
-        System.out.println("Children count: " + container.getChildren().size());
 
         for (int i = 0; i < container.getChildren().size(); i++) {
             javafx.scene.Node child = container.getChildren().get(i);
             double childWidth = child.getBoundsInParent().getWidth();
             contentWidth += childWidth;
-            System.out.println("Child " + i + " width: " + childWidth);
         }
 
         // Thêm spacing
         if (container.getChildren().size() > 1) {
             double totalSpacing = container.getSpacing() * (container.getChildren().size() - 1);
             contentWidth += totalSpacing;
-            System.out.println("Total spacing: " + totalSpacing);
         }
 
         double maxScroll = Math.max(0, contentWidth - visibleWidth);
-        System.out.println("Content width: " + contentWidth);
-        System.out.println("Max scroll: " + maxScroll);
 
         return maxScroll;
     }
@@ -397,15 +345,11 @@ public class HorizontalCarousel extends StackPane {
         nextBtn.getStyleClass().add("carousel-nav-btn");
         nextBtn.setFocusTraversable(false);
         nextBtn.setOnAction(e -> {
-            System.out.println("=== NextBtn CLICKED ===");
-            System.out.println("onNext is null? " + (onNext == null));
             if (onNext != null) {
-                System.out.println("Calling onNext.run()");
                 onNext.run();
             }
         });
-        StackPane.setAlignment(nextBtn, Pos.CENTER_LEFT);
-        StackPane.setMargin(nextBtn, new Insets(0, 0, 0, 300));
+        StackPane.setAlignment(nextBtn, Pos.CENTER_RIGHT);
         nextBtn.setVisible(false);
         nextBtn.setManaged(false);
         if (nextIcon != null) {
@@ -444,19 +388,9 @@ public class HorizontalCarousel extends StackPane {
                 double visibleAmount = Math.max(0, visibleEnd - visibleStart);
                 double visiblePercentage = (cardWidth > 0) ? (visibleAmount / cardWidth) : 0;
 
-                System.out.println("UpdateNav - Card " + i + " WIDTH DEBUG:");
-                System.out.println("  boundsInParent: " + cardWidth);
-                System.out.println("  boundsInLocal: " + child.getBoundsInLocal().getWidth());
-                System.out.println("  layoutBounds: " + child.getLayoutBounds().getWidth());
-                System.out.println("  cardX (minX): " + cardX);
-                System.out.println("UpdateNav - Card " + i + ": start=" + cardStart + ", end=" + cardEnd +
-                                 ", visible=" + visibleAmount + "px (" + (visiblePercentage * 100) + "%)");
-                System.out.println("  viewportStart=" + viewportStart + ", viewportEnd=" + viewportEnd);
-
                 if (cardEnd > viewportStart + 1) {
                     if (visiblePercentage < 0.8) {
                         hasUnviewedCards = true;
-                        System.out.println("UpdateNav - Found unviewed card " + i + " (" + (visiblePercentage * 100) + "% visible)");
                         break;
                     }
                 }
@@ -464,15 +398,6 @@ public class HorizontalCarousel extends StackPane {
         }
 
         boolean canScrollRight = hasUnviewedCards;
-
-        System.out.println("=== Nav Button Visibility Debug ===");
-        System.out.println("currentTranslate: " + (-currentTranslate));
-        System.out.println("maxScroll: " + maxScroll);
-        System.out.println("Viewport: " + currentTranslate + " to " + (currentTranslate + visibleWidth));
-        System.out.println("Has unviewed cards: " + hasUnviewedCards);
-        System.out.println("Can scroll left: " + canScrollLeft);
-        System.out.println("Can scroll right: " + canScrollRight);
-
         if (prevBtn != null) {
             prevBtn.setVisible(canScrollLeft);
             prevBtn.setManaged(canScrollLeft);

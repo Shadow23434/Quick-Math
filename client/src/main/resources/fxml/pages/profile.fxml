@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.shape.Rectangle?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.mathspeed.controller.ProfileController"
+      styleClass="container">
+    <!-- Header Section (Fixed Position at Top) -->
+    <BorderPane styleClass="header-section" VBox.vgrow="NEVER">
+        <left>
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label text="Profile" styleClass="user-greeting" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+            </HBox>
+        </left>
+
+        <center>
+            <Region HBox.hgrow="ALWAYS"/>
+        </center>
+
+        <right>
+            <!-- Right: Action Icons -->
+            <HBox alignment="CENTER_RIGHT" spacing="10">
+                <Button fx:id="settingsButton" styleClass="icon-button" onAction="#handleSettings">
+                    <graphic>
+                        <FontIcon iconLiteral="fas-cog" styleClass="header-icon"/>
+                    </graphic>
+                </Button>
+                <Button fx:id="reloadButton" text="🔄" onAction="#handleReload" styleClass="icon-button">
+                    <tooltip>
+                        <Tooltip text="Reload (F5)"/>
+                    </tooltip>
+                </Button>
+            </HBox>
+        </right>
+    </BorderPane>
+
+    <!-- Main Content Scrolls Below Header -->
+    <ScrollPane fitToHeight="true"
+                hbarPolicy="NEVER"
+                vbarPolicy="AS_NEEDED"
+                styleClass="dashboard-scroll-pane"
+                pickOnBounds="false"
+                VBox.vgrow="ALWAYS">
+        <VBox spacing="20" style="-fx-padding: 20;" alignment="TOP_CENTER">
+            <!-- Profile Header Card -->
+            <VBox spacing="15" styleClass="stats-card" alignment="CENTER" style="-fx-padding: 30;">
+                <!-- Avatar -->
+                <StackPane>
+                    <ImageView fx:id="profileImageView" fitWidth="100" fitHeight="100" preserveRatio="true" styleClass="avatar-image">
+                        <image>
+                            <javafx.scene.image.Image url="https://i.pravatar.cc/150?img=12"/>
+                        </image>
+                        <clip>
+                            <javafx.scene.shape.Circle radius="50" centerX="50" centerY="50"/>
+                        </clip>
+                    </ImageView>
+                </StackPane>
+
+                <!-- User Info -->
+                <VBox spacing="5" alignment="CENTER">
+                    <Label fx:id="profileNameLabel" text="Player Name" styleClass="user-greeting" style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
+                    <Label fx:id="profileEmailLabel" text="player@null.com" styleClass="user-email"/>
+                    <Label fx:id="profileJoinedLabel" text="Joined: January 2025" styleClass="stat-label"/>
+                </VBox>
+
+                <!-- Edit Profile Button -->
+                <Button text="Edit Profile" styleClass="primary-button" onAction="#handleEditProfile" maxWidth="150"/>
+            </VBox>
+
+            <!-- Statistics Card -->
+            <VBox styleClass="stats-card" style="-fx-padding: 20;">
+                <Label text="Statistics" styleClass="section-title" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+                <Separator style="-fx-padding: 10 0;"/>
+
+                <GridPane hgap="20" vgap="15">
+                    <!-- Row 1 -->
+                    <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <StackPane styleClass="stat-icon-bg">
+                                <FontIcon iconLiteral="fas-clipboard-list" styleClass="stat-icon"/>
+                            </StackPane>
+                            <VBox>
+                                <Label text="Total Quizzes" styleClass="stat-label"/>
+                                <Label fx:id="totalQuizzesLabel" text="24" styleClass="stat-text"/>
+                            </VBox>
+                        </HBox>
+                    </VBox>
+
+                    <VBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <StackPane styleClass="stat-icon-bg">
+                                <FontIcon iconLiteral="fas-play-circle" styleClass="stat-icon"/>
+                            </StackPane>
+                            <VBox>
+                                <Label text="Games Played" styleClass="stat-label"/>
+                                <Label fx:id="gamesPlayedLabel" text="43" styleClass="stat-text"/>
+                            </VBox>
+                        </HBox>
+                    </VBox>
+
+                    <!-- Row 2 -->
+                    <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <StackPane styleClass="stat-icon-bg">
+                                <FontIcon iconLiteral="fas-trophy" styleClass="stat-icon"/>
+                            </StackPane>
+                            <VBox>
+                                <Label text="Wins" styleClass="stat-label"/>
+                                <Label fx:id="winsLabel" text="14" styleClass="stat-text"/>
+                            </VBox>
+                        </HBox>
+                    </VBox>
+
+                    <VBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <StackPane styleClass="stat-icon-bg">
+                                <FontIcon iconLiteral="fas-user-friends" styleClass="stat-icon"/>
+                            </StackPane>
+                            <VBox>
+                                <Label text="Friends" styleClass="stat-label"/>
+                                <Label fx:id="friendsCountLabel" text="32" styleClass="stat-text"/>
+                            </VBox>
+                        </HBox>
+                    </VBox>
+                </GridPane>
+            </VBox>
+
+            <!-- Recent Activity Card -->
+            <VBox styleClass="stats-card" style="-fx-padding: 20;">
+                <Label text="Recent Activity" styleClass="section-title" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+                <Separator style="-fx-padding: 10 0;"/>
+                <VBox fx:id="recentActivityContainer" spacing="10">
+                    <!-- Recent activities will be added dynamically -->
+                </VBox>
+            </VBox>
+
+            <!-- Account Actions Card -->
+            <VBox styleClass="stats-card" style="-fx-padding: 20;">
+                <Label text="Account" styleClass="section-title" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+                <Separator style="-fx-padding: 10 0;"/>
+                <VBox spacing="10">
+                    <Button text="Change Password" styleClass="secondary-button" onAction="#handleChangePassword" maxWidth="Infinity"/>
+                    <Button text="Privacy Settings" styleClass="secondary-button" onAction="#handlePrivacySettings" maxWidth="Infinity"/>
+                    <Button text="Logout" styleClass="danger-button" onAction="#handleLogout" maxWidth="Infinity"/>
+                </VBox>
+            </VBox>
+
+            <!-- Loading Indicator -->
+            <ProgressIndicator fx:id="loadingIndicator"
+                               visible="false"
+                               managed="false"
+                               maxWidth="40"
+                               maxHeight="40"/>
+        </VBox>
+    </ScrollPane>
+
+    <!-- Bottom AppBar (Fixed Position) with Floating Join Quiz Button -->
+    <StackPane VBox.vgrow="NEVER" styleClass="bottom-appbar-stack">
+        <!-- AppBar Background and Menu -->
+        <HBox spacing="20" alignment="CENTER" styleClass="bottom-appbar">
+            <!-- Home -->
+            <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#handleHome">
+                <FontIcon fx:id="homeIcon" iconLiteral="far-envelope-open" styleClass="bottom-appbar-icon"/>
+                <Label fx:id="homeLabel" text="Home" styleClass="bottom-appbar-label"/>
+            </VBox>
+            <!-- Library -->
+            <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#handleLibrary">
+                <FontIcon fx:id="libraryIcon" iconLiteral="far-copy" styleClass="bottom-appbar-icon"/>
+                <Label fx:id="libraryLabel" text="Library" styleClass="bottom-appbar-label"/>
+            </VBox>
+            <!-- Spacer for Floating Button -->
+            <Region minWidth="60" maxWidth="60"/>
+            <!-- Friends -->
+            <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#handleFriends">
+                <FontIcon fx:id="friendsIcon" iconLiteral="fas-user-friends" styleClass="bottom-appbar-icon"/>
+                <Label fx:id="friendsLabel" text="Friends" styleClass="bottom-appbar-label"/>
+            </VBox>
+            <!-- Profile -->
+            <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#handleProfile">
+                <FontIcon fx:id="profileIcon" iconLiteral="fas-user" styleClass="bottom-appbar-icon"/>
+                <Label fx:id="profileLabel" text="Profile" styleClass="bottom-appbar-label"/>
+            </VBox>
+        </HBox>
+        <!-- Floating Join Quiz Button -->
+        <Button fx:id="joinQuizButton" styleClass="floating-quiz-button" StackPane.alignment="CENTER">
+            <graphic>
+                <FontIcon iconLiteral="fas-play" styleClass="floating-quiz-icon"/>
+            </graphic>
+            <tooltip>
+                <Tooltip text="Join Quiz"/>
+            </tooltip>
+        </Button>
+        <!-- Optional: Add a handle bar below for mobile look -->
+        <Rectangle width="60" height="6" arcWidth="6" arcHeight="6" fill="#23262F" opacity="0.15" StackPane.alignment="BOTTOM_CENTER" styleClass="bottom-appbar-handle"/>
+    </StackPane>
+</VBox>
+

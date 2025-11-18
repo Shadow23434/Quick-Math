@@ -2,6 +2,8 @@ package com.mathspeed.controller;
 
 import com.mathspeed.client.SceneManager;
 import com.mathspeed.util.ReloadManager;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -9,6 +11,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
@@ -36,6 +39,9 @@ public class LoginController {
     @FXML private Hyperlink registerButton;
     @FXML private ProgressIndicator loadingIndicator;
     @FXML private Button reloadButton;
+    @FXML private StackPane loadingOverlay;
+    @FXML private Label loadingMessage;
+    @FXML private ProgressIndicator overlaySpinner;
 
     private boolean isPasswordVisible = false;
     private FontIcon eyeIcon;
@@ -348,12 +354,16 @@ public class LoginController {
             return;
         }
 
-        // Show loading
-        setLoading(true);
+        // Show overlay (instead of only small indicator)
+        setOverlayLoading(true, "Signing in...");
+        // Ensure any previous shell/session is fully reset (especially after logout)
+        SceneManager.getInstance().logout();
 
-        // Login logic
-        System.out.println("Login attempt: " + username);
-        navigateToDashboard(username);
+        Stage stage = (Stage) loginButton.getScene().getWindow();
+        SceneManager.getInstance().loadShellAsync(stage, username,
+            () -> Platform.runLater(() -> setOverlayLoading(false, null)),
+            ex -> Platform.runLater(() -> { setOverlayLoading(false, null); showError("Failed to load main shell."); })
+        );
     }
 
     private void showError(String message) {
@@ -366,6 +376,30 @@ public class LoginController {
         loginButton.setDisable(loading);
         loadingIndicator.setVisible(loading);
         loadingIndicator.setManaged(loading);
+    }
+
+    private void setOverlayLoading(boolean loading, String message) {
+        if (loadingOverlay == null) return;
+        if (message != null && loadingMessage != null) {
+            loadingMessage.setText(message);
+        }
+        loadingOverlay.setVisible(loading);
+        loadingOverlay.setManaged(loading);
+        if (loading) {
+            loadingOverlay.toFront();
+            if (loginButton != null) loginButton.setDisable(true);
+            if (usernameField != null) usernameField.setDisable(true);
+            if (passwordHiddenField != null) passwordHiddenField.setDisable(true);
+            if (passwordVisibleField != null) passwordVisibleField.setDisable(true);
+        } else {
+            if (loginButton != null) loginButton.setDisable(false);
+            if (usernameField != null) usernameField.setDisable(false);
+            if (passwordHiddenField != null) passwordHiddenField.setDisable(false);
+            if (passwordVisibleField != null) passwordVisibleField.setDisable(false);
+        }
+        if (overlaySpinner != null) {
+            overlaySpinner.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
+        }
     }
 
     @FXML

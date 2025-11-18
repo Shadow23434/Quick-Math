@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.shape.Rectangle?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.mathspeed.controller.FriendsController"
+      styleClass="light-container">
+    <!-- Header Section (Separated Component) -->
+    <fx:include fx:id="dashboardHeader"
+                source="../component/dashboard_header.fxml"
+                VBox.vgrow="NEVER"/>
+
+    <!-- Main Content Scrolls Below Header -->
+    <ScrollPane fitToWidth="true"
+                prefHeight="460"
+                maxHeight="460"
+                hbarPolicy="NEVER"
+                vbarPolicy="AS_NEEDED"
+                styleClass="dashboard-scroll-pane"
+                VBox.vgrow="ALWAYS">
+        <VBox spacing="20" prefWidth="320" style="-fx-padding: 0;" alignment="TOP_CENTER">
+            <!-- Page Title -->
+            <Label text="Friends" styleClass="section-title" style="-fx-font-size: 24px; -fx-font-weight: bold;">
+                <VBox.margin>
+                    <Insets top="20" left="20" right="20" bottom="0"/>
+                </VBox.margin>
+            </Label>
+
+            <!-- Friend Status Tabs -->
+            <HBox spacing="10" alignment="CENTER">
+                <VBox.margin>
+                    <Insets left="20" right="20"/>
+                </VBox.margin>
+                <Button fx:id="allFriendsBtn" text="All Friends" styleClass="category-button, category-button-active" onAction="#handleAllFriends"/>
+                <Button fx:id="onlineBtn" text="Online" styleClass="category-button" onAction="#handleOnline"/>
+                <Button fx:id="requestsBtn" text="Requests" styleClass="category-button" onAction="#handleRequests"/>
+            </HBox>
+
+            <!-- Search Bar -->
+            <HBox spacing="10" alignment="CENTER">
+                <VBox.margin>
+                    <Insets left="20" right="20"/>
+                </VBox.margin>
+                <TextField fx:id="searchField" promptText="Search friends..." HBox.hgrow="ALWAYS" styleClass="search-field"/>
+                <Button text="Search" styleClass="primary-button" onAction="#handleSearchFriend"/>
+            </HBox>
+
+            <!-- Friends Container (FlowPane for responsive grid) -->
+            <FlowPane fx:id="friendsContainer"
+                      hgap="15"
+                      vgap="15"
+                      alignment="CENTER"
+                      prefWrapLength="320"
+                      style="-fx-padding: 0 20 20 20;">
+                <!-- Friend cards will be added dynamically -->
+            </FlowPane>
+
+            <!-- Loading Indicator -->
+            <ProgressIndicator fx:id="loadingIndicator"
+                               visible="false"
+                               managed="false"
+                               maxWidth="40"
+                               maxHeight="40"/>
+        </VBox>
+    </ScrollPane>
+    <!-- Bottom AppBar removed: handled by shell -->
+</VBox>
