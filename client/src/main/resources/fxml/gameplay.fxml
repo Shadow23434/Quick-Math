@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Rectangle?>
+
+<!-- Responsive background + input area limited to max 15 tokens per row and max 5 rows (=> 75 tokens).
+     Token tile size reduced so the full grid fits more comfortably without scrolling. -->
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.mathspeed.controller.GamePlayController"
+           styleClass="game-root"
+           fx:id="rootPane"
+           prefWidth="900" prefHeight="600">
+
+    <!-- Background image -->
+    <ImageView fx:id="backgroundImageView" preserveRatio="false" smooth="true" pickOnBounds="false">
+        <image>
+            <Image url="@/images/Default.png" />
+        </image>
+    </ImageView>
+
+    <!-- Main overlay content -->
+    <VBox spacing="12" alignment="TOP_CENTER" style="-fx-padding: 16;" prefWidth="900">
+        <!-- Top bar -->
+        <HBox spacing="12" alignment="CENTER" style="-fx-padding: 6 12;">
+            <VBox spacing="4" alignment="CENTER_LEFT">
+                <Label text="Người chơi 1" style="-fx-font-weight: bold; -fx-text-fill: white;" />
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="Điểm:" style="-fx-text-fill: white;"/>
+                    <Label fx:id="player1ScoreLabel" text="0" style="-fx-font-weight:bold; -fx-text-fill: white;"/>
+                    <Label text="Thời gian tổng:" style="-fx-text-fill: white; -fx-padding: 0 0 0 8;"/>
+                    <Label fx:id="player1TotalTimeLabel" text="0.0" style="-fx-text-fill: white;"/>
+                </HBox>
+            </VBox>
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <StackPane alignment="CENTER">
+                <VBox alignment="CENTER">
+                    <Label text="Target" style="-fx-text-fill: white; -fx-opacity: 0.95;"/>
+                    <Label fx:id="targetNumberLabel" text="57" style="-fx-font-size: 36px; -fx-font-weight: bold; -fx-text-fill: #fff;" />
+                </VBox>
+            </StackPane>
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <!-- Replaced earlier plain label with an icon + decorative plaque showing the remaining round time -->
+            <VBox alignment="TOP_RIGHT" spacing="6">
+                <HBox alignment="CENTER_RIGHT" spacing="8">
+                    <StackPane alignment="CENTER_RIGHT">
+                        <!-- plaque background (wood image) -->
+                        <ImageView fx:id="perRoundPlaque" fitHeight="36" fitWidth="110" pickOnBounds="false" preserveRatio="true">
+                            <image>
+                                <!-- Place your plaque image under resources/images/timer_plaque.png -->
+                                <Image url="@/images/Dummy.png"/>
+                            </image>
+                        </ImageView>
+
+                        <HBox spacing="6" alignment="CENTER_LEFT" style="-fx-padding: 0 8;">
+                            <!-- small clock icon -->
+                            <ImageView fx:id="perRoundClockIcon" fitHeight="18" fitWidth="18" pickOnBounds="false" preserveRatio="true">
+                                <image>
+                                    <!-- Place your clock icon under resources/images/timer_clock.png -->
+                                    <Image url="@/images/Time.png"/>
+                                </image>
+                            </ImageView>
+                            <!-- the label that will be updated by controller (e.g. "10s", "9s", ...) -->
+                            <Label fx:id="perRoundTimeLabel" text="10s" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;"/>
+                        </HBox>
+                    </StackPane>
+                </HBox>
+
+                <VBox spacing="4" alignment="CENTER_RIGHT" style="-fx-padding: 6 0 0 0;">
+                    <Label text="Người chơi 2" style="-fx-font-weight: bold; -fx-text-fill: white;"/>
+                    <HBox spacing="8" alignment="CENTER_RIGHT">
+                        <Label text="Điểm:" style="-fx-text-fill: white;"/>
+                        <Label fx:id="player2ScoreLabel" text="0" style="-fx-font-weight:bold; -fx-text-fill: white;"/>
+                        <Label text="Thời gian tổng:" style="-fx-text-fill: white; -fx-padding: 0 0 0 8;"/>
+                        <Label fx:id="player2TotalTimeLabel" text="0.0" style="-fx-text-fill: white;"/>
+                    </HBox>
+                </VBox>
+            </VBox>
+        </HBox>
+
+        <!-- Main card / play area -->
+        <VBox spacing="10" alignment="CENTER" style="-fx-padding: 12; -fx-background-color: rgba(255,255,255,0.06); -fx-background-radius: 12;">
+
+            <VBox spacing="6" alignment="CENTER" style="-fx-padding: 8 12;">
+                <HBox spacing="6" alignment="CENTER">
+                    <Label text="Biểu thức:" style="-fx-text-fill: white; -fx-font-weight: bold;"/>
+                    <!-- Updated counter: capacity 15*5 = 75 -->
+                    <Label fx:id="slotCounterLabel" text="0/75" style="-fx-text-fill: white; -fx-padding: 0 0 0 8;"/>
+                </HBox>
+
+                <!-- ScrollPane with scrollbars disabled; tile sizes reduced -->
+                <ScrollPane fx:id="inputScroll"
+                            fitToWidth="true"
+                            fitToHeight="false"
+                            hbarPolicy="NEVER"
+                            vbarPolicy="NEVER"
+                            prefHeight="196"
+                            style="-fx-background: transparent; -fx-background-color: transparent;">
+                    <content>
+                        <TilePane fx:id="inputGrid"
+                                  prefColumns="15"
+                                  prefRows="5"
+                                  orientation="HORIZONTAL"
+                                  hgap="6" vgap="6"
+                                  tileAlignment="CENTER"
+                                  prefTileWidth="36"
+                                  prefTileHeight="28"
+                                  style="-fx-background-color: rgba(255,255,255,0.03); -fx-background-radius: 8; -fx-padding: 8;">
+                            <!-- Tokens (ToggleButton clones) will be added here by the controller.
+                                 Grid: 15 columns × 5 rows = 75 slots. Reduced tile size: 36×28 (width×height). -->
+                        </TilePane>
+                    </content>
+                </ScrollPane>
+            </VBox>
+
+            <!-- Submit / clear controls + Cancel button -->
+            <HBox spacing="10" alignment="CENTER" style="-fx-padding: 8;">
+                <Button fx:id="clearButton" text="Clear" onAction="#handleClear" styleClass="clear-button"/>
+                <Button fx:id="submitButton" text="Submit" onAction="#handleSubmit" styleClass="submit-button"/>
+                <!-- New cancel button to abort countdown -->
+                <Button fx:id="cancelButton" text="Hủy" onAction="#handleCancel" styleClass="cancel-button"/>
+            </HBox>
+        </VBox>
+
+        <Region VBox.vgrow="ALWAYS"/>
+
+        <!-- Palette area split into two rows -->
+        <VBox spacing="6" alignment="CENTER" style="-fx-padding: 8 12 20 12;">
+            <Label text="Chọn số / toán tử / dấu ngoặc" style="-fx-text-fill: white;"/>
+
+            <!-- Number row -->
+            <FlowPane fx:id="numberRow" hgap="8" vgap="8" alignment="CENTER">
+                <Button fx:id="numBtn1" text="1" styleClass="number-button" onAction="#handlePaletteButton"/>
+                <Button fx:id="numBtn2" text="2" styleClass="number-button" onAction="#handlePaletteButton"/>
+                <Button fx:id="numBtn3" text="3" styleClass="number-button" onAction="#handlePaletteButton"/>
+                <Button fx:id="numBtn4" text="4" styleClass="number-button" onAction="#handlePaletteButton"/>
+                <Button fx:id="numBtn5" text="5" styleClass="number-button" onAction="#handlePaletteButton"/>
+                <Button fx:id="numBtn6" text="6" styleClass="number-button" onAction="#handlePaletteButton"/>
+                <Button fx:id="numBtn7" text="7" styleClass="number-button" onAction="#handlePaletteButton"/>
+                <Button fx:id="numBtn8" text="8" styleClass="number-button" onAction="#handlePaletteButton"/>
+                <Button fx:id="numBtn9" text="9" styleClass="number-button" onAction="#handlePaletteButton"/>
+            </FlowPane>
+
+            <!-- Operator / paren row -->
+            <FlowPane fx:id="operatorRow" hgap="8" vgap="8" alignment="CENTER">
+                <Button fx:id="plusBtn" text="+" styleClass="operator-button" onAction="#handlePaletteButton"/>
+                <Button fx:id="minusBtn" text="-" styleClass="operator-button" onAction="#handlePaletteButton"/>
+                <Button fx:id="mulBtn" text="×" styleClass="operator-button" onAction="#handlePaletteButton"/>
+                <Button fx:id="divBtn" text="÷" styleClass="operator-button" onAction="#handlePaletteButton"/>
+                <Button fx:id="openParenBtn" text="(" styleClass="paren-button" onAction="#handlePaletteButton"/>
+                <Button fx:id="closeParenBtn" text=")" styleClass="paren-button" onAction="#handlePaletteButton"/>
+            </FlowPane>
+        </VBox>
+    </VBox>
+
+    <!-- Countdown overlay -->
+    <StackPane fx:id="countdownOverlay" pickOnBounds="false"
+               style="-fx-background-color: rgba(0,0,0,0.55);"
+               visible="false" managed="false">
+        <VBox alignment="CENTER" spacing="8">
+            <Label text="Bắt đầu trong" style="-fx-text-fill: white; -fx-font-size: 18px;"/>
+            <Label fx:id="countdownLabel" text="5" style="-fx-text-fill: white; -fx-font-size: 64px; -fx-font-weight: bold;"/>
+        </VBox>
+    </StackPane>
+
+    <!-- Round result banner -->
+    <VBox fx:id="roundResultBanner" spacing="6" alignment="TOP_RIGHT"
+          style="-fx-padding: 8;" StackPane.alignment="TOP_RIGHT" visible="false" managed="false">
+        <HBox spacing="8" alignment="CENTER_RIGHT" style="-fx-background-color: rgba(255,255,255,0.95); -fx-padding: 8; -fx-background-radius: 8;">
+            <VBox spacing="2" alignment="CENTER_RIGHT">
+                <Label text="Bạn" styleClass="result-player-label"/>
+                <Label fx:id="youScoreLabel" text="3" style="-fx-font-weight:bold;"/>
+            </VBox>
+
+            <VBox spacing="2" alignment="CENTER_RIGHT" style="-fx-padding: 0 8 0 8;">
+                <Label text="Kết quả" styleClass="result-outcome-label"/>
+                <Label fx:id="yourOutcomeLabel" text="+1" style="-fx-text-fill: green; -fx-font-weight:bold;"/>
+            </VBox>
+
+            <VBox spacing="2" alignment="CENTER_RIGHT">
+                <Label text="Đối thủ" styleClass="result-player-label"/>
+                <Label fx:id="opponentScoreLabel" text="1" style="-fx-font-weight:bold;"/>
+            </VBox>
+
+            <VBox spacing="2" alignment="CENTER_RIGHT" style="-fx-padding: 0 0 0 12;">
+                <Label text="Kết quả" styleClass="result-outcome-label"/>
+                <Label fx:id="opponentOutcomeLabel" text="-1" style="-fx-text-fill: red; -fx-font-weight:bold;"/>
+            </VBox>
+        </HBox>
+    </VBox>
+
+    <Rectangle width="0" height="0" fill="transparent" visible="false" managed="false"/>
+
+</StackPane>

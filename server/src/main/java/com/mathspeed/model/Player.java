@@ -2,58 +2,111 @@ package com.mathspeed.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.io.Serializable;
+import java.util.UUID;
+
 @Entity
 @Table(name = "players")
 public class Player {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
 
-    @Column(unique = true, nullable = false, length = 50)
+    @Id
+    @Column(name = "id", length = 36, nullable = false, updatable = false)
+    private String id;
+
+    @Column(name = "username", unique = true, nullable = false, length = 64)
     private String username;
 
-    @Column(nullable = false)
-    private String password;
+    @Column(name = "display_name", length = 100)
+    private String displayName;
 
-    @Column(name = "total_wins")
-    private Integer totalWins = 0;
+    @Column(name = "password_hash", nullable = false, length = 255)
+    private String passwordHash;
 
-    @Column(name = "total_correct_answers")
-    private Integer totalCorrectAnswers = 0;
+    @Column(name = "gender", columnDefinition = "ENUM('male','female','other') DEFAULT 'male'")
+    private String gender = "male";
 
-    @Column(name = "created_at")
+    @Column(name = "avatar_url", length = 255)
+    private String avatarUrl;
+
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    public Player() { }
+
+    public Player(String username, String passwordHash) {
+        this.username = username;
+        this.passwordHash = passwordHash;
+    }
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        if (this.id == null) {
+            this.id = UUID.randomUUID().toString();
+        }
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.gender == null) {
+            this.gender = "male";
+        }
     }
 
-    public Player() {}
+    // ---------------------
+    // Getters & Setters
+    // ---------------------
 
-    public Player(String username, String password) {
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
         this.username = username;
-        this.password = password;
     }
 
-    public Integer getId() { return id; }
-    public void setId(Integer id) { this.id = id; }
-
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
-
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
-
-    public Integer getTotalWins() { return totalWins; }
-    public void setTotalWins(Integer totalWins) { this.totalWins = totalWins; }
-
-    public Integer getTotalCorrectAnswers() { return totalCorrectAnswers; }
-    public void setTotalCorrectAnswers(Integer totalCorrectAnswers) {
-        this.totalCorrectAnswers = totalCorrectAnswers;
+    public String getDisplayName() {
+        return displayName;
     }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!--
+  RoundResultBanner.fxml
+  - A small banner that shows the result of a round for both clients:
+    * Player labels and scores
+    * Outcome labels (+1 / -1)
+  - This is a standalone component that can be injected into the game view.
+-->
+<HBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:id="roundResultBanner"
+      spacing="8"
+      style="-fx-background-color: rgba(255,255,255,0.95); -fx-padding: 8; -fx-background-radius: 8;"
+      alignment="CENTER_RIGHT">
+
+    <VBox spacing="2" alignment="CENTER_RIGHT">
+        <Label text="Bạn" style="-fx-font-size: 11px;" />
+        <Label fx:id="youScoreLabel" text="0" style="-fx-font-weight:bold;"/>
+    </VBox>
+
+    <VBox spacing="2" alignment="CENTER_RIGHT" style="-fx-padding: 0 8 0 8;">
+        <Label text="Kết quả" style="-fx-font-size: 11px;"/>
+        <Label fx:id="yourOutcomeLabel" text="+1" style="-fx-text-fill: green; -fx-font-weight:bold;"/>
+    </VBox>
+
+    <VBox spacing="2" alignment="CENTER_RIGHT">
+        <Label text="Đối thủ" style="-fx-font-size: 11px;"/>
+        <Label fx:id="opponentScoreLabel" text="0" style="-fx-font-weight:bold;"/>
+    </VBox>
+
+    <VBox spacing="2" alignment="CENTER_RIGHT" style="-fx-padding: 0 0 0 12;">
+        <Label text="Kết quả" style="-fx-font-size: 11px;"/>
+        <Label fx:id="opponentOutcomeLabel" text="-1" style="-fx-text-fill: red; -fx-font-weight:bold;"/>
+    </VBox>
+</HBox>
