@@ -1,4 +1,4 @@
-package com.mathspeed.dao;
+package com.mathspeed.dao.impl;
 
 import com.mathspeed.util.DBConfig;
 

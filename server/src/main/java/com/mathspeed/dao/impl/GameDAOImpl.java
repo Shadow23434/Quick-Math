@@ -1,6 +1,5 @@
 package com.mathspeed.dao.impl;
 
-import com.mathspeed.dao.BaseDAO;
 import com.mathspeed.dao.GameDAO;
 
 import java.sql.*;

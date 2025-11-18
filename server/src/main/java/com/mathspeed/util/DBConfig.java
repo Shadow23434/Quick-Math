@@ -20,7 +20,7 @@ public class DBConfig {
 
     private static final String DEFAULT_JDBC_URL = "jdbc:mysql://localhost:3306/quickmath";
     private static final String DEFAULT_USER = "root";
-    private static final String DEFAULT_PASSWORD = "";
+    private static final String DEFAULT_PASSWORD = "mysql123";
     private static final int DEFAULT_MAX_POOL = 10;
     private static final int DEFAULT_MIN_IDLE = 2;
 

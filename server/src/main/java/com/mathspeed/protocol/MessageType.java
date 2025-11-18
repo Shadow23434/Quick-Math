@@ -33,22 +33,22 @@ public enum MessageType {
 
     // Game lifecycle & gameplay (existing)
     GAME_START,
-    NEW_QUESTION,     // legacy / optional: keep if some clients expect it
+    NEW_QUESTION,
     SUBMIT_ANSWER,
     ANSWER_RESULT,
     GAME_END,
     REMATCH_REQUEST,
     REMATCH_RESPONSE,
 
-    // Game lifecycle & gameplay (added / recommended)
-    MATCH_START_INFO, // contains seed, start_time, countdown_ms, question_count, per_question_seconds
-    NEW_ROUND,        // per-round payload (round index, target, deck, time, round_seed...)
-    ROUND_RESULT,     // per-round summary (players, scores, times)
-    GAME_OVER,        // final game summary (scores, total_play_time_ms, winner, round_history)
+    // Game lifecycle & gameplay (new / detailed)
+    MATCH_START_INFO,
+    NEW_ROUND,
+    ROUND_RESULT,
+    GAME_OVER,
 
     // Forfeit / cancel
-    FORFEIT_REQUEST,  // client -> server: player requests/does forfeit while still connected
-    FORFEIT_ACK,      // server -> client: acknowledgement / info about forfeit outcome
+    FORFEIT_REQUEST,
+    FORFEIT_ACK,
 
     // General
     SERVER_BUSY,

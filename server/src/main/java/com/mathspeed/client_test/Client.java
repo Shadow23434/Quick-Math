@@ -146,7 +146,7 @@ public class Client {
     public static void main(String[] args) {
 
         // DEFAULT FOR TESTING IN VM
-        String host = "localhost";
+        String host = "26.145.135.7";
         int port = 8888;
         String localIp = ""; // auto bind
 

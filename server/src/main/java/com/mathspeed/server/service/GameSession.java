@@ -107,7 +107,7 @@ public class GameSession {
         repeatAdd(list, 3, hardCount);
 
         // Shuffle to avoid grouping all easy/medium/hard together, deterministic by seed
-        Collections.shuffle(list, new Random(seed));
+//        Collections.shuffle(list, new Random(seed));
         return Collections.unmodifiableList(list);
     }
 
@@ -140,18 +140,6 @@ public class GameSession {
         startFuture = scheduler.schedule(this::runStartMatch, delay, TimeUnit.MILLISECONDS);
     }
 
-    /**
-     * Broadcast match start info to both players.
-     * Includes:
-     *  - MATCH_START_INFO type
-     *  - seed
-     *  - start_time (epoch ms when match is scheduled to start)
-     *  - server_time (epoch ms of the server when sending this message)  <-- ADDED
-     *  - countdown_ms (computed remaining milliseconds)
-     *  - question_count, per_question_seconds
-     *
-     * Clients should use start_time and server_time to compute a local offset and run client-side countdown.
-     */
     private void broadcastMatchInfo() {
         long now = System.currentTimeMillis();
         Map<String, Object> msg = new LinkedHashMap<>();

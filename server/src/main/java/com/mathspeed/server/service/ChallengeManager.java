@@ -15,7 +15,7 @@ public class ChallengeManager {
     private final ConcurrentMap<String, Map<String, Integer>> pendingChallenges = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-    private final int DEFAULT_TIME_PER_ROUNDS = 40;
+    private final int DEFAULT_TIME_PER_ROUNDS = 20;
 
     public ChallengeManager(ClientRegistry clientRegistry, GameSessionManager sessionManager) {
         this.clientRegistry = clientRegistry;
@@ -54,7 +54,7 @@ public class ChallengeManager {
                 ClientHandler c = clientRegistry.getClientHandler(challenger);
                 if (c != null) c.sendType(MessageType.CHALLENGE_EXPIRED, target);
             }
-        }, 30, TimeUnit.SECONDS);
+        }, 40, TimeUnit.SECONDS);
     }
 
     public void acceptChallenge(String accepter, String challenger) {

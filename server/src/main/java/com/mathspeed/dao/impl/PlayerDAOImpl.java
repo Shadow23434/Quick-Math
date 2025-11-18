@@ -1,6 +1,5 @@
 package com.mathspeed.dao.impl;
 
-import com.mathspeed.dao.BaseDAO;
 import com.mathspeed.dao.PlayerDAO;
 import com.mathspeed.model.Player;
 
