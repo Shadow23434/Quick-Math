@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<BorderPane fx:id="root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mathspeed.controller.ShellController"
+            styleClass="container"
+            prefWidth="360" prefHeight="640"
+            minWidth="360" minHeight="640">
+    <center>
+        <StackPane fx:id="contentPane"
+                   prefWidth="360"
+                   prefHeight="560"
+                   minWidth="360"
+                   minHeight="560"
+                   maxWidth="360"
+                   maxHeight="560"
+                   style="-fx-background-color: transparent;"
+                   BorderPane.alignment="TOP_LEFT"/>
+    </center>
+    <bottom>
+        <fx:include fx:id="bottomNav" source="component/bottom_nav.fxml" />
+    </bottom>
+</BorderPane>

@@ -13,3 +13,21 @@
     -fx-fill: -text-color;
     -fx-font-size: 13px;
 }
+
+/* Loading Overlay */
+.loading-overlay {
+    -fx-background-color: rgba(0,0,0,0.35);
+    -fx-alignment: center;
+}
+
+/* Loading Message */
+.loading-message {
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-family: "Poppins Medium";
+}
+
+/* Spinner inherits theme colors optionally */
+.progress-indicator:indeterminate .spinner {
+    -fx-background-color: transparent;
+}

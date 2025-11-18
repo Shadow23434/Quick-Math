@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Rectangle?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.mathspeed.controller.BottomNavController"
+           styleClass="bottom-appbar-stack"
+           prefHeight="80" maxHeight="80"
+           style="-fx-background-color: rgba(255,0,0,0.08);"> <!-- DEBUG: visible background -->
+    <VBox alignment="CENTER" spacing="4" StackPane.alignment="TOP_CENTER" style="-fx-padding:6 0 0 0;">
+        <Label text="DEBUG BOTTOM NAV" style="-fx-text-fill:#111; -fx-font-weight:bold; -fx-font-size:12px;"/>
+    </VBox>
+
+    <HBox spacing="20" alignment="CENTER" styleClass="bottom-appbar" prefHeight="60" maxHeight="60">
+        <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#onHomeClicked">
+            <FontIcon fx:id="homeIcon" iconLiteral="far-envelope-open" styleClass="bottom-appbar-icon"/>
+            <Label fx:id="homeLabel" text="Home" styleClass="bottom-appbar-label"/>
+        </VBox>
+        <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#onLibraryClicked">
+            <FontIcon fx:id="libraryIcon" iconLiteral="far-copy" styleClass="bottom-appbar-icon"/>
+            <Label fx:id="libraryLabel" text="Library" styleClass="bottom-appbar-label"/>
+        </VBox>
+        <Region minWidth="60" maxWidth="60"/>
+        <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#onFriendsClicked">
+            <FontIcon fx:id="friendsIcon" iconLiteral="fas-user-friends" styleClass="bottom-appbar-icon"/>
+            <Label fx:id="friendsLabel" text="Friends" styleClass="bottom-appbar-label"/>
+        </VBox>
+        <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#onLeaderboardClicked">
+            <FontIcon fx:id="leaderboardIcon" iconLiteral="far-chart-bar" styleClass="bottom-appbar-icon"/>
+            <Label fx:id="leaderboardLabel" text="Leaderboard" styleClass="bottom-appbar-label"/>
+        </VBox>
+    </HBox>
+
+    <Button fx:id="joinQuizButton" styleClass="floating-quiz-button" StackPane.alignment="CENTER">
+        <graphic>
+            <FontIcon iconLiteral="fas-play" styleClass="floating-quiz-icon"/>
+        </graphic>
+        <tooltip>
+            <Tooltip text="Join Quiz"/>
+        </tooltip>
+    </Button>
+
+    <Rectangle width="60" height="6" arcWidth="6" arcHeight="6" fill="#23262F" opacity="0.15" StackPane.alignment="BOTTOM_CENTER" styleClass="bottom-appbar-handle"/>
+</StackPane>

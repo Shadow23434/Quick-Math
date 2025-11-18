@@ -13,7 +13,23 @@ public class ResourceLoader {
         if (file.exists()) {
             loader = new FXMLLoader(file.toURI().toURL());
         } else {
-            URL resource = contextClass.getResource("/fxml/" + new File(fxmlPath).getName());
+            // Try to load from classpath
+            // First try with full path structure
+            String fileName = new File(fxmlPath).getName();
+            URL resource = null;
+
+            // Try: /fxml/pages/filename.fxml
+            resource = contextClass.getResource("/fxml/pages/" + fileName);
+
+            // Try: /fxml/filename.fxml
+            if (resource == null) {
+                resource = contextClass.getResource("/fxml/" + fileName);
+            }
+
+            if (resource == null) {
+                throw new IOException("Cannot find FXML resource: " + fxmlPath + " (tried /fxml/pages/ and /fxml/)");
+            }
+
             loader = new FXMLLoader(resource);
         }
         return loader.load();

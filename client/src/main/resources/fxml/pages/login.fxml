@@ -9,7 +9,6 @@
            xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="com.mathspeed.controller.LoginController"
            styleClass="container">
-
     <!-- BorderPane to control layout -->
     <BorderPane pickOnBounds="false">
         <!-- Main Content -->
@@ -207,4 +206,16 @@
             <Tooltip text="Reload (F5)"/>
         </tooltip>
     </Button>
+
+    <!-- Loading Overlay moved to last so it appears on top -->
+    <StackPane fx:id="loadingOverlay"
+               visible="false" managed="false"
+               styleClass="loading-overlay"
+               maxWidth="Infinity" maxHeight="Infinity"
+               pickOnBounds="true" mouseTransparent="false">
+        <VBox alignment="CENTER" spacing="15">
+            <ProgressIndicator fx:id="overlaySpinner" prefWidth="60" prefHeight="60"/>
+            <Label fx:id="loadingMessage" text="Signing in..." styleClass="loading-message"/>
+        </VBox>
+    </StackPane>
 </StackPane>

@@ -6,78 +6,35 @@
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.shape.Rectangle?>
-<?import javafx.scene.shape.SVGPath?>
 <VBox xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.mathspeed.controller.DashboardController"
-      styleClass="container">
-    <!-- Header Section (Fixed Position at Top) -->
-    <BorderPane styleClass="header-section" VBox.vgrow="NEVER" StackPane.alignment="TOP_CENTER">
-        <left>
-            <!-- Left: User Avatar + User Info -->
-            <HBox alignment="CENTER_LEFT" spacing="10">
-                <!-- Logo ImageView in place of Avatar Label -->
-                <ImageView fx:id="logoImageView" fitWidth="40" fitHeight="40" preserveRatio="true" styleClass="avatar-image">
-                    <image>
-                        <javafx.scene.image.Image url="https://i.pravatar.cc/150?img=12"/>
-                    </image>
-                    <clip>
-                        <javafx.scene.shape.Circle radius="20" centerX="20" centerY="20"/>
-                    </clip>
-                </ImageView>
-                <VBox spacing="2" alignment="CENTER_LEFT">
-                    <Label fx:id="userGreetingLabel" text="Hi, Player" styleClass="user-greeting"/>
-                    <Label fx:id="userEmailLabel" text="player@null.com" styleClass="user-email"/>
-                </VBox>
-            </HBox>
-        </left>
-
-        <center>
-            <!-- Spacer -->
-            <Region HBox.hgrow="ALWAYS"/>
-        </center>
-
-        <right>
-            <!-- Right: Action Icons -->
-            <HBox alignment="CENTER_RIGHT" spacing="10">
-                <Button fx:id="searchButton" styleClass="icon-button" onAction="#handleSearch">
-                    <graphic>
-                        <FontIcon iconLiteral="fas-search" styleClass="header-icon"/>
-                    </graphic>
-                </Button>
-
-                <Button fx:id="notificationButton" styleClass="icon-button" onAction="#handleNotifications">
-                    <graphic>
-                        <FontIcon iconLiteral="fas-bell" styleClass="header-icon"/>
-                    </graphic>
-                </Button>
-                <Button fx:id="reloadButton"
-                        text="🔄"
-                        onAction="#handleReload"
-                        styleClass="icon-button">
-                    <tooltip>
-                        <Tooltip text="Reload (F5)"/>
-                    </tooltip>
-                </Button>
-            </HBox>
-        </right>
-    </BorderPane>
+      styleClass="dashboard-view"
+      prefWidth="360"
+      prefHeight="560"
+      maxWidth="360"
+      maxHeight="560"
+      style="-fx-background-color: transparent;">
+    <!-- Header Section (Separated Component) -->
+    <fx:include fx:id="dashboardHeader"
+                source="../component/dashboard_header.fxml"
+                VBox.vgrow="NEVER"/>
 
     <!-- Main Content Scrolls Below Header -->
-    <ScrollPane fitToHeight="true"
+    <ScrollPane fitToWidth="true"
+                prefHeight="460"
+                maxHeight="460"
                 hbarPolicy="NEVER"
-                vbarPolicy="NEVER"
+                vbarPolicy="AS_NEEDED"
                 styleClass="dashboard-scroll-pane"
-                pickOnBounds="false"
                 VBox.vgrow="ALWAYS">
-        <AnchorPane AnchorPane.topAnchor="0" AnchorPane.rightAnchor="0" AnchorPane.bottomAnchor="0" AnchorPane.leftAnchor="0">
-            <BorderPane layoutX="10" layoutY="10" >
-                <center>
-                    <!-- Main Content -->
-                    <VBox spacing="20" style="-fx-padding: 0 0 20 0">
+        <!-- Main Content -->
+        <VBox spacing="20" prefWidth="320" style="-fx-padding: 0;">
                         <!-- User Stats Card -->
                         <VBox styleClass="stats-card">
+                            <VBox.margin>
+                                <Insets top="20" right="20" bottom="0" left="20"/>
+                            </VBox.margin>
                             <!-- Stats -->
                             <BorderPane>
                                 <padding>
@@ -141,9 +98,12 @@
                         </VBox>
 
                         <!-- Discover Quiz -->
-                        <VBox spacing="10">
+                        <VBox spacing="10" alignment="CENTER">
                             <!-- Section Header -->
-                            <HBox maxWidth="330">
+                            <HBox>
+                                <VBox.margin>
+                                    <Insets left="20" right="20"/>
+                                </VBox.margin>
                                 <Label text="Discover Quiz" styleClass="section-title"/>
                                 <Region HBox.hgrow="ALWAYS"/>
                                 <Hyperlink fx:id="seeAllQuizLink" text="See All"
@@ -156,16 +116,21 @@
                                 </Hyperlink>
                             </HBox>
 
-                            <!-- Quiz Carousel -->
+                            <!-- Quiz Carousel - Centered in viewport -->
                             <StackPane fx:id="quizCarouselPane"
-                                       maxWidth="630"
-                                       prefWidth="630"
-                                       alignment="CENTER_LEFT"/>
+                                       prefWidth="320"
+                                       maxWidth="320"
+                                       prefHeight="200"
+                                       alignment="CENTER"
+                                       style="-fx-background-color: transparent;"/>
                         </VBox>
 
                         <!-- Online Friends -->
-                        <VBox spacing="10">
-                            <HBox maxWidth="330">
+                        <VBox spacing="10" alignment="CENTER">
+                            <HBox>
+                                <VBox.margin>
+                                    <Insets left="20" right="20"/>
+                                </VBox.margin>
                                 <Label text="Online Friends" styleClass="section-title"/>
                                 <Region HBox.hgrow="ALWAYS"/>
                                 <Hyperlink fx:id="seeAllFriendsLink" text="See All"
@@ -178,66 +143,22 @@
                                 </Hyperlink>
                             </HBox>
 
-                            <!-- Friends Carousel -->
+                            <!-- Friends Carousel - Centered in viewport -->
                             <StackPane fx:id="friendsCarouselPane"
-                                       maxWidth="630"
-                                       prefWidth="630"
-                                       alignment="CENTER_LEFT"/>
+                                       prefWidth="320"
+                                       maxWidth="320"
+                                       prefHeight="120"
+                                       alignment="CENTER"
+                                       style="-fx-background-color: transparent;"/>
                         </VBox>
 
-                        <!-- Loading Indicator (hidden by default) -->
-                        <ProgressIndicator fx:id="loadingIndicator"
-                                           visible="false"
-                                           managed="false"
-                                           maxWidth="40"
-                                           maxHeight="40"/>
-                    </VBox>
-                </center>
-
-                <bottom>
-
-                </bottom>
-            </BorderPane>
-        </AnchorPane>
+            <!-- Loading Indicator (hidden by default) -->
+            <ProgressIndicator fx:id="loadingIndicator"
+                               visible="false"
+                               managed="false"
+                               maxWidth="40"
+                               maxHeight="40"/>
+        </VBox>
     </ScrollPane>
-
-    <!-- Bottom AppBar (Fixed Position) with Floating Join Quiz Button -->
-    <StackPane VBox.vgrow="NEVER" styleClass="bottom-appbar-stack">
-        <!-- AppBar Background and Menu -->
-        <HBox spacing="20" alignment="CENTER" styleClass="bottom-appbar">
-            <!-- Home -->
-            <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item">
-                <FontIcon fx:id="homeIcon" iconLiteral="far-envelope-open" styleClass="bottom-appbar-icon"/>
-                <Label fx:id="homeLabel" text="Home" styleClass="bottom-appbar-label"/>
-            </VBox>
-            <!-- Library -->
-            <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item">
-                <FontIcon fx:id="libraryIcon" iconLiteral="far-copy" styleClass="bottom-appbar-icon"/>
-                <Label fx:id="libraryLabel" text="Library" styleClass="bottom-appbar-label"/>
-            </VBox>
-            <!-- Spacer for Floating Button -->
-            <Region minWidth="60" maxWidth="60"/>
-            <!-- Friends -->
-            <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item">
-                <FontIcon fx:id="friendsIcon" iconLiteral="fas-user-friends" styleClass="bottom-appbar-icon"/>
-                <Label fx:id="friendsLabel" text="Friends" styleClass="bottom-appbar-label"/>
-            </VBox>
-            <!-- Profile -->
-            <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item">
-                <FontIcon fx:id="profileIcon" iconLiteral="fas-user" styleClass="bottom-appbar-icon"/>
-                <Label fx:id="profileLabel" text="Profile" styleClass="bottom-appbar-label"/>
-            </VBox>
-        </HBox>
-        <!-- Floating Join Quiz Button -->
-        <Button fx:id="joinQuizButton" styleClass="floating-quiz-button" StackPane.alignment="CENTER">
-            <graphic>
-                <FontIcon iconLiteral="fas-play" styleClass="floating-quiz-icon"/>
-            </graphic>
-            <tooltip>
-                <Tooltip text="Join Quiz"/>
-            </tooltip>
-        </Button>
-        <!-- Optional: Add a handle bar below for mobile look -->
-        <Rectangle width="60" height="6" arcWidth="6" arcHeight="6" fill="#23262F" opacity="0.15" StackPane.alignment="BOTTOM_CENTER" styleClass="bottom-appbar-handle"/>
-    </StackPane>
+    <!-- Bottom AppBar removed: handled by shell -->
 </VBox>
