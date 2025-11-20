@@ -14,40 +14,25 @@ import org.slf4j.LoggerFactory;
 
 public class LibraryController {
     private static final Logger logger = LoggerFactory.getLogger(LibraryController.class);
-
-    // Header component (injected from fx:include)
     @FXML private HeaderController headerController;
-
     @FXML private ProgressIndicator loadingIndicator;
-
-    // Category Buttons
     @FXML private Button allQuizzesBtn;
     @FXML private Button myQuizzesBtn;
     @FXML private Button favoritesBtn;
-
-    // Quiz Container (changed from GridPane to FlowPane)
     @FXML private FlowPane quizContainer;
-
     private String username;
     private String currentCategory = "all";
 
     @FXML
     public void initialize() {
-        logger.info("LibraryController initialized");
-
-        // Initialize quiz display after layout
         javafx.application.Platform.runLater(this::loadQuizzes);
     }
 
     public void setUsername(String username) {
         this.username = username;
-        logger.info("LibraryController - Setting username: {}", username);
-
-        // Delegate user info to header controller
         if (headerController != null) {
             String email = username + "@mathspeed.com";
             headerController.setUserInfo(username, email);
-            logger.debug("User info delegated to header controller");
         } else {
             logger.warn("Header controller not initialized yet, username will be set later");
         }
@@ -67,17 +52,11 @@ public class LibraryController {
     }
 
     private void loadQuizzes() {
-        logger.info("Loading quizzes for category: " + currentCategory);
-
         if (quizContainer == null) {
             logger.warn("Quiz container is null");
             return;
         }
-
-        // Clear existing quizzes
         quizContainer.getChildren().clear();
-
-        // Add quiz cards based on category
         switch (currentCategory) {
             case "all" -> loadAllQuizzes();
             case "my" -> loadMyQuizzes();
@@ -200,8 +179,6 @@ public class LibraryController {
             quizCard.setStyle(quizCard.getStyle() + "; -fx-cursor: hand;");
 
             quizContainer.getChildren().add(quizCard);
-            logger.debug("Added quiz card: {}", title);
-
         } catch (Exception e) {
             logger.error("Failed to create quiz card: " + title, e);
         }
@@ -230,43 +207,12 @@ public class LibraryController {
         loadQuizzes();
     }
 
-
-    @FXML
-    private void handleHome() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.DASHBOARD);
-    }
-
-    @FXML
-    private void handleLibrary() {
-        // already on library
-    }
-
-    /**
-     * Public helper to switch the library view to the 'all' category and reload quizzes.
-     * Intended to be called by other controllers after navigation to the Library screen.
-     */
     public void showAllImmediately() {
         try {
             setActiveCategory("all");
             loadQuizzes();
-            logger.info("LibraryController: showAllImmediately invoked");
         } catch (Exception e) {
             logger.warn("Failed to immediately show all quizzes", e);
         }
-    }
-
-    @FXML
-    private void handleFriends() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.FRIENDS);
-    }
-
-    @FXML
-    public void handleLeaderboard() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.LEADERBOARD);
-    }
-
-    @FXML
-    private void handleProfile() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.PROFILE);
     }
 }

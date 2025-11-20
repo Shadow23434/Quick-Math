@@ -1,16 +1,12 @@
 package com.mathspeed.controller;
 
 import com.mathspeed.client.SceneManager;
-import com.mathspeed.util.ReloadManager;
+import com.mathspeed.client.WindowSizing;
 import javafx.application.Platform;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -18,7 +14,6 @@ import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 
 public class LoginController {
     private static final Logger logger = LoggerFactory.getLogger(LoginController.class);
@@ -38,10 +33,9 @@ public class LoginController {
     @FXML private Button loginButton;
     @FXML private Hyperlink registerButton;
     @FXML private ProgressIndicator loadingIndicator;
-    @FXML private Button reloadButton;
+    @FXML private StackPane rootPane;
     @FXML private StackPane loadingOverlay;
-    @FXML private Label loadingMessage;
-    @FXML private ProgressIndicator overlaySpinner;
+    private Label loadingOverlayMessage;
 
     private boolean isPasswordVisible = false;
     private FontIcon eyeIcon;
@@ -50,20 +44,37 @@ public class LoginController {
 
     @FXML
     public void initialize() {
-        logger.info("LoginController initialized");
-
-        // Initialize network manager
-        // networkManager = NetworkManager.getInstance();
-
-        // Load saved credentials if remember me was checked
         loadSavedCredentials();
-
         setupIcons();
         setupPasswordField();
         setupEmailField();
         setupEnterKeyLogin();
-        setupReloadShortcut();
         setupCustomCheckboxIcon();
+
+        // Ensure login uses default compact sizing by default
+        WindowSizing.applyToNode(usernameField, false);
+
+        // If overlay was included, locate its internal message label for later updates
+        try {
+            if (loadingOverlay != null) {
+                Object node = loadingOverlay.lookup("#loadingMessage");
+                if (node instanceof Label) loadingOverlayMessage = (Label) node;
+            }
+        } catch (Exception ignored) {}
+
+        if (usernameField != null) {
+            usernameField.sceneProperty().addListener((obs, oldS, newS) -> {
+                if (newS != null) {
+                    newS.addEventFilter(KeyEvent.KEY_PRESSED, ev -> {
+                        if (ev.isControlDown() && ev.getCode() == javafx.scene.input.KeyCode.D) {
+                            WindowSizing.toggleGlobalAndApply(usernameField);
+                            System.out.println("Window mode toggled. Now desktop=" + WindowSizing.isGlobalDesktopMode());
+                            ev.consume();
+                        }
+                    });
+                }
+            });
+        }
     }
 
     private void setupIcons() {
@@ -96,26 +107,6 @@ public class LoginController {
             clearIcon.getStyleClass().add("icon-view");
             clearPasswordButton.setGraphic(clearIcon);
         }
-
-        // Setup reload icon
-        if (reloadButton != null) {
-            FontIcon reloadIcon = new FontIcon(FontAwesomeSolid.SYNC_ALT);
-            reloadIcon.setIconSize(20);
-            reloadIcon.getStyleClass().add("icon-view");
-            reloadButton.setGraphic(reloadIcon);
-            reloadButton.setText("");
-        }
-    }
-
-    private void setupReloadShortcut() {
-        if (reloadButton != null && reloadButton.getScene() != null) {
-            reloadButton.getScene().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-                if (event.getCode() == KeyCode.F5) {
-                    handleReload();
-                    event.consume();
-                }
-            });
-        }
     }
 
     private void setupCustomCheckboxIcon() {
@@ -136,13 +127,7 @@ public class LoginController {
         if (rememberMeCheckBox.isSelected()) {
             checkIconLabel.setGraphic(checkIcon);
             checkIconLabel.setVisible(true);
-            logger.info("Initial state: checkbox selected, icon added");
         }
-    }
-
-    @FXML
-    private void handleReload() {
-        ReloadManager.reloadCurrentScene();
     }
 
     private void setupPasswordField() {
@@ -160,25 +145,17 @@ public class LoginController {
         });
 
         // Focus handling
-        passwordHiddenField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
-            updateClearPasswordButtonVisibility();
-        });
+        passwordHiddenField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> updateClearPasswordButtonVisibility());
 
-        passwordVisibleField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
-            updateClearPasswordButtonVisibility();
-        });
+        passwordVisibleField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> updateClearPasswordButtonVisibility());
     }
 
     private void setupEmailField() {
         // Text change listener
-        usernameField.textProperty().addListener((obs, oldVal, newVal) -> {
-            updateClearEmailButtonVisibility();
-        });
+        usernameField.textProperty().addListener((obs, oldVal, newVal) -> updateClearEmailButtonVisibility());
 
         // Focus handling
-        usernameField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
-            updateClearEmailButtonVisibility();
-        });
+        usernameField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> updateClearEmailButtonVisibility());
     }
 
     private void setupEnterKeyLogin() {
@@ -354,15 +331,51 @@ public class LoginController {
             return;
         }
 
-        // Show overlay (instead of only small indicator)
-        setOverlayLoading(true, "Signing in...");
+        // Show loading state
+        if (loadingIndicator != null) {
+            loadingIndicator.setVisible(true);
+            loadingIndicator.setManaged(true);
+        }
+        if (loadingOverlayMessage != null) {
+            // if overlay label exists, ensure its visible text is updated
+            Platform.runLater(() -> {
+                loadingOverlayMessage.setVisible(true);
+                loadingOverlayMessage.setManaged(true);
+                loadingOverlayMessage.setText("Loading...");
+            });
+        }
+        if (loginButton != null) loginButton.setDisable(true);
+
+        // Also show the full-screen overlay if available
+        showLoadingOverlay("Loading...");
+
         // Ensure any previous shell/session is fully reset (especially after logout)
         SceneManager.getInstance().logout();
 
         Stage stage = (Stage) loginButton.getScene().getWindow();
+        // Call loadShellAsync with success and error handlers (method expects 4 args)
         SceneManager.getInstance().loadShellAsync(stage, username,
-            () -> Platform.runLater(() -> setOverlayLoading(false, null)),
-            ex -> Platform.runLater(() -> { setOverlayLoading(false, null); showError("Failed to load main shell."); })
+                // onSuccess: hide loader and leave UI to shell
+                () -> {
+                    try {
+                        // Hide both small indicator and overlay on success
+                        if (loadingIndicator != null) { loadingIndicator.setVisible(false); loadingIndicator.setManaged(false); }
+                        if (loginButton != null) loginButton.setDisable(false);
+                        hideLoadingOverlay();
+                    } catch (Exception ignored) {}
+                },
+                // onError: log and show error message to user
+                (ex) -> {
+                    logger.error("Failed to load shell asynchronously", ex);
+                    Platform.runLater(() -> {
+                        showError("Failed to start application. Please try again.");
+                        try {
+                            if (loadingIndicator != null) { loadingIndicator.setVisible(false); loadingIndicator.setManaged(false); }
+                            if (loginButton != null) loginButton.setDisable(false);
+                            hideLoadingOverlay();
+                        } catch (Exception ignored) {}
+                    });
+                }
         );
     }
 
@@ -372,39 +385,8 @@ public class LoginController {
         errorLabel.setManaged(true);
     }
 
-    private void setLoading(boolean loading) {
-        loginButton.setDisable(loading);
-        loadingIndicator.setVisible(loading);
-        loadingIndicator.setManaged(loading);
-    }
-
-    private void setOverlayLoading(boolean loading, String message) {
-        if (loadingOverlay == null) return;
-        if (message != null && loadingMessage != null) {
-            loadingMessage.setText(message);
-        }
-        loadingOverlay.setVisible(loading);
-        loadingOverlay.setManaged(loading);
-        if (loading) {
-            loadingOverlay.toFront();
-            if (loginButton != null) loginButton.setDisable(true);
-            if (usernameField != null) usernameField.setDisable(true);
-            if (passwordHiddenField != null) passwordHiddenField.setDisable(true);
-            if (passwordVisibleField != null) passwordVisibleField.setDisable(true);
-        } else {
-            if (loginButton != null) loginButton.setDisable(false);
-            if (usernameField != null) usernameField.setDisable(false);
-            if (passwordHiddenField != null) passwordHiddenField.setDisable(false);
-            if (passwordVisibleField != null) passwordVisibleField.setDisable(false);
-        }
-        if (overlaySpinner != null) {
-            overlaySpinner.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
-        }
-    }
-
     @FXML
     private void handleRegister() {
-        logger.info("Navigating to register screen");
         try {
             Stage stage = (Stage) registerButton.getScene().getWindow();
             SceneManager.showRegister(stage);
@@ -415,28 +397,36 @@ public class LoginController {
     }
 
     private void saveCredentials(String username, String password) {
-        // TODO: Save to preferences file
-        // Avoid logging the raw password; log only its length for debugging
         int pwLen = password == null ? 0 : password.length();
         logger.info("Saving credentials for user: {} (password length={})", username, pwLen);
     }
 
     private void loadSavedCredentials() {
-        // TODO: Load from preferences file
-        // For testing, you can uncomment these:
-        // usernameField.setText("player1");
-        // passwordField.setText("password123");
     }
 
-    private void navigateToDashboard(String username) {
+    private void showLoadingOverlay(String message) {
         try {
-            logger.info("Navigated to dashboard for user: {}", username);
-            Stage stage = (Stage) loginButton.getScene().getWindow();
-            SceneManager.showDashboard(stage, username);
-         } catch (Exception e) {
-             logger.error("Failed to load dashboard screen", e);
-             showError("Fail to load dashboard screen!");
-             setLoading(false);
-         }
-     }
+            if (loadingOverlay != null) {
+                Platform.runLater(() -> {
+                    loadingOverlay.setVisible(true);
+                    loadingOverlay.setManaged(true);
+                    loadingOverlay.toFront();
+                    if (loadingOverlayMessage != null) loadingOverlayMessage.setText(message);
+                    if (loginButton != null) loginButton.setDisable(true);
+                });
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void hideLoadingOverlay() {
+        try {
+            if (loadingOverlay != null) {
+                Platform.runLater(() -> {
+                    loadingOverlay.setVisible(false);
+                    loadingOverlay.setManaged(false);
+                    if (loginButton != null) loginButton.setDisable(false);
+                });
+            }
+        } catch (Exception ignored) {}
+    }
 }

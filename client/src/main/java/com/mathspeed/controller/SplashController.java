@@ -1,13 +1,10 @@
 package com.mathspeed.controller;
 
 import com.mathspeed.util.SplashSpinner;
-import javafx.animation.FadeTransition;
-import javafx.animation.ScaleTransition;
+import com.mathspeed.client.WindowSizing;
 import javafx.fxml.FXML;
-import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 
@@ -27,5 +24,8 @@ public class SplashController {
 
         SplashSpinner spinner = new SplashSpinner(40, Color.WHITE, 3);
         spinnerPane.getChildren().add(spinner);
+
+        // Apply window sizing: use default size (not desktop) so splash stays compact
+        WindowSizing.applyToNode(logoImage, false);
     }
 }

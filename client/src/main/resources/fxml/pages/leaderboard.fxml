@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.shape.Rectangle?>
 
+<?import javafx.geometry.Insets?>
 <VBox xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.mathspeed.controller.LeaderboardController"
@@ -17,19 +16,22 @@
                 VBox.vgrow="NEVER"/>
 
     <!-- Main Content Scrolls Below Header -->
-    <ScrollPane fitToHeight="true"
+    <ScrollPane fitToWidth="true"
                 hbarPolicy="NEVER"
-                vbarPolicy="AS_NEEDED"
                 styleClass="dashboard-scroll-pane"
                 pickOnBounds="false"
                 VBox.vgrow="ALWAYS">
-        <VBox spacing="20" style="-fx-padding: 20 20 100 20;" alignment="TOP_CENTER">
+        <VBox spacing="20" style="-fx-padding: 20 0 20 0;" alignment="TOP_CENTER">
             <!-- Page Title -->
-            <Label text="Leaderboard" styleClass="section-title" style="-fx-font-size: 24px; -fx-font-weight: bold;">
+            <Label text="Leaderboard" styleClass="section-title" alignment="CENTER"
+                   style="-fx-font-size: 24px; -fx-font-weight: bold;">
             </Label>
 
             <!-- Top 3 Podium -->
-            <VBox spacing="15" styleClass="stats-card" style="-fx-padding: 0 20 20 20;">
+            <VBox spacing="15" styleClass="stats-card" alignment="CENTER">
+                <VBox.margin>
+                    <Insets left="20" right="20"/>
+                </VBox.margin>
                 <Label text="🏆 Top 3 Champions" styleClass="section-title"/>
                 <HBox spacing="15" alignment="CENTER">
                     <!-- 2nd Place -->
@@ -86,18 +88,26 @@
             </VBox>
 
             <!-- Leaderboard List -->
-            <VBox spacing="10">
+            <VBox spacing="10" alignment="CENTER">
+                <VBox.margin>
+                    <Insets left="20" right="20"/>
+                </VBox.margin>
                 <Label text="Rankings" styleClass="section-title"/>
+                <!-- country filter removed; show plain rankings -->
                 <VBox fx:id="leaderboardContainer" spacing="8">
-                    <!-- Leaderboard items will be added dynamically -->
                 </VBox>
             </VBox>
 
             <!-- Your Rank Card -->
-            <VBox spacing="10" styleClass="stats-card" style="-fx-padding: 15; -fx-background-color: linear-gradient(to right, #725bf5, #9b82ff);">
-                <Label text="Your Rank" styleClass="section-title" style="-fx-text-fill: white;"/>
-                <HBox spacing="15" alignment="CENTER_LEFT">
-                    <Label fx:id="userRankLabel" text="#42" styleClass="rank-number" style="-fx-text-fill: white; -fx-font-size: 24px;"/>
+            <VBox spacing="10" styleClass="stats-card" alignment="CENTER" style="-fx-background-color: linear-gradient(to right, #725bf5, #9b82ff);">
+                <VBox.margin>
+                    <Insets left="20" right="20"/>
+                </VBox.margin>
+                <Label text="Your Rank" styleClass="section-title"
+                       style="-fx-text-fill: white; -fx-background-color: transparent;"/>
+                <HBox spacing="15" alignment="CENTER">
+                    <Label fx:id="userRankLabel" text="#42" styleClass="rank-number"
+                           style="-fx-text-fill: white; -fx-font-size: 24px;"/>
                     <ImageView fx:id="userAvatar" fitWidth="50" fitHeight="50" preserveRatio="true">
                         <image>
                             <javafx.scene.image.Image url="https://i.pravatar.cc/150?img=12"/>
@@ -107,22 +117,14 @@
                         </clip>
                     </ImageView>
                     <VBox spacing="2">
-                        <Label fx:id="userNameLabel" text="You" styleClass="leaderboard-name" style="-fx-text-fill: white;"/>
-                        <Label fx:id="userScoreLabel" text="1,234 pts" styleClass="leaderboard-score" style="-fx-text-fill: rgba(255,255,255,0.8);"/>
+                        <Label fx:id="userNameLabel" text="You" styleClass="leaderboard-name"
+                               style="-fx-text-fill: white;"/>
+                        <Label fx:id="userScoreLabel" text="1,234 pts" styleClass="leaderboard-score"
+                               style="-fx-text-fill: rgba(255,255,255,0.8);"/>
                     </VBox>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <VBox alignment="CENTER_RIGHT">
-                        <Label fx:id="userTrendLabel" text="↑ 5" styleClass="trend-up" style="-fx-text-fill: #4caf50; -fx-font-size: 14px;"/>
-                    </VBox>
                 </HBox>
             </VBox>
-
-            <!-- Loading Indicator -->
-            <ProgressIndicator fx:id="loadingIndicator"
-                               visible="false"
-                               managed="false"
-                               maxWidth="40"
-                               maxHeight="40"/>
         </VBox>
     </ScrollPane>
 </VBox>

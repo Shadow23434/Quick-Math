@@ -4,26 +4,18 @@ import com.mathspeed.client.SceneManager;
 import com.mathspeed.util.ReloadManager;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.layout.VBox;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ProfileController {
     private static final Logger logger = LoggerFactory.getLogger(ProfileController.class);
-
-    @FXML private Button settingsButton;
     @FXML private Button reloadButton;
-    @FXML private ProgressIndicator loadingIndicator;
-
     // Profile Info
-    @FXML private ImageView profileImageView;
     @FXML private Label profileNameLabel;
     @FXML private Label profileEmailLabel;
-    @FXML private Label profileJoinedLabel;
 
     // Stats
     @FXML private Label totalQuizzesLabel;
@@ -40,18 +32,11 @@ public class ProfileController {
     @FXML private Label friendsLabel;
     @FXML private FontIcon profileIcon;
     @FXML private Label profileLabel;
-    @FXML private Button joinQuizButton;
-
-    // Recent Activity
-    @FXML private VBox recentActivityContainer;
-
     private String username;
 
     @FXML
     public void initialize() {
-        logger.info("ProfileController initialized");
         setupReloadShortcut();
-        // Wait for scene to be ready before setting active state
         javafx.application.Platform.runLater(() -> setActiveScreen("profile"));
         loadProfileData();
     }
@@ -115,26 +100,21 @@ public class ProfileController {
     }
 
     private void loadProfileData() {
-        // TODO: Load profile data from backend
         logger.info("Loading profile data for: " + username);
-        // This will be implemented when backend is ready
     }
 
     @FXML
     private void handleChangePassword() {
         logger.info("Change password clicked");
-        // TODO: Implement change password dialog
     }
 
     @FXML
     private void handlePrivacySettings() {
         logger.info("Privacy settings clicked");
-        // TODO: Implement privacy settings dialog
     }
 
     @FXML
     private void handleLogout() {
-        logger.info("Logout clicked");
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Logout");
         alert.setHeaderText("Are you sure you want to logout?");
@@ -154,14 +134,11 @@ public class ProfileController {
 
     @FXML
     private void handleNotifications() {
-        logger.info("Notification clicked: navigate to Friends and show Requests tab");
         com.mathspeed.client.SceneManager sceneManager = com.mathspeed.client.SceneManager.getInstance();
         sceneManager.navigate(com.mathspeed.client.SceneManager.Screen.FRIENDS);
-        // After navigation, attempt to get controller and switch tab
         javafx.application.Platform.runLater(() -> {
             Object controller = sceneManager.getController(com.mathspeed.client.SceneManager.Screen.FRIENDS);
             if (controller instanceof FriendsController fc) {
-                logger.info("FriendsController found - invoking showRequestsImmediately()");
                 fc.showRequestsImmediately();
             } else {
                 logger.warn("FriendsController not available immediately after navigation");

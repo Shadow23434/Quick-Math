@@ -9,20 +9,24 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.util.EnumMap;
+import javafx.geometry.Rectangle2D;
 
 public class SceneManager {
     private static final Logger logger = LoggerFactory.getLogger(SceneManager.class);
     private static SceneManager instance;
-    private Stage primaryStage; // removed Lombok @Setter
+    private Stage primaryStage;
     private String currentUsername;
     public enum Screen { DASHBOARD, LIBRARY, FRIENDS, PROFILE, LEADERBOARD, LOGIN, REGISTER, SPLASH }
     private Screen currentScreen;
-
-    public static final double WINDOW_WIDTH = 360;
-    public static final double WINDOW_HEIGHT = 640;
+    private EnumMap<Screen, Parent> viewCache = new EnumMap<>(Screen.class);
+    private EnumMap<Screen, Object> controllerCache = new EnumMap<>(Screen.class);
+    private com.mathspeed.controller.ShellController shellController;
+    private boolean shellActive = false;
+    private double prevX, prevY, prevWidth, prevHeight;
+    private boolean hasPrevBounds = false;
+    private boolean usingDesktopSize = false;
 
     private SceneManager() {}
 
@@ -35,15 +39,10 @@ public class SceneManager {
 
     public void setPrimaryStage(Stage stage) { this.primaryStage = stage; }
 
-    public Stage getPrimaryStage() {
-        return primaryStage;
-    }
-
     public String getCurrentUsername() { return currentUsername; }
     public Screen getCurrentScreen() { return currentScreen; }
     private void setCurrent(Screen screen, String username) { this.currentScreen = screen; this.currentUsername = username; }
 
-    // Instance methods for controllers to call
     public void switchToLogin() {
         // Ensure we reset shell/session state before showing login
         logout();
@@ -52,62 +51,43 @@ public class SceneManager {
         }
     }
 
-    public void switchToRegister() {
-        if (primaryStage != null) {
-            showRegister(primaryStage);
-        }
-    }
-
-    public void switchToDashboard(String username) {
-        if (primaryStage != null) {
-            showDashboard(primaryStage, username);
-        }
-    }
-
-    public void switchToLibrary(String username) {
-        if (primaryStage != null) {
-            showLibrary(primaryStage, username);
-        }
-    }
-
-    public void switchToFriends(String username) {
-        if (primaryStage != null) {
-            showFriends(primaryStage, username);
-        }
-    }
-
-    public void switchToProfile(String username) {
-        if (primaryStage != null) {
-            showProfile(primaryStage, username);
-        }
-    }
-
-    public void switchToLeaderboard(String username) {
-        if (primaryStage != null) {
-            showLeaderboard(primaryStage, username);
-        }
-    }
-
-    // Static methods for backward compatibility
     public static void showSplash(Stage stage, Runnable onFinish) {
         getInstance().setPrimaryStage(stage);
+        // Ensure lightweight screens use default size and do not apply desktop-size behavior
+        try {
+            SceneManager inst = getInstance();
+            inst.usingDesktopSize = false;
+            if (stage.isMaximized()) {
+                // If the stage is maximized, restore it to default size so splash shows at DEFAULT_* dimensions
+                try { stage.setMaximized(false); } catch (Exception ignored) {}
+                stage.setWidth(WindowConfig.DEFAULT_WIDTH);
+                stage.setHeight(WindowConfig.DEFAULT_HEIGHT);
+                Rectangle2D vb = javafx.stage.Screen.getPrimary().getVisualBounds();
+                stage.setX(vb.getMinX() + (vb.getWidth() - WindowConfig.DEFAULT_WIDTH) / 2.0);
+                stage.setY(vb.getMinY() + (vb.getHeight() - WindowConfig.DEFAULT_HEIGHT) / 2.0);
+            }
+        } catch (Exception e) {
+            // non-fatal, continue to show splash
+            logger.debug("Failed to enforce default sizing for splash", e);
+        }
+
         ReloadManager.setCurrentSceneReloader(s -> showSplash(s, onFinish));
         try {
             Parent splashRoot = ResourceLoader.loadFXML("src/main/resources/fxml/splash.fxml", SceneManager.class);
-            Scene splashScene = new Scene(splashRoot, WINDOW_WIDTH, WINDOW_HEIGHT);
+            Scene splashScene = new Scene(splashRoot, WindowConfig.DEFAULT_WIDTH, WindowConfig.DEFAULT_HEIGHT);
             splashScene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/theme.css", SceneManager.class));
             splashScene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/splash.css", SceneManager.class));
             stage.setTitle("Math Speed Game - Splash");
             stage.setScene(splashScene);
+            // Keep splash fixed size
             stage.setResizable(false);
             // Size the stage to the scene so layout (including bottom bar) is correct
-            stage.sizeToScene();
+            if (!stage.isMaximized()) stage.sizeToScene();
             stage.show();
             new Thread(() -> {
                 try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
                 javafx.application.Platform.runLater(onFinish);
             }).start();
-            logger.info("Splash screen shown");
             getInstance().currentScreen = Screen.SPLASH;
         } catch (Exception e) {
             logger.error("Failed to show splash screen", e);
@@ -117,18 +97,33 @@ public class SceneManager {
 
     public static void showLogin(Stage stage) {
         getInstance().setPrimaryStage(stage);
+        // Ensure lightweight screens use default size and do not apply desktop-size behavior
+        try {
+            SceneManager inst = getInstance();
+            inst.usingDesktopSize = false;
+            if (stage.isMaximized()) {
+                try { stage.setMaximized(false); } catch (Exception ignored) {}
+                stage.setWidth(WindowConfig.DEFAULT_WIDTH);
+                stage.setHeight(WindowConfig.DEFAULT_HEIGHT);
+                Rectangle2D vb = javafx.stage.Screen.getPrimary().getVisualBounds();
+                stage.setX(vb.getMinX() + (vb.getWidth() - WindowConfig.DEFAULT_WIDTH) / 2.0);
+                stage.setY(vb.getMinY() + (vb.getHeight() - WindowConfig.DEFAULT_HEIGHT) / 2.0);
+            }
+        } catch (Exception e) {
+            logger.debug("Failed to enforce default sizing for login", e);
+        }
+
         ReloadManager.setCurrentSceneReloader(SceneManager::showLogin);
         try {
             Parent root = ResourceLoader.loadFXML("src/main/resources/fxml/login.fxml", SceneManager.class);
-            Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
+            Scene scene = new Scene(root, WindowConfig.DEFAULT_WIDTH, WindowConfig.DEFAULT_HEIGHT);
             scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/theme.css", SceneManager.class));
             scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/login.css", SceneManager.class));
             stage.setTitle("Math Speed Game - Login");
             stage.setScene(scene);
             stage.setResizable(false);
-            stage.sizeToScene();
+            if (!stage.isMaximized()) stage.sizeToScene();
             stage.show();
-            logger.info("Login screen shown");
             getInstance().currentScreen = Screen.LOGIN;
         } catch (Exception e) {
             logger.error("Failed to show login screen", e);
@@ -138,214 +133,38 @@ public class SceneManager {
 
     public static void showRegister(Stage stage) {
         getInstance().setPrimaryStage(stage);
+        // Ensure lightweight screens use default size and do not apply desktop-size behavior
+        try {
+            SceneManager inst = getInstance();
+            inst.usingDesktopSize = false;
+            if (stage.isMaximized()) {
+                try { stage.setMaximized(false); } catch (Exception ignored) {}
+                stage.setWidth(WindowConfig.DEFAULT_WIDTH);
+                stage.setHeight(WindowConfig.DEFAULT_HEIGHT);
+                Rectangle2D vb = javafx.stage.Screen.getPrimary().getVisualBounds();
+                stage.setX(vb.getMinX() + (vb.getWidth() - WindowConfig.DEFAULT_WIDTH) / 2.0);
+                stage.setY(vb.getMinY() + (vb.getHeight() - WindowConfig.DEFAULT_HEIGHT) / 2.0);
+            }
+        } catch (Exception e) {
+            logger.debug("Failed to enforce default sizing for register", e);
+        }
+
         ReloadManager.setCurrentSceneReloader(SceneManager::showRegister);
         try {
             Parent root = ResourceLoader.loadFXML("src/main/resources/fxml/register.fxml", SceneManager.class);
-            Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
+            Scene scene = new Scene(root, WindowConfig.DEFAULT_WIDTH, WindowConfig.DEFAULT_HEIGHT);
             scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/theme.css", SceneManager.class));
             scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/register.css", SceneManager.class));
             stage.setTitle("Math Speed Game - Register");
             stage.setScene(scene);
             stage.setResizable(false);
-            stage.sizeToScene();
+            if (!stage.isMaximized()) stage.sizeToScene();
             stage.show();
-            logger.info("Register screen shown");
             getInstance().currentScreen = Screen.REGISTER;
         } catch (Exception e) {
             logger.error("Failed to show register screen", e);
             e.printStackTrace();
         }
-    }
-
-    public static void showDashboard(Stage stage, String username) {
-        getInstance().setPrimaryStage(stage);
-        getInstance().setCurrent(Screen.DASHBOARD, username);
-        ReloadManager.setCurrentSceneReloader(s -> showDashboard(s, username));
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            Parent root = ResourceLoader.loadFXML("src/main/resources/fxml/dashboard.fxml", SceneManager.class);
-
-            // Need to get the controller after loading, but ResourceLoader doesn't return it
-            // So we need to use a different approach
-            File file = new File("src/main/resources/fxml/dashboard.fxml");
-            if (file.exists()) {
-                loader = new FXMLLoader(file.toURI().toURL());
-            } else {
-                loader = new FXMLLoader(SceneManager.class.getResource("/fxml/pages/dashboard.fxml"));
-            }
-            root = loader.load();
-
-            Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
-            scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/theme.css", SceneManager.class));
-            scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/dashboard.css", SceneManager.class));
-            stage.setTitle("Math Speed Game - Dashboard");
-            stage.setScene(scene);
-            stage.setResizable(false);
-            stage.sizeToScene();
-            stage.show();
-            com.mathspeed.controller.DashboardController controller = loader.getController();
-            if (controller != null) {
-                controller.setUsername(username);
-            }
-            logger.info("Dashboard screen shown with username: " + username);
-        } catch (Exception e) {
-            logger.error("Failed to show dashboard screen", e);
-            e.printStackTrace();
-        }
-    }
-
-    public static void showLibrary(Stage stage, String username) {
-        getInstance().setPrimaryStage(stage);
-        getInstance().setCurrent(Screen.LIBRARY, username);
-        ReloadManager.setCurrentSceneReloader(s -> showLibrary(s, username));
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            Parent root;
-
-            File file = new File("src/main/resources/fxml/library.fxml");
-            if (file.exists()) {
-                loader = new FXMLLoader(file.toURI().toURL());
-            } else {
-                loader = new FXMLLoader(SceneManager.class.getResource("/fxml/pages/library.fxml"));
-            }
-            root = loader.load();
-
-            Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
-            scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/theme.css", SceneManager.class));
-            scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/dashboard.css", SceneManager.class));
-            stage.setTitle("Math Speed Game - Library");
-            stage.setScene(scene);
-            stage.setResizable(false);
-            stage.sizeToScene();
-            stage.show();
-
-            com.mathspeed.controller.LibraryController controller = loader.getController();
-            if (controller != null) {
-                controller.setUsername(username);
-            }
-            logger.info("Library screen shown with username: " + username);
-        } catch (Exception e) {
-            logger.error("Failed to show library screen", e);
-            e.printStackTrace();
-        }
-    }
-
-    public static void showFriends(Stage stage, String username) {
-        getInstance().setPrimaryStage(stage);
-        getInstance().setCurrent(Screen.FRIENDS, username);
-        ReloadManager.setCurrentSceneReloader(s -> showFriends(s, username));
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            Parent root;
-
-            File file = new File("src/main/resources/fxml/friends.fxml");
-            if (file.exists()) {
-                loader = new FXMLLoader(file.toURI().toURL());
-            } else {
-                loader = new FXMLLoader(SceneManager.class.getResource("/fxml/pages/friends.fxml"));
-            }
-            root = loader.load();
-
-            Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
-            scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/theme.css", SceneManager.class));
-            scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/dashboard.css", SceneManager.class));
-            stage.setTitle("Math Speed Game - Friends");
-            stage.setScene(scene);
-            stage.setResizable(false);
-            stage.sizeToScene();
-            stage.show();
-
-            com.mathspeed.controller.FriendsController controller = loader.getController();
-            if (controller != null) {
-                controller.setUsername(username);
-            }
-            logger.info("Friends screen shown with username: " + username);
-        } catch (Exception e) {
-            logger.error("Failed to show friends screen", e);
-            e.printStackTrace();
-        }
-    }
-
-    public static void showProfile(Stage stage, String username) {
-        getInstance().setPrimaryStage(stage);
-        getInstance().setCurrent(Screen.PROFILE, username);
-        ReloadManager.setCurrentSceneReloader(s -> showProfile(s, username));
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            Parent root;
-
-            File file = new File("src/main/resources/fxml/profile.fxml");
-            if (file.exists()) {
-                loader = new FXMLLoader(file.toURI().toURL());
-            } else {
-                loader = new FXMLLoader(SceneManager.class.getResource("/fxml/pages/profile.fxml"));
-            }
-            root = loader.load();
-
-            Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
-            scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/theme.css", SceneManager.class));
-            scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/dashboard.css", SceneManager.class));
-            stage.setTitle("Math Speed Game - Profile");
-            stage.setScene(scene);
-            stage.setResizable(false);
-            stage.sizeToScene();
-            stage.show();
-
-            com.mathspeed.controller.ProfileController controller = loader.getController();
-            if (controller != null) {
-                controller.setUsername(username);
-            }
-            logger.info("Profile screen shown with username: " + username);
-        } catch (Exception e) {
-            logger.error("Failed to show profile screen", e);
-            e.printStackTrace();
-        }
-    }
-
-    public static void showLeaderboard(Stage stage, String username) {
-        getInstance().setPrimaryStage(stage);
-        getInstance().setCurrent(Screen.LEADERBOARD, username);
-        ReloadManager.setCurrentSceneReloader(s -> showLeaderboard(s, username));
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            Parent root;
-
-            File file = new File("src/main/resources/fxml/leaderboard.fxml");
-            if (file.exists()) {
-                loader = new FXMLLoader(file.toURI().toURL());
-            } else {
-                loader = new FXMLLoader(SceneManager.class.getResource("/fxml/pages/leaderboard.fxml"));
-            }
-            root = loader.load();
-
-            Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
-            scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/theme.css", SceneManager.class));
-            scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/dashboard.css", SceneManager.class));
-            stage.setTitle("Math Speed Game - Leaderboard");
-            stage.setScene(scene);
-            stage.setResizable(false);
-            stage.sizeToScene();
-            stage.show();
-
-            com.mathspeed.controller.LeaderboardController controller = loader.getController();
-            if (controller != null) {
-                controller.setUsername(username);
-            }
-            logger.info("Leaderboard screen shown with username: " + username);
-        } catch (Exception e) {
-            logger.error("Failed to show leaderboard screen", e);
-            e.printStackTrace();
-        }
-    }
-
-    private EnumMap<Screen, Parent> viewCache = new EnumMap<>(Screen.class);
-    private EnumMap<Screen, Object> controllerCache = new EnumMap<>(Screen.class);
-    private com.mathspeed.controller.ShellController shellController;
-    private boolean shellActive = false;
-
-    // Shell initialization
-    public void initShell(Stage stage, String username) {
-        initShell(stage, username, null);
     }
 
     public void initShell(Stage stage, String username, Runnable onFullyReady) {
@@ -384,24 +203,68 @@ public class SceneManager {
             }
             Parent root = loader.load();
             shellController = loader.getController();
-            Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
+            Scene scene = new Scene(root, WindowConfig.DEFAULT_WIDTH, WindowConfig.DEFAULT_HEIGHT);
             scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/theme.css", SceneManager.class));
             scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/dashboard.css", SceneManager.class));
             stage.setTitle("Math Speed Game");
             stage.setScene(scene);
-            stage.setResizable(false);
+            // Allow shell to be resizable
+            stage.setResizable(true);
+            stage.setMinWidth(WindowConfig.MIN_WIDTH);
+            stage.setMinHeight(WindowConfig.MIN_HEIGHT);
 
-            // Wait until ShellController signals first screen is ready before showing stage
+            // Toggle maximize behavior to apply a fixed desktop size (DESKTOP_WIDTH x DESKTOP_HEIGHT)
+            // and allow restoring previous bounds when toggled again.
+            stage.maximizedProperty().addListener((obs, wasMax, isNowMax) -> {
+                if (isNowMax) {
+                    Rectangle2D vb = javafx.stage.Screen.getPrimary().getVisualBounds();
+                    double targetW = WindowConfig.DESKTOP_WIDTH;
+                    double targetH = WindowConfig.DESKTOP_HEIGHT;
+                    // Ensure we don't exceed the visual bounds
+                    if (targetW > vb.getWidth()) targetW = vb.getWidth();
+                    if (targetH > vb.getHeight()) targetH = vb.getHeight();
+                    double targetX = vb.getMinX() + (vb.getWidth() - targetW) / 2.0;
+                    double targetY = vb.getMinY() + (vb.getHeight() - targetH) / 2.0;
+
+                    if (!usingDesktopSize) {
+                        // Save current bounds for restore
+                        try {
+                            prevX = stage.getX(); prevY = stage.getY();
+                            prevWidth = stage.getWidth(); prevHeight = stage.getHeight();
+                            hasPrevBounds = true;
+                        } catch (Exception ignored) { hasPrevBounds = false; }
+
+                        // Apply desktop size centered on visual bounds
+                        stage.setMaximized(false);
+                        stage.setWidth(targetW);
+                        stage.setHeight(targetH);
+                        stage.setX(targetX);
+                        stage.setY(targetY);
+                        usingDesktopSize = true;
+                    } else {
+                        // Restore previous bounds if available
+                        if (hasPrevBounds) {
+                            stage.setMaximized(false);
+                            stage.setWidth(prevWidth);
+                            stage.setHeight(prevHeight);
+                            stage.setX(prevX);
+                            stage.setY(prevY);
+                        }
+                        usingDesktopSize = false;
+                    }
+                }
+            });
+             // Wait until ShellController signals first screen is ready before showing stage
             if (shellController != null) {
                 shellController.getFirstScreenReady().whenComplete((v, ex) -> {
                     Platform.runLater(() -> {
                         if (ex == null) {
-                            stage.sizeToScene();
+                            if (!stage.isMaximized()) stage.sizeToScene();
                             stage.show();
-                            if (onFullyReady != null) onFullyReady.run();
+                             if (onFullyReady != null) onFullyReady.run();
                         } else {
                             logger.error("Shell failed to become ready", ex);
-                            stage.sizeToScene();
+                            if (!stage.isMaximized()) stage.sizeToScene();
                             stage.show();
                         }
                     });
@@ -417,7 +280,6 @@ public class SceneManager {
                     try { loadScreenRoot(s); } catch (Exception e) { logger.warn("Failed to preload screen " + s, e); }
                 }
             }, "shell-preload-thread").start();
-            logger.info("Shell initialized for user {}", username);
         } catch (Exception e) {
             logger.error("Failed to initialize shell", e);
         }
@@ -442,8 +304,6 @@ public class SceneManager {
         }
         setCurrent(screen, currentUsername);
         shellController.show(screen);
-        logger.info("Navigated to screen: {}", screen);
-        // Keep bottom navigation visual state in sync if available
         try {
             com.mathspeed.controller.ShellController sc = shellController;
             if (sc != null && sc.getBottomNavController() != null) {
@@ -465,12 +325,10 @@ public class SceneManager {
     public Parent loadScreenRoot(Screen screen) throws Exception {
         // Check cache first
         if (viewCache.containsKey(screen)) {
-            logger.debug("Returning cached view for screen: {}", screen);
             Parent cached = viewCache.get(screen);
             if (cached.getScene() != null) {
                 cached.applyCss();
                 cached.layout();
-                logger.debug("Applied CSS to cached view for screen: {}", screen);
             }
             return cached;
         }
@@ -495,7 +353,6 @@ public class SceneManager {
             try {
                 java.lang.reflect.Method setUsernameMethod = controller.getClass().getMethod("setUsername", String.class);
                 setUsernameMethod.invoke(controller, currentUsername);
-                logger.debug("Set username on controller for screen: {}", screen);
             } catch (NoSuchMethodException e) {
                 logger.debug("Controller for {} doesn't have setUsername method", screen);
             } catch (Exception e) {
@@ -504,18 +361,13 @@ public class SceneManager {
         }
         loadStylesheetsForView(root, screen);
         viewCache.put(screen, root);
-        logger.info("Loaded and cached view + controller for screen: {}", screen);
         return root;
     }
 
-    // Provide access to controller
     public Object getController(Screen screen) {
         return controllerCache.get(screen);
     }
 
-    /**
-     * Load CSS stylesheets for a specific view
-     */
     private void loadStylesheetsForView(Parent view, Screen screen) {
         if (view == null) return;
 
@@ -527,7 +379,6 @@ public class SceneManager {
             String themeCSS = ResourceLoader.loadCSS("src/main/resources/css/theme.css", SceneManager.class);
             if (themeCSS != null && !stylesheets.contains(themeCSS)) {
                 stylesheets.add(themeCSS);
-                logger.debug("Added theme.css to view for screen: {}", screen);
             }
 
             // Load screen-specific CSS
@@ -539,16 +390,11 @@ public class SceneManager {
                     logger.debug("Added screen-specific CSS to view for screen: {}", screen);
                 }
             }
-
-            logger.info("Loaded {} stylesheets for screen: {}", stylesheets.size(), screen);
         } catch (Exception e) {
             logger.warn("Failed to load CSS for screen: {}", screen, e);
         }
     }
 
-    /**
-     * Get CSS path for a specific screen
-     */
     private String getCSSPathForScreen(Screen screen) {
         return switch (screen) {
             case DASHBOARD, LIBRARY, FRIENDS, PROFILE, LEADERBOARD -> "src/main/resources/css/dashboard.css";
@@ -558,7 +404,6 @@ public class SceneManager {
         };
     }
 
-    // Helper to get FXML path for a screen
     private String getFxmlPathForScreen(Screen screen) {
         return switch (screen) {
             case DASHBOARD -> "src/main/resources/fxml/pages/dashboard.fxml";
@@ -581,7 +426,6 @@ public class SceneManager {
             shellController = null;
             currentUsername = null;
             currentScreen = null;
-            logger.info("SceneManager state reset on logout");
         } catch (Exception e) {
             logger.warn("Error during logout reset", e);
         }

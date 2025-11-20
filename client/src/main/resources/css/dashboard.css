@@ -129,6 +129,7 @@
     -fx-max-width: 300px;
     -fx-pref-width: 300px;
     -fx-min-height: 100px;
+    -fx-cursor: default;
 }
 
 .find-friend-label {
@@ -169,6 +170,11 @@
     -fx-font-family: "Poppins SemiBold";
     -fx-text-fill: -text-dark;
     -fx-font-size: 16px;
+    -fx-background-color: -text-light;
+    -fx-background-radius: 10px;
+    -fx-padding: 4 8;
+    -fx-background-insets: 0;
+    -fx-alignment: center-left;
 }
 
 .see-all-icon {

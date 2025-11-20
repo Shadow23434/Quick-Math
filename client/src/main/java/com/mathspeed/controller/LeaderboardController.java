@@ -1,6 +1,5 @@
 package com.mathspeed.controller;
 
-import com.mathspeed.client.SceneManager;
 import com.mathspeed.util.ReloadManager;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
@@ -19,12 +18,9 @@ import org.slf4j.LoggerFactory;
 public class LeaderboardController {
     private static final Logger logger = LoggerFactory.getLogger(LeaderboardController.class);
 
-    @FXML private ImageView logoImageView;
     @FXML private Label userGreetingLabel;
     @FXML private Label userEmailLabel;
-    @FXML private Button filterButton;
     @FXML private Button reloadButton;
-    @FXML private ProgressIndicator loadingIndicator;
 
     // Time Period Buttons
     @FXML private Button todayBtn;
@@ -48,14 +44,15 @@ public class LeaderboardController {
     @FXML private Label userRankLabel;
     @FXML private Label userNameLabel;
     @FXML private Label userScoreLabel;
-    @FXML private Label userTrendLabel;
 
     private String username;
     private String currentPeriod = "today";
 
+    // Keep an in-memory list of entries so we can filter by country
+    private java.util.List<LeaderboardEntry> allEntries = new java.util.ArrayList<>();
+
     @FXML
     public void initialize() {
-        logger.info("LeaderboardController initialized");
         setupReloadShortcut();
         loadLeaderboardData();
         populateSampleData();
@@ -92,21 +89,6 @@ public class LeaderboardController {
         }
     }
 
-    private void setActivePeriod(String period) {
-        todayBtn.getStyleClass().removeAll("category-button-active");
-        weekBtn.getStyleClass().removeAll("category-button-active");
-        monthBtn.getStyleClass().removeAll("category-button-active");
-        allTimeBtn.getStyleClass().removeAll("category-button-active");
-
-        switch (period) {
-            case "today" -> todayBtn.getStyleClass().add("category-button-active");
-            case "week" -> weekBtn.getStyleClass().add("category-button-active");
-            case "month" -> monthBtn.getStyleClass().add("category-button-active");
-            case "alltime" -> allTimeBtn.getStyleClass().add("category-button-active");
-        }
-        currentPeriod = period;
-    }
-
     private void loadLeaderboardData() {
         logger.info("Loading leaderboard data for period: " + currentPeriod);
     }
@@ -115,31 +97,41 @@ public class LeaderboardController {
         if (leaderboardContainer == null) return;
 
         leaderboardContainer.getChildren().clear();
+        allEntries.clear();
 
+        // sample data: rank, name, score, countryCode
         String[][] sampleData = {
-            {"4", "Emma Wilson", "1,890", "↑", "2"},
-            {"5", "Michael Chen", "1,755", "↓", "1"},
-            {"6", "Sophia Lee", "1,620", "↑", "3"},
-            {"7", "James Brown", "1,540", "−", "0"},
-            {"8", "Olivia Davis", "1,430", "↑", "1"},
-            {"9", "William Taylor", "1,320", "↓", "2"},
-            {"10", "Isabella Garcia", "1,210", "↑", "4"}
+            {"4", "Emma Wilson", "1,890", "US"},
+            {"5", "Michael Chen", "1,755", "CN"},
+            {"6", "Sophia Lee", "1,620", "GB"},
+            {"7", "James Brown", "1,540", "US"},
+            {"8", "Olivia Davis", "1,430", "CA"},
+            {"9", "William Taylor", "1,320", "AU"},
+            {"10", "Isabella Garcia", "1,210", "BR"}
         };
 
         for (String[] data : sampleData) {
-            leaderboardContainer.getChildren().add(createLeaderboardItem(
-                data[0], data[1], data[2], data[3], data[4]
-            ));
+            LeaderboardEntry e = new LeaderboardEntry(data[0], data[1], data[2], data[3]);
+            allEntries.add(e);
+        }
+
+        renderEntries(allEntries);
+    }
+
+    private void renderEntries(java.util.List<LeaderboardEntry> entries) {
+        leaderboardContainer.getChildren().clear();
+        for (LeaderboardEntry e : entries) {
+            leaderboardContainer.getChildren().add(createLeaderboardItem(e));
         }
     }
 
-    private HBox createLeaderboardItem(String rank, String name, String score, String trend, String change) {
-        HBox item = new HBox(15);
+    private HBox createLeaderboardItem(LeaderboardEntry entry) {
+        HBox item = new HBox(10);
         item.setAlignment(Pos.CENTER_LEFT);
         item.getStyleClass().add("leaderboard-item");
         item.setPadding(new Insets(12, 15, 12, 15));
 
-        Label rankLabel = new Label(rank);
+        Label rankLabel = new Label(entry.getRank());
         rankLabel.getStyleClass().add("rank-number");
         rankLabel.setMinWidth(30);
 
@@ -147,32 +139,51 @@ public class LeaderboardController {
         avatar.setFitWidth(40);
         avatar.setFitHeight(40);
         avatar.setPreserveRatio(true);
-        int randomImg = 10 + Integer.parseInt(rank);
+        int randomImg = 10 + Integer.parseInt(entry.getRank());
         avatar.setImage(new Image("https://i.pravatar.cc/150?img=" + randomImg));
         javafx.scene.shape.Circle clip = new javafx.scene.shape.Circle(20, 20, 20);
         avatar.setClip(clip);
 
+        // Flag ImageView
+        ImageView flagView = new ImageView();
+        flagView.setFitWidth(24);
+        flagView.setFitHeight(16);
+        flagView.setPreserveRatio(true);
+        String countryCode = entry.getCountryCode();
+        if (countryCode != null && countryCode.length() == 2) {
+            String codeLower = countryCode.toLowerCase();
+            String flagUrl = "https://flagcdn.com/w40/" + codeLower + ".png"; // 40px width
+            try {
+                Image flagImg = new Image(flagUrl, true);
+                if (!flagImg.isError()) {
+                    flagView.setImage(flagImg);
+                } else {
+                    // fallback to bundled default
+                    java.io.InputStream is = getClass().getResourceAsStream("/images/t1.png");
+                    if (is != null) flagView.setImage(new Image(is));
+                }
+            } catch (Exception ex) {
+                java.io.InputStream is = getClass().getResourceAsStream("/images/t1.png");
+                if (is != null) flagView.setImage(new Image(is));
+            }
+        } else {
+            java.io.InputStream is = getClass().getResourceAsStream("/images/t1.png");
+            if (is != null) flagView.setImage(new Image(is));
+        }
+
         VBox nameBox = new VBox(2);
-        Label nameLabel = new Label(name);
+        Label nameLabel = new Label(entry.getName());
         nameLabel.getStyleClass().add("leaderboard-name");
-        Label scoreLabel = new Label(score + " pts");
+        Label scoreLabel = new Label(entry.getScore() + " pts");
         scoreLabel.getStyleClass().add("leaderboard-score");
-        nameBox.getChildren().addAll(nameLabel, scoreLabel);
+        Label countryLabel = new Label(entry.getCountryCode());
+        countryLabel.getStyleClass().add("leaderboard-country");
+        nameBox.getChildren().addAll(nameLabel, scoreLabel, countryLabel);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
 
-        String trendText = trend + " " + change;
-        Label trendLabel = new Label(trendText);
-        if ("↑".equals(trend)) {
-            trendLabel.getStyleClass().add("trend-up");
-        } else if ("↓".equals(trend)) {
-            trendLabel.getStyleClass().add("trend-down");
-        } else {
-            trendLabel.getStyleClass().add("trend-neutral");
-        }
-
-        item.getChildren().addAll(rankLabel, avatar, nameBox, spacer, trendLabel);
+        item.getChildren().addAll(rankLabel, avatar, flagView, nameBox, spacer);
 
         item.setOnMouseEntered(e -> item.setStyle("-fx-background-color: #f5f5f5; -fx-background-radius: 10;"));
         item.setOnMouseExited(e -> item.setStyle("-fx-background-color: transparent;"));
@@ -181,65 +192,27 @@ public class LeaderboardController {
     }
 
     @FXML
-    private void handleToday() {
-        setActivePeriod("today");
-        loadLeaderboardData();
-        populateSampleData();
-    }
-
-    @FXML
-    private void handleWeek() {
-        setActivePeriod("week");
-        loadLeaderboardData();
-        populateSampleData();
-    }
-
-    @FXML
-    private void handleMonth() {
-        setActivePeriod("month");
-        loadLeaderboardData();
-        populateSampleData();
-    }
-
-    @FXML
-    private void handleAllTime() {
-        setActivePeriod("alltime");
-        loadLeaderboardData();
-        populateSampleData();
-    }
-
-    @FXML
-    private void handleFilter() {
-        logger.info("Filter clicked");
-    }
-
-    @FXML
     private void handleReload() {
         ReloadManager.reloadCurrentScene();
     }
 
-    @FXML
-    private void handleHome() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.DASHBOARD);
-    }
+    // Simple entry model for the leaderboard
+    private static class LeaderboardEntry {
+        private final String rank;
+        private final String name;
+        private final String score;
+        private final String countryCode;
 
-    @FXML
-    private void handleLibrary() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.LIBRARY);
-    }
+        public LeaderboardEntry(String rank, String name, String score, String countryCode) {
+            this.rank = rank;
+            this.name = name;
+            this.score = score;
+            this.countryCode = countryCode;
+        }
 
-    @FXML
-    private void handleFriends() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.FRIENDS);
-    }
-
-    @FXML
-    private void handleProfile() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.PROFILE);
-    }
-
-    @FXML
-    private void handleLeaderboard() {
-        // already on leaderboard
+        public String getRank() { return rank; }
+        public String getName() { return name; }
+        public String getScore() { return score; }
+        public String getCountryCode() { return countryCode; }
     }
 }

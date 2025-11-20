@@ -5,14 +5,11 @@
 <?import javafx.scene.layout.*?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<?import javafx.scene.image.ImageView?>
 <VBox xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.mathspeed.controller.DashboardController"
       styleClass="dashboard-view"
-      prefWidth="360"
       prefHeight="560"
-      maxWidth="360"
       maxHeight="560"
       style="-fx-background-color: transparent;">
     <!-- Header Section (Separated Component) -->
@@ -22,143 +19,135 @@
 
     <!-- Main Content Scrolls Below Header -->
     <ScrollPane fitToWidth="true"
-                prefHeight="460"
-                maxHeight="460"
                 hbarPolicy="NEVER"
-                vbarPolicy="AS_NEEDED"
                 styleClass="dashboard-scroll-pane"
                 VBox.vgrow="ALWAYS">
         <!-- Main Content -->
-        <VBox spacing="20" prefWidth="320" style="-fx-padding: 0;">
-                        <!-- User Stats Card -->
-                        <VBox styleClass="stats-card">
-                            <VBox.margin>
-                                <Insets top="20" right="20" bottom="0" left="20"/>
-                            </VBox.margin>
-                            <!-- Stats -->
-                            <BorderPane>
-                                <padding>
-                                    <Insets top="10" right="10" bottom="20" left="10"/>
-                                </padding>
-                                <left>
-                                    <VBox alignment="CENTER" spacing="10">
-                                        <Label text="My Quiz" styleClass="stat-label"/>
-                                        <HBox alignment="CENTER_LEFT" spacing="10">
-                                            <StackPane styleClass="stat-icon-bg">
-                                                <FontIcon iconLiteral="fas-clipboard-list" styleClass="stat-icon"/>
-                                            </StackPane>
-                                            <Label text="24" styleClass="stat-text"/>
-                                        </HBox>
-                                    </VBox>
-                                </left>
-
-                                <center>
-                                    <VBox alignment="CENTER" spacing="10">
-                                        <Label text="Plays" styleClass="stat-label"/>
-                                        <HBox alignment="CENTER" spacing="10">
-                                            <StackPane styleClass="stat-icon-bg">
-                                                <FontIcon iconLiteral="fas-play-circle" styleClass="stat-icon"/>
-                                            </StackPane>
-                                            <Label text="43" styleClass="stat-text"/>
-                                        </HBox>
-                                    </VBox>
-                                </center>
-
-                                <right>
-                                    <VBox alignment="CENTER" spacing="10">
-                                        <Label text="Wins" styleClass="stat-label"/>
-                                        <HBox alignment="CENTER_RIGHT" spacing="10">
-                                            <StackPane styleClass="stat-icon-bg">
-                                                <FontIcon iconLiteral="fas-trophy" styleClass="stat-icon"/>
-                                            </StackPane>
-                                            <Label text="14" styleClass="stat-text"/>
-                                        </HBox>
-                                    </VBox>
-                                </right>
-                            </BorderPane>
-
-                            <!-- Find Friend Card -->
-                            <VBox spacing="15" styleClass="find-friend-card">
-                                <StackPane pickOnBounds="false">
-                                    <!-- Wave layers - back to front -->
-                                    <Region styleClass="wave1" mouseTransparent="true" StackPane.alignment="BOTTOM_RIGHT"/>
-                                    <Region styleClass="wave2" mouseTransparent="true" StackPane.alignment="BOTTOM_RIGHT"/>
-
-                                    <!-- Content on top -->
-                                    <VBox spacing="10" style="-fx-padding: 20 20;" StackPane.alignment="TOP_LEFT">
-                                        <Label text="Play brain games together with your friends now" styleClass="find-friend-label" wrapText="true" maxWidth="200"/>
-                                        <Button fx:id="findFriendsButton"
-                                                text="Find Friends"
-                                                styleClass="primary-button"
-                                                onAction="#handleFriends"
-                                                maxWidth="120"/>
-                                    </VBox>
-                                </StackPane>
+        <VBox spacing="20" alignment="TOP_CENTER" style="-fx-padding: 0;">
+                <!-- User Stats Card -->
+                <VBox styleClass="stats-card" alignment="CENTER">
+                    <VBox.margin>
+                        <Insets top="20" right="20" left="20"/>
+                    </VBox.margin>
+                    <!-- Stats -->
+                    <BorderPane>
+                        <padding>
+                            <Insets top="10" right="10" bottom="20" left="10"/>
+                        </padding>
+                        <left>
+                            <VBox alignment="CENTER" spacing="10">
+                                <Label text="My Quiz" styleClass="stat-label"/>
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <StackPane styleClass="stat-icon-bg">
+                                        <FontIcon iconLiteral="fas-clipboard-list" styleClass="stat-icon"/>
+                                    </StackPane>
+                                    <Label text="24" styleClass="stat-text"/>
+                                </HBox>
                             </VBox>
-                        </VBox>
+                        </left>
 
-                        <!-- Discover Quiz -->
-                        <VBox spacing="10" alignment="CENTER">
-                            <!-- Section Header -->
-                            <HBox>
-                                <VBox.margin>
-                                    <Insets left="20" right="20"/>
-                                </VBox.margin>
-                                <Label text="Discover Quiz" styleClass="section-title"/>
-                                <Region HBox.hgrow="ALWAYS"/>
-                                <Hyperlink fx:id="seeAllQuizLink" text="See All"
-                                           onAction="#handleSeeAllQuizzes"
-                                           styleClass="hyper-link"
-                                           contentDisplay="RIGHT">
-                                    <graphic>
-                                        <FontIcon iconLiteral="fas-chevron-right" styleClass="see-all-icon"/>
-                                    </graphic>
-                                </Hyperlink>
-                            </HBox>
+                        <center>
+                            <VBox alignment="CENTER" spacing="10">
+                                <Label text="Plays" styleClass="stat-label"/>
+                                <HBox alignment="CENTER" spacing="10">
+                                    <StackPane styleClass="stat-icon-bg">
+                                        <FontIcon iconLiteral="fas-play-circle" styleClass="stat-icon"/>
+                                    </StackPane>
+                                    <Label text="43" styleClass="stat-text"/>
+                                </HBox>
+                            </VBox>
+                        </center>
 
-                            <!-- Quiz Carousel - Centered in viewport -->
-                            <StackPane fx:id="quizCarouselPane"
-                                       prefWidth="320"
-                                       maxWidth="320"
-                                       prefHeight="200"
-                                       alignment="CENTER"
-                                       style="-fx-background-color: transparent;"/>
-                        </VBox>
+                        <right>
+                            <VBox alignment="CENTER" spacing="10">
+                                <Label text="Wins" styleClass="stat-label"/>
+                                <HBox alignment="CENTER_RIGHT" spacing="10">
+                                    <StackPane styleClass="stat-icon-bg">
+                                        <FontIcon iconLiteral="fas-trophy" styleClass="stat-icon"/>
+                                    </StackPane>
+                                    <Label text="14" styleClass="stat-text"/>
+                                </HBox>
+                            </VBox>
+                        </right>
+                    </BorderPane>
 
-                        <!-- Online Friends -->
-                        <VBox spacing="10" alignment="CENTER">
-                            <HBox>
-                                <VBox.margin>
-                                    <Insets left="20" right="20"/>
-                                </VBox.margin>
-                                <Label text="Online Friends" styleClass="section-title"/>
-                                <Region HBox.hgrow="ALWAYS"/>
-                                <Hyperlink fx:id="seeAllFriendsLink" text="See All"
-                                           onAction="#handleFriends"
-                                           styleClass="hyper-link"
-                                           contentDisplay="RIGHT">
-                                    <graphic>
-                                        <FontIcon iconLiteral="fas-chevron-right" styleClass="see-all-icon"/>
-                                    </graphic>
-                                </Hyperlink>
-                            </HBox>
+                    <!-- Find Friend Card -->
+                    <VBox spacing="15" styleClass="find-friend-card">
+                        <StackPane pickOnBounds="false">
+                            <!-- Wave layers - back to front -->
+                            <Region styleClass="wave1" mouseTransparent="true" StackPane.alignment="BOTTOM_RIGHT"/>
+                            <Region styleClass="wave2" mouseTransparent="true" StackPane.alignment="BOTTOM_RIGHT"/>
 
-                            <!-- Friends Carousel - Centered in viewport -->
-                            <StackPane fx:id="friendsCarouselPane"
-                                       prefWidth="320"
-                                       maxWidth="320"
-                                       prefHeight="120"
-                                       alignment="CENTER"
-                                       style="-fx-background-color: transparent;"/>
-                        </VBox>
+                            <!-- Content on top -->
+                            <VBox spacing="10" style="-fx-padding: 20 20;" StackPane.alignment="TOP_LEFT">
+                                <Label text="Play brain games together with your friends now"
+                                       styleClass="find-friend-label" wrapText="true" maxWidth="200"/>
+                                <Button fx:id="findFriendsButton"
+                                        text="Find Friends"
+                                        styleClass="primary-button"
+                                        onAction="#handleFriends"
+                                        maxWidth="120"/>
+                            </VBox>
+                        </StackPane>
+                    </VBox>
+                </VBox>
 
-            <!-- Loading Indicator (hidden by default) -->
-            <ProgressIndicator fx:id="loadingIndicator"
-                               visible="false"
-                               managed="false"
-                               maxWidth="40"
-                               maxHeight="40"/>
-        </VBox>
+                <!-- Discover Quiz -->
+                <VBox spacing="10" alignment="CENTER">
+                    <VBox.margin>
+                        <Insets left="20" right="20"/>
+                    </VBox.margin>
+
+                    <!-- Section Header -->
+                    <HBox>
+                        <VBox.margin>
+                            <Insets left="20" right="20"/>
+                        </VBox.margin>
+                        <Label text="Discover Quiz" styleClass="section-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Hyperlink fx:id="seeAllQuizLink" text="See All"
+                                   onAction="#handleSeeAllQuizzes"
+                                   styleClass="hyper-link"
+                                   contentDisplay="RIGHT">
+                            <graphic>
+                                <FontIcon iconLiteral="fas-chevron-right" styleClass="see-all-icon"/>
+                            </graphic>
+                        </Hyperlink>
+                    </HBox>
+
+                    <!-- Quiz Carousel - Centered in viewport -->
+                    <StackPane fx:id="quizCarouselPane"
+                               prefHeight="200"
+                               alignment="CENTER"
+                               style="-fx-background-color: transparent;"/>
+                </VBox>
+
+                <!-- Online Friends -->
+                <VBox spacing="10" alignment="CENTER">
+                    <VBox.margin>
+                        <Insets left="20" right="20"/>
+                    </VBox.margin>
+                    <HBox>
+                        <VBox.margin>
+                            <Insets left="20" right="20"/>
+                        </VBox.margin>
+                        <Label text="Online Friends" styleClass="section-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Hyperlink fx:id="seeAllFriendsLink" text="See All"
+                                   onAction="#handleFriends"
+                                   styleClass="hyper-link"
+                                   contentDisplay="RIGHT">
+                            <graphic>
+                                <FontIcon iconLiteral="fas-chevron-right" styleClass="see-all-icon"/>
+                            </graphic>
+                        </Hyperlink>
+                    </HBox>
+
+                    <!-- Friends Carousel - Centered in viewport -->
+                    <StackPane fx:id="friendsCarouselPane"
+                               prefHeight="120"
+                               style="-fx-background-color: transparent;"/>
+                </VBox>
+            </VBox>
     </ScrollPane>
-    <!-- Bottom AppBar removed: handled by shell -->
 </VBox>

@@ -12,97 +12,67 @@ import org.slf4j.LoggerFactory;
 
 public class FriendsController {
     private static final Logger logger = LoggerFactory.getLogger(FriendsController.class);
-
-    private String pendingStartFilter = null; // requests/online if scheduled before init
-
-    // Header component (injected from fx:include)
+    private String pendingStartFilter = null;
     @FXML private HeaderController headerController;
-
     @FXML private ProgressIndicator loadingIndicator;
-
-    // Category Buttons
     @FXML private Button allFriendsBtn;
     @FXML private Button onlineBtn;
     @FXML private Button requestsBtn;
-
-    // Search
     @FXML private TextField searchField;
-
-    // Friends Container (changed to FlowPane)
     @FXML private FlowPane friendsContainer;
-
     private String username;
     private String currentFilter = "all";
 
     @FXML
     public void initialize() {
-        logger.info("FriendsController initialized");
         String startFilter = (pendingStartFilter != null) ? pendingStartFilter : currentFilter;
-        // Initialize after layout
         javafx.application.Platform.runLater(() -> {
             setActiveFilter(startFilter);
             loadFriends();
-            pendingStartFilter = null; // clear
+            pendingStartFilter = null;
         });
     }
 
-    /**
-     * Public API to force switch to Requests tab immediately
-     */
     public void showRequestsImmediately() {
         if (requestsBtn == null) {
             // Not initialized yet; set flag
             pendingStartFilter = "requests";
             currentFilter = "requests";
-            logger.info("Requests tab scheduled for display after initialization");
             return;
         }
         setActiveFilter("requests");
         loadFriends();
-        logger.info("Requests tab displayed immediately");
     }
 
-    /**
-     * Public API to force switch to Online tab immediately
-     */
+
     public void showOnlineImmediately() {
         if (onlineBtn == null) {
             // Not initialized yet; set flag
             pendingStartFilter = "online";
             currentFilter = "online";
-            logger.info("Online tab scheduled for display after initialization");
             return;
         }
         setActiveFilter("online");
         loadFriends();
-        logger.info("Online tab displayed immediately");
     }
 
     public void setUsername(String username) {
         this.username = username;
-        logger.info("FriendsController - Setting username: {}", username);
-
-        // Delegate user info to header controller
         if (headerController != null) {
             String email = username + "@mathspeed.com";
             headerController.setUserInfo(username, email);
-            logger.debug("User info delegated to header controller");
         } else {
             logger.warn("Header controller not initialized yet, username will be set later");
         }
     }
 
     private void setActiveFilter(String filter) {
-        logger.info("setActiveFilter called with filter: {}", filter);
-
-        // Check if buttons are initialized
         if (allFriendsBtn == null || onlineBtn == null || requestsBtn == null) {
             logger.warn("Category buttons not initialized yet, filter: {}", filter);
             currentFilter = filter;
             return;
         }
 
-        // Remove active class from all buttons
         allFriendsBtn.getStyleClass().removeAll("category-button-active");
         onlineBtn.getStyleClass().removeAll("category-button-active");
         requestsBtn.getStyleClass().removeAll("category-button-active");
@@ -111,33 +81,23 @@ public class FriendsController {
         switch (filter) {
             case "all" -> {
                 allFriendsBtn.getStyleClass().add("category-button-active");
-                logger.debug("Set All Friends button as active");
             }
             case "online" -> {
                 onlineBtn.getStyleClass().add("category-button-active");
-                logger.debug("Set Online button as active");
             }
             case "requests" -> {
                 requestsBtn.getStyleClass().add("category-button-active");
-                logger.debug("Set Requests button as active");
             }
         }
         currentFilter = filter;
-        logger.info("Filter successfully changed to: {}", filter);
     }
 
     private void loadFriends() {
-        logger.info("Loading friends with filter: " + currentFilter);
-
         if (friendsContainer == null) {
             logger.warn("Friends container is null");
             return;
         }
-
-        // Clear existing friends
         friendsContainer.getChildren().clear();
-
-        // Add friend cards based on filter
         switch (currentFilter) {
             case "all" -> loadAllFriends();
             case "online" -> loadOnlineFriends();
@@ -146,7 +106,6 @@ public class FriendsController {
     }
 
     private void loadAllFriends() {
-        // Add all friends
         addFriendCard("Alice", "https://i.pravatar.cc/150?img=24", true);
         addFriendCard("Bob", "https://i.pravatar.cc/150?img=33", true);
         addFriendCard("Charlie", "https://i.pravatar.cc/150?img=29", false);
@@ -211,32 +170,17 @@ public class FriendsController {
             challengeBtn.getStyleClass().add("primary-button");
             challengeBtn.setMaxWidth(90);
             challengeBtn.setOnAction(e -> handleChallengeFriend(name));
+
             // Disable challenge button if friend is offline
             if (!isOnline) {
                 challengeBtn.setDisable(true);
+                challengeBtn.setOpacity(0.6);
                 Tooltip offlineTip = new Tooltip("Friend is offline");
                 Tooltip.install(challengeBtn, offlineTip);
             }
-
             card.getChildren().addAll(avatarPane, nameLabel, challengeBtn);
 
-            // Add click handler to card only if friend is online
-            if (isOnline) {
-                card.setOnMouseClicked(e -> {
-                    if (e.getTarget() != challengeBtn) {
-                        handleFriendCardClick(name);
-                    }
-                });
-                card.setStyle(card.getStyle() + "; -fx-cursor: hand;");
-            } else {
-                // Offline card - no click handler, change opacity
-                card.setOpacity(0.6);
-                card.setStyle(card.getStyle() + "; -fx-cursor: default;");
-            }
-
             friendsContainer.getChildren().add(card);
-            logger.debug("Added friend card: {} (online: {})", name, isOnline);
-
         } catch (Exception e) {
             logger.error("Failed to create friend card: " + name, e);
         }
@@ -284,21 +228,13 @@ public class FriendsController {
 
             card.getChildren().addAll(avatarPane, nameLabel, buttonBox);
             friendsContainer.getChildren().add(card);
-            logger.debug("Added friend request card: {}", name);
-
         } catch (Exception e) {
             logger.error("Failed to create friend request card: " + name, e);
         }
     }
 
-    private void handleFriendCardClick(String friendName) {
-        logger.info("Friend card clicked: {}", friendName);
-        // TODO: Show friend profile or details
-    }
-
     private void handleChallengeFriend(String friendName) {
         logger.info("Challenge friend: {}", friendName);
-        // TODO: Start quiz challenge with friend
     }
 
     private void handleAcceptFriend(String friendName) {

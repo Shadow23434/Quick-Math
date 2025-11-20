@@ -1,6 +1,7 @@
 package com.mathspeed.controller;
 
 import com.mathspeed.client.SceneManager;
+import com.mathspeed.client.WindowSizing;
 import com.mathspeed.util.ReloadManager;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -13,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
-import java.time.Period;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -53,8 +53,6 @@ public class RegisterController {
 
     @FXML
     public void initialize() {
-        logger.info("RegisterController initialized");
-
         setupIcons();
         setupUsernameField();
         setupEmailField();
@@ -63,8 +61,24 @@ public class RegisterController {
         setupPasswordField();
         setupConfirmPasswordField();
         setupEnterKeyRegistration();
-        setupReloadShortcut();
         setupCustomCheckboxIcon();
+
+        // Ensure register screen uses default compact sizing by default
+        WindowSizing.applyToNode(usernameField, false);
+
+        if (usernameField != null) {
+            usernameField.sceneProperty().addListener((obs, oldS, newS) -> {
+                if (newS != null) {
+                    newS.addEventFilter(KeyEvent.KEY_PRESSED, ev -> {
+                        if (ev.isControlDown() && ev.getCode() == javafx.scene.input.KeyCode.D) {
+                            WindowSizing.toggleGlobalAndApply(usernameField);
+                            System.out.println("Window mode toggled. Now desktop=" + WindowSizing.isGlobalDesktopMode());
+                            ev.consume();
+                        }
+                    });
+                }
+            });
+        }
     }
 
     private void setupIcons() {
@@ -134,17 +148,6 @@ public class RegisterController {
         }
     }
 
-    private void setupReloadShortcut() {
-        if (reloadButton != null && reloadButton.getScene() != null) {
-            reloadButton.getScene().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-                if (event.getCode() == KeyCode.F5) {
-                    handleReload();
-                    event.consume();
-                }
-            });
-        }
-    }
-
     private void setupCustomCheckboxIcon() {
         checkIcon = new FontIcon(FontAwesomeSolid.CHECK);
         checkIcon.setIconSize(10);
@@ -164,11 +167,6 @@ public class RegisterController {
             checkIconLabel.setGraphic(checkIcon);
             checkIconLabel.setVisible(true);
         }
-    }
-
-    @FXML
-    private void handleReload() {
-        ReloadManager.reloadCurrentScene();
     }
 
     private void setupUsernameField() {
@@ -746,9 +744,15 @@ public class RegisterController {
             return;
         }
 
+        // Map selected country name to ISO code (store country as code)
+        String selectedCountryName = countryComboBox != null ? countryComboBox.getSelectionModel().getSelectedItem() : null;
+        String countryCode = null;
+        if (selectedCountryName != null && !selectedCountryName.isEmpty()) {
+            countryCode = com.mathspeed.util.Countries.getCodeForName(selectedCountryName);
+        }
+
         setLoading(true);
-        logger.info("Registration attempt: username={}, email={}", username, email);
-        performRegistration(username, email, password);
+        performRegistration(username, email, password, countryCode);
     }
 
     private boolean isValidEmail(String email) {
@@ -756,8 +760,8 @@ public class RegisterController {
         return email.matches(emailRegex);
     }
 
-    private void performRegistration(String username, String email, String password) {
-        logger.info("Registering user: {}", username);
+    private void performRegistration(String username, String email, String password, String countryCode) {
+        logger.info("Registering user: {} countryCode={}", username, countryCode);
         navigateToLogin();
     }
 
@@ -782,7 +786,6 @@ public class RegisterController {
 
     @FXML
     private void handleLogin() {
-        logger.info("Navigating to login screen");
         navigateToLogin();
     }
 

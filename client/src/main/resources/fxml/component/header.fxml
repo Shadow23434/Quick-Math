@@ -9,9 +9,9 @@
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.mathspeed.controller.HeaderController"
             styleClass="header-section"
-            prefHeight="80"
-            minHeight="80"
-            maxHeight="80">
+            prefHeight="60"
+            minHeight="60"
+            maxHeight="60">
     <left>
         <!-- Left: User Avatar + User Info -->
         <HBox alignment="CENTER_LEFT" spacing="10" onMouseClicked="#handleProfile">

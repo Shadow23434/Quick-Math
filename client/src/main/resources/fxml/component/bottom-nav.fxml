@@ -9,29 +9,43 @@
            xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="com.mathspeed.controller.BottomNavController"
            styleClass="bottom-appbar-stack"
-           prefHeight="80" maxHeight="80">
+           prefHeight="60" maxHeight="60">
 
-    <HBox spacing="20" alignment="CENTER" styleClass="bottom-appbar" prefHeight="60" maxHeight="60">
-        <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#onHomeClicked">
+    <!-- Use a GridPane with 5 equal columns so the center column is the exact middle -->
+    <GridPane hgap="20" alignment="BOTTOM_CENTER" styleClass="bottom-appbar" prefHeight="60" maxHeight="60">
+        <columnConstraints>
+            <ColumnConstraints percentWidth="20"/>
+            <ColumnConstraints percentWidth="20"/>
+            <ColumnConstraints percentWidth="20"/>
+            <ColumnConstraints percentWidth="20"/>
+            <ColumnConstraints percentWidth="20"/>
+        </columnConstraints>
+
+        <VBox GridPane.columnIndex="0" alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#onHomeClicked">
             <FontIcon fx:id="homeIcon" iconLiteral="far-envelope-open" styleClass="bottom-appbar-icon"/>
             <Label fx:id="homeLabel" text="Home" styleClass="bottom-appbar-label"/>
         </VBox>
-        <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#onLibraryClicked">
+
+        <VBox GridPane.columnIndex="1" alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#onLibraryClicked">
             <FontIcon fx:id="libraryIcon" iconLiteral="far-copy" styleClass="bottom-appbar-icon"/>
             <Label fx:id="libraryLabel" text="Library" styleClass="bottom-appbar-label"/>
         </VBox>
-        <Region minWidth="60" maxWidth="60"/>
-        <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#onFriendsClicked">
+
+        <!-- center column (index 2) stays empty to represent the middle under the floating button -->
+
+        <VBox GridPane.columnIndex="3" alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#onFriendsClicked">
             <FontIcon fx:id="friendsIcon" iconLiteral="fas-user-friends" styleClass="bottom-appbar-icon"/>
             <Label fx:id="friendsLabel" text="Friends" styleClass="bottom-appbar-label"/>
         </VBox>
-        <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#onLeaderboardClicked">
+
+        <VBox GridPane.columnIndex="4" alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#onLeaderboardClicked">
             <FontIcon fx:id="leaderboardIcon" iconLiteral="far-chart-bar" styleClass="bottom-appbar-icon"/>
             <Label fx:id="leaderboardLabel" text="Leaderboard" styleClass="bottom-appbar-label"/>
         </VBox>
-    </HBox>
+    </GridPane>
 
-    <Button fx:id="joinQuizButton" styleClass="floating-quiz-button" StackPane.alignment="CENTER">
+    <!-- Position the floating button at the bottom center and lift it a bit above the bar -->
+    <Button fx:id="joinQuizButton" styleClass="floating-quiz-button" StackPane.alignment="BOTTOM_CENTER" translateY="-18">
         <graphic>
             <FontIcon iconLiteral="fas-play" styleClass="floating-quiz-icon"/>
         </graphic>
@@ -39,6 +53,4 @@
             <Tooltip text="Join Quiz"/>
         </tooltip>
     </Button>
-
-    <Rectangle width="60" height="6" arcWidth="6" arcHeight="6" fill="#23262F" opacity="0.15" StackPane.alignment="BOTTOM_CENTER" styleClass="bottom-appbar-handle"/>
 </StackPane>

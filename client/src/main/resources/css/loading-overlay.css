@@ -1,0 +1,14 @@
+/* Styles for loading overlay */
+.loading-overlay {
+    -fx-alignment: center;
+}
+.loading-overlay > .label.loading-message {
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+}
+/* Ensure the overlay stretches to cover parent StackPane */
+.loading-overlay Region {
+    -fx-pref-width: 100%;
+    -fx-pref-height: 100%;
+}
+

@@ -72,30 +72,16 @@
 /* Container */
 .light-container {
     -fx-background-color: -text-light;
-    /* Removed Infinity constraints causing layout overflow */
-    -fx-pref-width: 360px;
-    -fx-pref-height: 640px;
-    -fx-min-width: 360px;
-    -fx-min-height: 640px;
-    -fx-max-width: 360px;
-    -fx-max-height: 640px;
 }
 
 .container {
     -fx-background-color: linear-gradient(
             to bottom,
             #725bf5 0%,
-            #5644e7 40%,
-            #f6f8fc 40%,
+            #5644e7 30%,
+            #f6f8fc 30%,
             #f6f8fc 100%
     );
-    /* Replace Infinity constraints with concrete bounds so BorderPane can allocate bottom region */
-    -fx-pref-width: 360px;
-    -fx-pref-height: 640px;
-    -fx-min-width: 360px;
-    -fx-min-height: 640px;
-    -fx-max-width: 360px;
-    -fx-max-height: 640px;
 }
 
 /* Field Labels */
@@ -284,6 +270,11 @@
     -fx-underline: false;
     -fx-border-color: transparent;
     -fx-cursor: hand;
+    -fx-background-color: -text-light;
+    -fx-background-radius: 10px;
+    -fx-padding: 4 8;
+    -fx-background-insets: 0;
+    -fx-alignment: center-left;
 }
 
 .hyper-link:hover {
@@ -369,11 +360,7 @@
 
 /* Header Section */
 .header-section {
-    -fx-max-width: 360px;
-    -fx-pref-width: 360px;
-    -fx-max-height: 80px;
-    -fx-pref-height: 80px;
-    -fx-padding: 10 10;
+    -fx-padding: 10 20;
     -fx-background-color: -primary-color;
 }
 
@@ -435,8 +422,6 @@
 .bottom-appbar {
     -fx-background-color: #fff;
     -fx-padding: 4 0;
-    -fx-min-height: 60px;
-    -fx-max-height: 60px;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.07), 8, 0.2, 0, -2);
     -fx-border-width: 1 0 0 0;
     -fx-border-color: #ececec transparent transparent transparent;

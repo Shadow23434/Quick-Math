@@ -22,13 +22,13 @@ import org.slf4j.LoggerFactory;
 public class HorizontalCarousel extends StackPane {
     private static final Logger logger = LoggerFactory.getLogger(HorizontalCarousel.class);
     private final HBox container;
-    private double scrollAmount = 200; // Pixels to scroll per action
+    private double scrollAmount = 200;
     private Button prevBtn, nextBtn;
     private FontIcon prevIconRef, nextIconRef;
 
     public HorizontalCarousel() {
         container = new HBox(15);
-        container.setStyle("-fx-padding: 0;");
+        container.setStyle("-fx-padding: 0 10;");
         container.setMinWidth(0);
         container.setPrefWidth(Region.USE_COMPUTED_SIZE);
         container.setMaxWidth(Double.MAX_VALUE);
@@ -68,11 +68,6 @@ public class HorizontalCarousel extends StackPane {
             double spacing = container.getSpacing();
             this.scrollAmount = cardWidth + spacing;
         }
-    }
-
-    public void addItem(javafx.scene.Node item) {
-        container.getChildren().add(item);
-        Platform.runLater(this::updateNavButtonVisibility);
     }
 
     public void scrollRight() {
@@ -218,10 +213,6 @@ public class HorizontalCarousel extends StackPane {
 
     public void setSpacing(double spacing) {
         container.setSpacing(spacing);
-    }
-
-    public void setScrollAmount(double amount) {
-        this.scrollAmount = amount;
     }
 
     public HBox getContainer() {

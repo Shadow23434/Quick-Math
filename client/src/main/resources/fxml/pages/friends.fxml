@@ -18,13 +18,10 @@
 
     <!-- Main Content Scrolls Below Header -->
     <ScrollPane fitToWidth="true"
-                prefHeight="460"
-                maxHeight="460"
                 hbarPolicy="NEVER"
-                vbarPolicy="AS_NEEDED"
                 styleClass="dashboard-scroll-pane"
                 VBox.vgrow="ALWAYS">
-        <VBox spacing="20" prefWidth="320" style="-fx-padding: 0;" alignment="TOP_CENTER">
+        <VBox spacing="20" prefWidth="320" style="-fx-padding: 0 0 20 0;" alignment="TOP_CENTER">
             <!-- Page Title -->
             <Label text="Friends" styleClass="section-title" style="-fx-font-size: 24px; -fx-font-weight: bold;">
                 <VBox.margin>
@@ -60,14 +57,6 @@
                       style="-fx-padding: 0 20 20 20;">
                 <!-- Friend cards will be added dynamically -->
             </FlowPane>
-
-            <!-- Loading Indicator -->
-            <ProgressIndicator fx:id="loadingIndicator"
-                               visible="false"
-                               managed="false"
-                               maxWidth="40"
-                               maxHeight="40"/>
         </VBox>
     </ScrollPane>
-    <!-- Bottom AppBar removed: handled by shell -->
 </VBox>
