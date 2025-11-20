@@ -24,7 +24,7 @@
         <property name="hibernate.hbm2ddl.auto">update</property>
 
         <!-- Mapping classes -->
-        <mapping class="com.mathspeed.model.Player"/>
-        <mapping class="com.mathspeed.model.GameHistory"/>
+        <mapping class="com.mathspeed.domain.model.Player"/>
+        <mapping class="com.mathspeed.domain.model.GameHistory"/>
     </session-factory>
 </hibernate-configuration>

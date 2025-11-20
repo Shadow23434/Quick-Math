@@ -146,13 +146,13 @@ public class LeaderboardController {
 
         // Flag ImageView
         ImageView flagView = new ImageView();
-        flagView.setFitWidth(24);
-        flagView.setFitHeight(16);
+        flagView.setFitWidth(30);
+        flagView.setFitHeight(22);
         flagView.setPreserveRatio(true);
         String countryCode = entry.getCountryCode();
         if (countryCode != null && countryCode.length() == 2) {
             String codeLower = countryCode.toLowerCase();
-            String flagUrl = "https://flagcdn.com/w40/" + codeLower + ".png"; // 40px width
+            String flagUrl = "https://flagcdn.com/56x42/" + codeLower + ".png"; // 56px width
             try {
                 Image flagImg = new Image(flagUrl, true);
                 if (!flagImg.isError()) {

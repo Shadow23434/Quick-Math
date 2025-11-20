@@ -32,7 +32,15 @@
                 <VBox.margin>
                     <Insets left="20" right="20"/>
                 </VBox.margin>
-                <Label text="🏆 Top 3 Champions" styleClass="section-title"/>
+                <Label text="Top 3 Champions" styleClass="section-title" graphicTextGap="8">
+                    <graphic>
+                        <ImageView fitWidth="30" preserveRatio="true">
+                            <image>
+                                <javafx.scene.image.Image url="/images/t1.png" />
+                            </image>
+                        </ImageView>
+                    </graphic>
+                </Label>
                 <HBox spacing="15" alignment="CENTER">
                     <!-- 2nd Place -->
                     <VBox alignment="CENTER" spacing="8" styleClass="podium-card">

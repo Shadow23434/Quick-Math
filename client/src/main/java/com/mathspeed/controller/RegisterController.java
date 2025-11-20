@@ -22,8 +22,8 @@ public class RegisterController {
     private static final Logger logger = LoggerFactory.getLogger(RegisterController.class);
 
     @FXML private TextField usernameField;
-    @FXML private TextField emailField;
-    @FXML private DatePicker dateOfBirthPicker;
+    @FXML private TextField displayNameField;
+    @FXML private ComboBox<String> genderComboBox;
     @FXML private ComboBox<String> countryComboBox;
     @FXML private PasswordField passwordHiddenField;
     @FXML private TextField passwordVisibleField;
@@ -34,7 +34,7 @@ public class RegisterController {
     @FXML private Button clearPasswordButton;
     @FXML private Button clearConfirmPasswordButton;
     @FXML private Button clearUsernameButton;
-    @FXML private Button clearEmailButton;
+    @FXML private Button clearDisplayNameButton;
     @FXML private Label passwordStrengthLabel;
     @FXML private Label passwordHintLabel;
     @FXML private Label confirmPasswordHintLabel;
@@ -44,7 +44,6 @@ public class RegisterController {
     @FXML private Button registerButton;
     @FXML private ProgressIndicator loadingIndicator;
     @FXML private Button reloadButton;
-
     private boolean isPasswordVisible = false;
     private boolean isConfirmPasswordVisible = false;
     private FontIcon eyeIcon;
@@ -55,8 +54,8 @@ public class RegisterController {
     public void initialize() {
         setupIcons();
         setupUsernameField();
-        setupEmailField();
-        setupDateOfBirthPicker();
+        setupDisplayNameField();
+        setupGenderComboBox();
         setupCountryComboBox();
         setupPasswordField();
         setupConfirmPasswordField();
@@ -114,12 +113,12 @@ public class RegisterController {
             clearUsernameButton.setGraphic(clearIcon);
         }
 
-        // Setup clear email icon
-        if (clearEmailButton != null) {
+        // Setup clear display name icon
+        if (clearDisplayNameButton != null) {
             FontIcon clearIcon = new FontIcon(FontAwesomeSolid.TIMES);
             clearIcon.setIconSize(16);
             clearIcon.getStyleClass().add("icon-view");
-            clearEmailButton.setGraphic(clearIcon);
+            clearDisplayNameButton.setGraphic(clearIcon);
         }
 
         // Setup clear password icon
@@ -179,140 +178,24 @@ public class RegisterController {
         });
     }
 
-    private void setupEmailField() {
-        emailField.textProperty().addListener((obs, oldVal, newVal) -> {
-            updateClearEmailButtonVisibility();
+    private void setupDisplayNameField() {
+        displayNameField.textProperty().addListener((obs, oldVal, newVal) -> {
+            updateClearDisplayNameButtonVisibility();
         });
 
-        emailField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
-            updateClearEmailButtonVisibility();
+        displayNameField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            updateClearDisplayNameButtonVisibility();
         });
     }
 
-    private void setupDateOfBirthPicker() {
-        if (dateOfBirthPicker != null) {
-            // Set date format to dd-MM-yyyy
-            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
-
-            dateOfBirthPicker.setConverter(new javafx.util.StringConverter<LocalDate>() {
-                @Override
-                public String toString(LocalDate date) {
-                    if (date != null) {
-                        return dateFormatter.format(date);
-                    }
-                    return "";
-                }
-
-                @Override
-                public LocalDate fromString(String string) {
-                    if (string != null && !string.isEmpty()) {
-                        try {
-                            return LocalDate.parse(string, dateFormatter);
-                        } catch (DateTimeParseException e) {
-                            return null;
-                        }
-                    }
-                    return null;
-                }
-            });
-
-            // Set prompt text
-            dateOfBirthPicker.setPromptText("Select date of birth");
-
-            // Set disable dates
-            dateOfBirthPicker.setDayCellFactory(picker -> new DateCell() {
-                private YearMonth displayedYearMonth;
-
-                @Override
-                public void updateItem(LocalDate date, boolean empty) {
-                    super.updateItem(date, empty);
-
-                    if (empty || date == null) {
-                        setDisable(true);
-                        return;
-                    }
-
-                    LocalDate today = LocalDate.now();
-
-                    // Get the displayed month from the first enabled date cell
-                    if (displayedYearMonth == null || !displayedYearMonth.equals(YearMonth.from(date))) {
-                        // Update displayed month when we encounter a date from current month
-                        if (!getStyleClass().contains("other-month")) {
-                            displayedYearMonth = YearMonth.from(date);
-                        }
-                    }
-
-                    // Disable future dates
-                    boolean isFutureDate = date.isAfter(today);
-
-                    // Disable dates outside current displayed month
-                    boolean isOutOfMonth = getStyleClass().contains("other-month");
-
-                    if (isFutureDate || isOutOfMonth) {
-                        setDisable(true);
-                    } else {
-                        setDisable(false);
-                        setStyle(""); // Reset style
-                    }
-                }
-            });
-
-            // Make the entire DatePicker text field clickable to open the calendar
-            dateOfBirthPicker.getEditor().setOnMouseClicked(event -> {
-                if (!dateOfBirthPicker.isShowing()) {
-                    dateOfBirthPicker.show();
-                }
-            });
-
-            // Validate input format when user types manually
-            dateOfBirthPicker.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
-                if (newValue != null && !newValue.isEmpty()) {
-                    // Remove any validation error styling first
-                    dateOfBirthPicker.getEditor().setStyle("-fx-cursor: hand;");
-
-                    // Check if the input matches the date format
-                    if (newValue.length() == 10) { // dd-MM-yyyy has 10 characters
-                        try {
-                            LocalDate parsedDate = LocalDate.parse(newValue, dateFormatter);
-                            // Check if date is not in the future
-                            if (parsedDate.isAfter(LocalDate.now())) {
-                                dateOfBirthPicker.getEditor().setStyle("-fx-cursor: hand; -fx-text-fill: #ef5350;");
-                            } else {
-                                dateOfBirthPicker.setValue(parsedDate);
-                            }
-                        } catch (DateTimeParseException e) {
-                            // Invalid format - show error styling
-                            dateOfBirthPicker.getEditor().setStyle("-fx-cursor: hand; -fx-text-fill: #ef5350;");
-                        }
-                    }
-                }
-            });
-
-            // Validate on focus lost
-            dateOfBirthPicker.getEditor().focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
-                if (!isNowFocused) {
-                    String text = dateOfBirthPicker.getEditor().getText();
-                    if (text != null && !text.isEmpty()) {
-                        try {
-                            LocalDate parsedDate = LocalDate.parse(text, dateFormatter);
-                            if (parsedDate.isAfter(LocalDate.now())) {
-                                dateOfBirthPicker.getEditor().clear();
-                                dateOfBirthPicker.setValue(null);
-                            } else {
-                                dateOfBirthPicker.setValue(parsedDate);
-                            }
-                        } catch (DateTimeParseException e) {
-                            // Invalid format - clear the field
-                            dateOfBirthPicker.getEditor().clear();
-                            dateOfBirthPicker.setValue(null);
-                        }
-                    }
-                    // Reset styling
-                    dateOfBirthPicker.getEditor().setStyle("-fx-cursor: hand;");
-                }
-            // Change cursor to hand when hovering over the text field
-            dateOfBirthPicker.getEditor().setStyle("-fx-cursor: hand;");
-            });
+    private void setupGenderComboBox() {
+        if (genderComboBox != null) {
+            genderComboBox.getItems().addAll(
+                    "Male", "Female", "Other"
+            );
+            genderComboBox.setEditable(false);
+            // Optional: keep no selection by default
+            genderComboBox.getSelectionModel().clearSelection();
         }
     }
 
@@ -414,11 +297,11 @@ public class RegisterController {
     private void setupEnterKeyRegistration() {
         usernameField.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ENTER) {
-                emailField.requestFocus();
+                displayNameField.requestFocus();
             }
         });
 
-        emailField.setOnKeyPressed(event -> {
+        displayNameField.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ENTER) {
                 passwordHiddenField.requestFocus();
             }
@@ -522,9 +405,9 @@ public class RegisterController {
     }
 
     @FXML
-    private void handleClearEmail() {
-        emailField.clear();
-        emailField.requestFocus();
+    private void handleClearDisplayName() {
+        displayNameField.clear();
+        displayNameField.requestFocus();
     }
 
     @FXML
@@ -562,12 +445,12 @@ public class RegisterController {
         }
     }
 
-    private void updateClearEmailButtonVisibility() {
-        if (clearEmailButton != null) {
-            boolean hasText = !emailField.getText().isEmpty();
-            boolean isFocused = emailField.isFocused();
-            clearEmailButton.setVisible(hasText && isFocused);
-            clearEmailButton.setManaged(hasText && isFocused);
+    private void updateClearDisplayNameButtonVisibility() {
+        if (clearDisplayNameButton != null) {
+            boolean hasText = !displayNameField.getText().isEmpty();
+            boolean isFocused = displayNameField.isFocused();
+            clearDisplayNameButton.setVisible(hasText && isFocused);
+            clearDisplayNameButton.setManaged(hasText && isFocused);
         }
     }
 
@@ -684,7 +567,7 @@ public class RegisterController {
     @FXML
     private void handleRegister() {
         String username = usernameField.getText().trim();
-        String email = emailField.getText().trim();
+        String displayName = displayNameField.getText().trim();
         String password = passwordHiddenField.getText();
         String confirmPassword = confirmPasswordHiddenField.getText();
 
@@ -703,15 +586,9 @@ public class RegisterController {
             return;
         }
 
-        if (email.isEmpty()) {
-            showError("Please enter your email");
-            emailField.requestFocus();
-            return;
-        }
-
-        if (!isValidEmail(email)) {
-            showError("Please enter a valid email address");
-            emailField.requestFocus();
+        if (displayName.isEmpty()) {
+            showError("Please enter your display name");
+            displayNameField.requestFocus();
             return;
         }
 
@@ -751,17 +628,15 @@ public class RegisterController {
             countryCode = com.mathspeed.util.Countries.getCodeForName(selectedCountryName);
         }
 
+        // Selected gender (optional)
+        String selectedGender = genderComboBox != null ? genderComboBox.getSelectionModel().getSelectedItem() : null;
+
         setLoading(true);
-        performRegistration(username, email, password, countryCode);
+        performRegistration(username, displayName, password, countryCode, selectedGender);
     }
 
-    private boolean isValidEmail(String email) {
-        String emailRegex = "^[A-Za-z0-9+_.-]+@[A-ZaZ0-9.-]+\\.[A-ZaZ]{2,}$";
-        return email.matches(emailRegex);
-    }
-
-    private void performRegistration(String username, String email, String password, String countryCode) {
-        logger.info("Registering user: {} countryCode={}", username, countryCode);
+    private void performRegistration(String username, String displayName, String password, String countryCode, String gender) {
+        logger.info("Registering user: {} displayName={} countryCode={} gender={}", username, displayName, countryCode, gender);
         navigateToLogin();
     }
 
@@ -774,7 +649,8 @@ public class RegisterController {
     private void setLoading(boolean loading) {
         registerButton.setDisable(loading);
         usernameField.setDisable(loading);
-        emailField.setDisable(loading);
+        displayNameField.setDisable(loading);
+        if (genderComboBox != null) genderComboBox.setDisable(loading);
         passwordHiddenField.setDisable(loading);
         passwordVisibleField.setDisable(loading);
         confirmPasswordHiddenField.setDisable(loading);

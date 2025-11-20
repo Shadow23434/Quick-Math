@@ -71,13 +71,12 @@
                             </StackPane>
                         </VBox>
 
-                        <!-- Email Field -->
+                        <!-- Display name Field -->
                         <VBox spacing="5">
-                            <Label text="Email" styleClass="field-label"/>
-
+                            <Label text="Display Name" styleClass="field-label"/>
                             <StackPane>
-                                <TextField fx:id="emailField"
-                                           promptText="Enter email"
+                                <TextField fx:id="displayNameField"
+                                           promptText="Enter display name"
                                            styleClass="text-field"
                                            StackPane.alignment="CENTER_LEFT"/>
 
@@ -87,28 +86,27 @@
                                       StackPane.alignment="CENTER_RIGHT"
                                       pickOnBounds="false">
 
-                                    <Button fx:id="clearEmailButton"
+                                    <Button fx:id="clearDisplayNameButton"
                                             styleClass="password-action-button"
                                             focusTraversable="false"
                                             visible="false"
                                             managed="false"
-                                            onAction="#handleClearEmail">
+                                            onAction="#handleClearDisplayName">
                                         <tooltip>
-                                            <Tooltip text="Clear email"/>
+                                            <Tooltip text="Clear display name"/>
                                         </tooltip>
                                     </Button>
                                 </HBox>
                             </StackPane>
                         </VBox>
 
-                        <!-- Date of Birth Selector -->
+                        <!-- Gender Selector -->
                         <VBox spacing="5">
-                            <Label text="Date of Birth" styleClass="field-label"/>
-                            <DatePicker fx:id="dateOfBirthPicker"
-                                       promptText="Select date of birth"
-                                       styleClass="date-picker"
-                                       maxWidth="Infinity"
-                                       editable="false"/>
+                            <Label text="Gender" styleClass="field-label"/>
+                            <ComboBox fx:id="genderComboBox"
+                                      promptText="Select gender"
+                                      styleClass="combo-box"
+                                      maxWidth="Infinity"/>
                         </VBox>
 
                         <!-- Country Selector -->
