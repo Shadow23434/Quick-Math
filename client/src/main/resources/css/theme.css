@@ -371,8 +371,8 @@
 .header-section {
     -fx-max-width: 360px;
     -fx-pref-width: 360px;
-    -fx-max-height: 100px;
-    -fx-pref-height: 100px;
+    -fx-max-height: 80px;
+    -fx-pref-height: 80px;
     -fx-padding: 10 10;
     -fx-background-color: -primary-color;
 }

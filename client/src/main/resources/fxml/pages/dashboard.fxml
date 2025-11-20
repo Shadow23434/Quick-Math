@@ -17,7 +17,7 @@
       style="-fx-background-color: transparent;">
     <!-- Header Section (Separated Component) -->
     <fx:include fx:id="dashboardHeader"
-                source="../component/dashboard_header.fxml"
+                source="../component/header.fxml"
                 VBox.vgrow="NEVER"/>
 
     <!-- Main Content Scrolls Below Header -->
@@ -107,7 +107,7 @@
                                 <Label text="Discover Quiz" styleClass="section-title"/>
                                 <Region HBox.hgrow="ALWAYS"/>
                                 <Hyperlink fx:id="seeAllQuizLink" text="See All"
-                                           onAction="#handleLibrary"
+                                           onAction="#handleSeeAllQuizzes"
                                            styleClass="hyper-link"
                                            contentDisplay="RIGHT">
                                     <graphic>

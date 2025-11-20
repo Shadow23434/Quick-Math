@@ -12,7 +12,7 @@ public class DashboardController {
     private static final Logger logger = LoggerFactory.getLogger(DashboardController.class);
 
     // Header component (injected from fx:include)
-    @FXML private DashboardHeaderController dashboardHeaderController;
+    @FXML private HeaderController headerController;
 
     // Main content fields
     public Button findFriendsButton;
@@ -161,9 +161,9 @@ public class DashboardController {
         logger.info("DashboardController - Setting username: {}", username);
 
         // Delegate user info to header controller
-        if (dashboardHeaderController != null) {
+        if (headerController != null) {
             String email = username + "@mathspeed.com";
-            dashboardHeaderController.setUserInfo(username, email);
+            headerController.setUserInfo(username, email);
             logger.debug("User info delegated to header controller");
         } else {
             logger.warn("Header controller not initialized yet, username will be set later");
@@ -179,6 +179,19 @@ public class DashboardController {
             Object controller = sceneManager.getController(com.mathspeed.client.SceneManager.Screen.FRIENDS);
             if (controller instanceof FriendsController fc) {
                 fc.showOnlineImmediately();
+            }
+        });
+    }
+
+    @FXML
+    public void handleSeeAllQuizzes() {
+        com.mathspeed.client.SceneManager sceneManager = com.mathspeed.client.SceneManager.getInstance();
+        sceneManager.navigate(com.mathspeed.client.SceneManager.Screen.LIBRARY);
+        // After navigation, ask LibraryController to show the 'all' category immediately
+        javafx.application.Platform.runLater(() -> {
+            Object controller = sceneManager.getController(com.mathspeed.client.SceneManager.Screen.LIBRARY);
+            if (controller instanceof LibraryController lc) {
+                lc.showAllImmediately();
             }
         });
     }

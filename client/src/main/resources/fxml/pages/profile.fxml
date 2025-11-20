@@ -26,12 +26,16 @@
         <right>
             <!-- Right: Action Icons -->
             <HBox alignment="CENTER_RIGHT" spacing="10">
-                <Button fx:id="settingsButton" styleClass="icon-button" onAction="#handleSettings">
+                <Button fx:id="notificationButton" styleClass="icon-button" onAction="#handleNotifications">
                     <graphic>
-                        <FontIcon iconLiteral="fas-cog" styleClass="header-icon"/>
+                        <FontIcon iconLiteral="fas-bell" styleClass="header-icon"/>
                     </graphic>
                 </Button>
-                <Button fx:id="reloadButton" text="🔄" onAction="#handleReload" styleClass="icon-button">
+
+                <Button fx:id="reloadButton"
+                        text="🔄"
+                        onAction="#handleReload"
+                        styleClass="icon-button">
                     <tooltip>
                         <Tooltip text="Reload (F5)"/>
                     </tooltip>
@@ -64,13 +68,10 @@
 
                 <!-- User Info -->
                 <VBox spacing="5" alignment="CENTER">
-                    <Label fx:id="profileNameLabel" text="Player Name" styleClass="user-greeting" style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
-                    <Label fx:id="profileEmailLabel" text="player@null.com" styleClass="user-email"/>
+                    <Label fx:id="profileNameLabel" text="Player Name" styleClass="user-greeting" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill:-text-color"/>
+                    <Label fx:id="profileEmailLabel" text="player@null.com" styleClass="user-email" style="-fx-text-fill: -text-color"/>
                     <Label fx:id="profileJoinedLabel" text="Joined: January 2025" styleClass="stat-label"/>
                 </VBox>
-
-                <!-- Edit Profile Button -->
-                <Button text="Edit Profile" styleClass="primary-button" onAction="#handleEditProfile" maxWidth="150"/>
             </VBox>
 
             <!-- Statistics Card -->
@@ -159,45 +160,5 @@
                                maxHeight="40"/>
         </VBox>
     </ScrollPane>
-
-    <!-- Bottom AppBar (Fixed Position) with Floating Join Quiz Button -->
-    <StackPane VBox.vgrow="NEVER" styleClass="bottom-appbar-stack">
-        <!-- AppBar Background and Menu -->
-        <HBox spacing="20" alignment="CENTER" styleClass="bottom-appbar">
-            <!-- Home -->
-            <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#handleHome">
-                <FontIcon fx:id="homeIcon" iconLiteral="far-envelope-open" styleClass="bottom-appbar-icon"/>
-                <Label fx:id="homeLabel" text="Home" styleClass="bottom-appbar-label"/>
-            </VBox>
-            <!-- Library -->
-            <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#handleLibrary">
-                <FontIcon fx:id="libraryIcon" iconLiteral="far-copy" styleClass="bottom-appbar-icon"/>
-                <Label fx:id="libraryLabel" text="Library" styleClass="bottom-appbar-label"/>
-            </VBox>
-            <!-- Spacer for Floating Button -->
-            <Region minWidth="60" maxWidth="60"/>
-            <!-- Friends -->
-            <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#handleFriends">
-                <FontIcon fx:id="friendsIcon" iconLiteral="fas-user-friends" styleClass="bottom-appbar-icon"/>
-                <Label fx:id="friendsLabel" text="Friends" styleClass="bottom-appbar-label"/>
-            </VBox>
-            <!-- Profile -->
-            <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#handleProfile">
-                <FontIcon fx:id="profileIcon" iconLiteral="fas-user" styleClass="bottom-appbar-icon"/>
-                <Label fx:id="profileLabel" text="Profile" styleClass="bottom-appbar-label"/>
-            </VBox>
-        </HBox>
-        <!-- Floating Join Quiz Button -->
-        <Button fx:id="joinQuizButton" styleClass="floating-quiz-button" StackPane.alignment="CENTER">
-            <graphic>
-                <FontIcon iconLiteral="fas-play" styleClass="floating-quiz-icon"/>
-            </graphic>
-            <tooltip>
-                <Tooltip text="Join Quiz"/>
-            </tooltip>
-        </Button>
-        <!-- Optional: Add a handle bar below for mobile look -->
-        <Rectangle width="60" height="6" arcWidth="6" arcHeight="6" fill="#23262F" opacity="0.15" StackPane.alignment="BOTTOM_CENTER" styleClass="bottom-appbar-handle"/>
-    </StackPane>
 </VBox>
 

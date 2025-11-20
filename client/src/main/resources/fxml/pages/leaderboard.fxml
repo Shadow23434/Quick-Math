@@ -13,7 +13,7 @@
       styleClass="light-container">
     <!-- Header Section (Separated Component) -->
     <fx:include fx:id="dashboardHeader"
-                source="../component/dashboard_header.fxml"
+                source="../component/header.fxml"
                 VBox.vgrow="NEVER"/>
 
     <!-- Main Content Scrolls Below Header -->
@@ -23,20 +23,13 @@
                 styleClass="dashboard-scroll-pane"
                 pickOnBounds="false"
                 VBox.vgrow="ALWAYS">
-        <VBox spacing="20" style="-fx-padding: 20;">
+        <VBox spacing="20" style="-fx-padding: 20 20 100 20;" alignment="TOP_CENTER">
             <!-- Page Title -->
-            <Label text="Leaderboard" styleClass="section-title" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
-
-            <!-- Time Period Tabs -->
-            <HBox spacing="10">
-                <Button fx:id="todayBtn" text="Today" styleClass="category-button, category-button-active" onAction="#handleToday"/>
-                <Button fx:id="weekBtn" text="This Week" styleClass="category-button" onAction="#handleWeek"/>
-                <Button fx:id="monthBtn" text="This Month" styleClass="category-button" onAction="#handleMonth"/>
-                <Button fx:id="allTimeBtn" text="All Time" styleClass="category-button" onAction="#handleAllTime"/>
-            </HBox>
+            <Label text="Leaderboard" styleClass="section-title" style="-fx-font-size: 24px; -fx-font-weight: bold;">
+            </Label>
 
             <!-- Top 3 Podium -->
-            <VBox spacing="15" styleClass="stats-card" style="-fx-padding: 20;">
+            <VBox spacing="15" styleClass="stats-card" style="-fx-padding: 0 20 20 20;">
                 <Label text="🏆 Top 3 Champions" styleClass="section-title"/>
                 <HBox spacing="15" alignment="CENTER">
                     <!-- 2nd Place -->
@@ -132,5 +125,4 @@
                                maxHeight="40"/>
         </VBox>
     </ScrollPane>
-    <!-- Bottom AppBar removed: handled by shell -->
 </VBox>

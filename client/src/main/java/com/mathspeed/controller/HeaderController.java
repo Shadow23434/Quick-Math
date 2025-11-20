@@ -10,8 +10,8 @@ import javafx.scene.image.ImageView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DashboardHeaderController {
-    private static final Logger logger = LoggerFactory.getLogger(DashboardHeaderController.class);
+public class HeaderController {
+    private static final Logger logger = LoggerFactory.getLogger(HeaderController.class);
 
     @FXML private ImageView avatarImageView;
     @FXML private Label userGreetingLabel;
@@ -69,17 +69,11 @@ public class DashboardHeaderController {
         updateUserDisplay();
     }
 
-    /**
-     * Set username only
-     */
     public void setUsername(String username) {
         this.username = username;
         updateUserDisplay();
     }
 
-    /**
-     * Set user avatar from URL
-     */
     public void setAvatarUrl(String avatarUrl) {
         if (avatarImageView != null && avatarUrl != null && !avatarUrl.isEmpty()) {
             try {
@@ -92,9 +86,6 @@ public class DashboardHeaderController {
         }
     }
 
-    /**
-     * Update user display labels
-     */
     private void updateUserDisplay() {
         Platform.runLater(() -> {
             if (username != null && !username.isEmpty()) {
@@ -117,20 +108,22 @@ public class DashboardHeaderController {
     }
 
     @FXML
-    private void handleSearch() {
-        logger.info("Search button clicked");
-        // TODO: Implement search functionality
-    }
-
-    @FXML
     private void handleNotifications() {
         logger.info("Notification clicked: navigate to Friends and show Requests tab");
-        com.mathspeed.client.SceneManager sceneManager = com.mathspeed.client.SceneManager.getInstance();
-        sceneManager.navigate(com.mathspeed.client.SceneManager.Screen.FRIENDS);
-        // After navigation, attempt to get controller and switch tab
-        javafx.application.Platform.runLater(() -> {
-            Object controller = sceneManager.getController(com.mathspeed.client.SceneManager.Screen.FRIENDS);
-            if (controller instanceof FriendsController fc) {
+        SceneManager sceneManager = SceneManager.getInstance();
+        // Ensure username is set before navigating
+        if ((username == null || username.isBlank()) && sceneManager.getCurrentUsername() != null) {
+            username = sceneManager.getCurrentUsername();
+        }
+        if (username == null || username.isBlank()) {
+            logger.warn("Cannot navigate to Friends - username not available");
+            return;
+        }
+
+        sceneManager.navigate(SceneManager.Screen.FRIENDS);
+        Platform.runLater(() -> {
+            Object controller = sceneManager.getController(SceneManager.Screen.FRIENDS);
+            if (controller instanceof com.mathspeed.controller.FriendsController fc) {
                 logger.info("FriendsController found - invoking showRequestsImmediately()");
                 fc.showRequestsImmediately();
             } else {
@@ -150,16 +143,10 @@ public class DashboardHeaderController {
         }
     }
 
-    /**
-     * Get username
-     */
     public String getUsername() {
         return username;
     }
 
-    /**
-     * Get email
-     */
     public String getEmail() {
         return email;
     }

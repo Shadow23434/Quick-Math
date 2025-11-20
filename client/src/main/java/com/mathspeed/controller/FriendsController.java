@@ -16,7 +16,7 @@ public class FriendsController {
     private String pendingStartFilter = null; // requests/online if scheduled before init
 
     // Header component (injected from fx:include)
-    @FXML private DashboardHeaderController dashboardHeaderController;
+    @FXML private HeaderController headerController;
 
     @FXML private ProgressIndicator loadingIndicator;
 
@@ -83,9 +83,9 @@ public class FriendsController {
         logger.info("FriendsController - Setting username: {}", username);
 
         // Delegate user info to header controller
-        if (dashboardHeaderController != null) {
+        if (headerController != null) {
             String email = username + "@mathspeed.com";
-            dashboardHeaderController.setUserInfo(username, email);
+            headerController.setUserInfo(username, email);
             logger.debug("User info delegated to header controller");
         } else {
             logger.warn("Header controller not initialized yet, username will be set later");

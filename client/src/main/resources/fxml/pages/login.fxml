@@ -193,20 +193,6 @@
         </bottom>
     </BorderPane>
 
-    <!-- Floating Reload Button (Dev Mode) -->
-    <Button fx:id="reloadButton"
-            text="🔄"
-            onAction="#handleReload"
-            styleClass="reload-button, floating-button"
-            StackPane.alignment="BOTTOM_RIGHT">
-        <StackPane.margin>
-            <Insets bottom="15" right="15"/>
-        </StackPane.margin>
-        <tooltip>
-            <Tooltip text="Reload (F5)"/>
-        </tooltip>
-    </Button>
-
     <!-- Loading Overlay moved to last so it appears on top -->
     <StackPane fx:id="loadingOverlay"
                visible="false" managed="false"

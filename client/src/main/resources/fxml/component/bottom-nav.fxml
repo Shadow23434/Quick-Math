@@ -9,11 +9,7 @@
            xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="com.mathspeed.controller.BottomNavController"
            styleClass="bottom-appbar-stack"
-           prefHeight="80" maxHeight="80"
-           style="-fx-background-color: rgba(255,0,0,0.08);"> <!-- DEBUG: visible background -->
-    <VBox alignment="CENTER" spacing="4" StackPane.alignment="TOP_CENTER" style="-fx-padding:6 0 0 0;">
-        <Label text="DEBUG BOTTOM NAV" style="-fx-text-fill:#111; -fx-font-weight:bold; -fx-font-size:12px;"/>
-    </VBox>
+           prefHeight="80" maxHeight="80">
 
     <HBox spacing="20" alignment="CENTER" styleClass="bottom-appbar" prefHeight="60" maxHeight="60">
         <VBox alignment="CENTER" spacing="4" styleClass="bottom-appbar-item" onMouseClicked="#onHomeClicked">

@@ -17,6 +17,6 @@
                    BorderPane.alignment="TOP_LEFT"/>
     </center>
     <bottom>
-        <fx:include fx:id="bottomNav" source="component/bottom_nav.fxml" />
+        <fx:include fx:id="bottomNav" source="component/bottom-nav.fxml" />
     </bottom>
 </BorderPane>

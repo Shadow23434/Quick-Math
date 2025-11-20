@@ -16,7 +16,7 @@ public class LibraryController {
     private static final Logger logger = LoggerFactory.getLogger(LibraryController.class);
 
     // Header component (injected from fx:include)
-    @FXML private DashboardHeaderController dashboardHeaderController;
+    @FXML private HeaderController headerController;
 
     @FXML private ProgressIndicator loadingIndicator;
 
@@ -44,9 +44,9 @@ public class LibraryController {
         logger.info("LibraryController - Setting username: {}", username);
 
         // Delegate user info to header controller
-        if (dashboardHeaderController != null) {
+        if (headerController != null) {
             String email = username + "@mathspeed.com";
-            dashboardHeaderController.setUserInfo(username, email);
+            headerController.setUserInfo(username, email);
             logger.debug("User info delegated to header controller");
         } else {
             logger.warn("Header controller not initialized yet, username will be set later");
@@ -239,6 +239,20 @@ public class LibraryController {
     @FXML
     private void handleLibrary() {
         // already on library
+    }
+
+    /**
+     * Public helper to switch the library view to the 'all' category and reload quizzes.
+     * Intended to be called by other controllers after navigation to the Library screen.
+     */
+    public void showAllImmediately() {
+        try {
+            setActiveCategory("all");
+            loadQuizzes();
+            logger.info("LibraryController: showAllImmediately invoked");
+        } catch (Exception e) {
+            logger.warn("Failed to immediately show all quizzes", e);
+        }
     }
 
     @FXML

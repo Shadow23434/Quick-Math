@@ -203,4 +203,9 @@ public class ShellController {
             }
         }
     }
+
+    // New getter to expose the bottom nav controller to other parts of the app
+    public BottomNavController getBottomNavController() {
+        return bottomNavController;
+    }
 }

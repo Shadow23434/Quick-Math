@@ -121,18 +121,6 @@ public class ProfileController {
     }
 
     @FXML
-    private void handleEditProfile() {
-        logger.info("Edit profile clicked");
-        // TODO: Implement edit profile dialog
-    }
-
-    @FXML
-    private void handleSettings() {
-        logger.info("Settings clicked");
-        // TODO: Implement settings page
-    }
-
-    @FXML
     private void handleChangePassword() {
         logger.info("Change password clicked");
         // TODO: Implement change password dialog
@@ -164,42 +152,20 @@ public class ProfileController {
         ReloadManager.reloadCurrentScene();
     }
 
-    // Existing method (legacy name) kept for compatibility
     @FXML
-    private void handleDashboard() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.DASHBOARD);
-        setActiveScreen("home");
-    }
-
-    // Missing handler referenced in FXML: maps to home navigation
-    @FXML
-    private void handleHome() {
-        logger.info("Home clicked from Profile screen");
-        SceneManager.getInstance().navigate(SceneManager.Screen.DASHBOARD);
-        setActiveScreen("home");
-    }
-
-    @FXML
-    private void handleLibrary() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.LIBRARY);
-        setActiveScreen("library");
-    }
-
-    @FXML
-    private void handleFriends() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.FRIENDS);
-        setActiveScreen("friends");
-    }
-
-    @FXML
-    private void handleLeaderboard() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.LEADERBOARD);
-        // could highlight leaderboard if added to profile nav
-    }
-
-    @FXML
-    private void handleProfile() {
-        // Already on profile page
-        logger.info("Already on Profile page");
+    private void handleNotifications() {
+        logger.info("Notification clicked: navigate to Friends and show Requests tab");
+        com.mathspeed.client.SceneManager sceneManager = com.mathspeed.client.SceneManager.getInstance();
+        sceneManager.navigate(com.mathspeed.client.SceneManager.Screen.FRIENDS);
+        // After navigation, attempt to get controller and switch tab
+        javafx.application.Platform.runLater(() -> {
+            Object controller = sceneManager.getController(com.mathspeed.client.SceneManager.Screen.FRIENDS);
+            if (controller instanceof FriendsController fc) {
+                logger.info("FriendsController found - invoking showRequestsImmediately()");
+                fc.showRequestsImmediately();
+            } else {
+                logger.warn("FriendsController not available immediately after navigation");
+            }
+        });
     }
 }

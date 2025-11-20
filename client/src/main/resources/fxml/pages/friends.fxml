@@ -13,7 +13,7 @@
       styleClass="light-container">
     <!-- Header Section (Separated Component) -->
     <fx:include fx:id="dashboardHeader"
-                source="../component/dashboard_header.fxml"
+                source="../component/header.fxml"
                 VBox.vgrow="NEVER"/>
 
     <!-- Main Content Scrolls Below Header -->

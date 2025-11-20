@@ -14,8 +14,8 @@ public class Main extends Application {
         SceneManager.getInstance().setPrimaryStage(primaryStage);
 
         ReloadManager.setPrimaryStage(primaryStage);
-
-        SceneManager.showSplash(primaryStage, () -> SceneManager.showGame(primaryStage));
+        SceneManager.showSplash(primaryStage, () -> SceneManager.showLogin(primaryStage));
+//        SceneManager.showSplash(primaryStage, () -> SceneManager.showGame(primaryStage));
     }
 
     @Override

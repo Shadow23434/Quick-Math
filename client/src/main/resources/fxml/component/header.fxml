@@ -7,7 +7,7 @@
 
 <BorderPane xmlns="http://javafx.com/javafx/21"
             xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.mathspeed.controller.DashboardHeaderController"
+            fx:controller="com.mathspeed.controller.HeaderController"
             styleClass="header-section"
             prefHeight="80"
             minHeight="80"
@@ -41,15 +41,6 @@
                 <graphic>
                     <FontIcon iconLiteral="fas-bell" styleClass="header-icon"/>
                 </graphic>
-            </Button>
-
-            <Button fx:id="reloadButton"
-                    text="🔄"
-                    onAction="#handleReload"
-                    styleClass="icon-button">
-                <tooltip>
-                    <Tooltip text="Reload (F5)"/>
-                </tooltip>
             </Button>
         </HBox>
     </right>

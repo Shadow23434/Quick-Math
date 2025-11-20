@@ -305,18 +305,4 @@
         </BorderPane>
     </ScrollPane>
 
-    <!-- Floating Reload Button (Dev Mode) -->
-    <Button fx:id="reloadButton"
-            text="🔄"
-            onAction="#handleReload"
-            styleClass="reload-button, floating-button"
-            StackPane.alignment="TOP_RIGHT">
-        <StackPane.margin>
-            <Insets top="15" right="15"/>
-        </StackPane.margin>
-        <tooltip>
-            <Tooltip text="Reload (F5)"/>
-        </tooltip>
-    </Button>
-
 </StackPane>

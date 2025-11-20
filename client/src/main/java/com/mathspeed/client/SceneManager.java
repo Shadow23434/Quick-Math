@@ -359,8 +359,29 @@ public class SceneManager {
             // Set current user and a default screen early so nested controllers can rely on non-null
             setCurrent(Screen.DASHBOARD, username);
 
-            File file = new File("src/main/resources/fxml/main_shell.fxml");
-            FXMLLoader loader = file.exists() ? new FXMLLoader(file.toURI().toURL()) : new FXMLLoader(SceneManager.class.getResource("/fxml/main_shell.fxml"));
+            // Try multiple candidate filenames (with underscore or hyphen) both on disk and classpath
+            String[] candidates = {"main_shell.fxml", "main-shell.fxml"};
+            FXMLLoader loader = null;
+            for (String candidate : candidates) {
+                File f = new File("src/main/resources/fxml/" + candidate);
+                if (f.exists()) {
+                    loader = new FXMLLoader(f.toURI().toURL());
+                    break;
+                }
+            }
+            if (loader == null) {
+                for (String candidate : candidates) {
+                    java.net.URL res = SceneManager.class.getResource("/fxml/" + candidate);
+                    if (res != null) {
+                        loader = new FXMLLoader(res);
+                        break;
+                    }
+                }
+            }
+            if (loader == null) {
+                logger.error("main shell FXML not found on filesystem or classpath (tried main_shell.fxml and main-shell.fxml)");
+                throw new RuntimeException("main shell FXML not found in src/main/resources/fxml or on classpath");
+            }
             Parent root = loader.load();
             shellController = loader.getController();
             Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -422,6 +443,22 @@ public class SceneManager {
         setCurrent(screen, currentUsername);
         shellController.show(screen);
         logger.info("Navigated to screen: {}", screen);
+        // Keep bottom navigation visual state in sync if available
+        try {
+            com.mathspeed.controller.ShellController sc = shellController;
+            if (sc != null && sc.getBottomNavController() != null) {
+                com.mathspeed.controller.BottomNavController bnc = sc.getBottomNavController();
+                switch (screen) {
+                    case DASHBOARD -> bnc.setActiveScreen(com.mathspeed.controller.BottomNavController.Screen.HOME);
+                    case LIBRARY -> bnc.setActiveScreen(com.mathspeed.controller.BottomNavController.Screen.LIBRARY);
+                    case FRIENDS -> bnc.setActiveScreen(com.mathspeed.controller.BottomNavController.Screen.FRIENDS);
+                    case LEADERBOARD -> bnc.setActiveScreen(com.mathspeed.controller.BottomNavController.Screen.LEADERBOARD);
+                    default -> { /* no bottom highlight for these screens */ }
+                }
+            }
+        } catch (Exception ex) {
+            logger.debug("Failed to update bottom nav state after navigation", ex);
+        }
     }
 
     // Load a screen's root node (with caching)
