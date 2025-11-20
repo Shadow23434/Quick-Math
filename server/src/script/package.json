@@ -1,0 +1,16 @@
+{
+  "name": "math-speed-scripts",
+  "version": "1.0.0",
+  "description": "Scripts to generate demo data for math-speed server",
+  "main": "gen.js",
+  "scripts": {
+    "generate": "node gen.js",
+    "validate": "node validate_demo.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1"
+  },
+  "author": "",
+  "license": "ISC"
+}
+

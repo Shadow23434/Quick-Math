@@ -19,14 +19,56 @@ Icon?
 
 # Logs
 **/logs/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
 
-# Sensitive config
+# Sensitive / env
 **/db.properties
+.env
+.env.*
+secrets.*
+*.key
+*.pem
 
 # Maven
 .mvn/
 mvnw
 mvnw.cmd
+
+# Node / npm / frontend
+node_modules/
+dist/
+build/
+coverage/
+.next/
+.nuxt/
+.eslintcache
+
+# TypeScript
+*.tsbuildinfo
+
+# C / C++
+*.o
+*.obj
+*.exe
+*.out
+*.elf
+*.dll
+*.a
+*.lib
+*.lo
+*.la
+
+# Databases / dumps
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+*.dump
+
+# IDEs / editors
+.vscode/
 
 # Others
 *.swp
