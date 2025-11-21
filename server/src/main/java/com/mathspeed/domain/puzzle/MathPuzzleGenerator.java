@@ -1,6 +1,7 @@
 package com.mathspeed.domain.puzzle;
 
 import java.util.*;
+import java.util.function.Supplier;
 
 public class MathPuzzleGenerator {
     private int difficultyLevel = 1; // 1: easy, 2: medium, 3: hard
@@ -32,4 +33,3 @@ public class MathPuzzleGenerator {
     public void setDifficultyLevel(int difficultyLevel) { this.difficultyLevel = difficultyLevel; }
 
 }
-
