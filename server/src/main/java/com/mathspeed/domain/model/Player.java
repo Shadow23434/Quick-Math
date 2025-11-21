@@ -2,7 +2,7 @@ package com.mathspeed.domain.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.util.UUID;
+import com.mathspeed.util.UuidUtil;
 
 @Entity
 @Table(name = "players")
@@ -49,7 +49,7 @@ public class Player {
     @PrePersist
     protected void onCreate() {
         if (this.id == null) {
-            this.id = UUID.randomUUID().toString();
+            this.id = UuidUtil.randomUuid();
         }
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
@@ -152,5 +152,3 @@ public class Player {
         this.createdAt = createdAt;
     }
 }
-
-

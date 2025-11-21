@@ -2,9 +2,9 @@ package com.mathspeed.application.auth;
 
 import com.mathspeed.domain.model.Player;
 import com.mathspeed.domain.port.PlayerRepository;
+import com.mathspeed.util.UuidUtil;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 public class AuthService {
     private final PlayerRepository playerRepository;
@@ -30,7 +30,7 @@ public class AuthService {
                 System.err.println("Failed to update status for user: " + username + " - " + e.getClass().getSimpleName() + ": " + e.getMessage());
                 e.printStackTrace();
             }
-            String token = UUID.randomUUID().toString();
+            String token = UuidUtil.randomUuid();
             return new AuthResult(true, token, null, player);
         } catch (Exception e) {
             return new AuthResult(false, null, "Authentication error: " + e.getMessage(), null);
@@ -50,7 +50,7 @@ public class AuthService {
         }
     }
 
-    public AuthResult register(String username, String password, String displayName) {
+    public AuthResult register(String username, String password, String displayName, String gender, String countryCode) {
         // Basic validation
         if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
             return new AuthResult(false, null, "Missing registration fields", null);
@@ -58,17 +58,32 @@ public class AuthService {
         if (username.length() < 3) {
             return new AuthResult(false, null, "Username must be at least 3 characters", null);
         }
-        if (password.length() < 6) {
-            return new AuthResult(false, null, "Password must be at least 6 characters", null);
+        if (password.length() < 8) {
+            return new AuthResult(false, null, "Password must be at least 8 characters", null);
         }
 
         try {
+            // Ensure username is not already taken (defensive check)
+            try {
+                if (playerRepository.existsByUsername(username)) {
+                    return new AuthResult(false, null, "Username already exists", null);
+                }
+            } catch (Exception ex) {
+                System.err.println("Warning: existsByUsername check failed for " + username + ": " + ex.getMessage());
+            }
             String hashed = playerRepository.hashPassword(password);
+            String uuid = UuidUtil.randomUuid();
             Player player = new Player(username, hashed);
+            player.setId(uuid);
             player.setDisplayName((displayName == null || displayName.isEmpty()) ? username : displayName);
+            player.setGender(gender);
+            player.setCountryCode(countryCode);
             player.setCreatedAt(LocalDateTime.now());
             player.setLastActiveAt(LocalDateTime.now());
-            player.setStatus("offline");
+            player.setStatus("online");
+
+            // Default avatar URL to empty for now
+            player.setAvatarUrl("https://tse1.mm.bing.net/th/id/OIP.pLa0MvBoBWBLYBwKtdbLhQAAAA?rs=1&amp;pid=ImgDetMain&amp;o=7&amp;rm=3");
 
             boolean inserted = playerRepository.insertPlayer(player);
             if (!inserted) {
@@ -81,7 +96,7 @@ public class AuthService {
                 System.err.println("Failed to update status for new user: " + username + " - " + e.getClass().getSimpleName() + ": " + e.getMessage());
             }
 
-            String token = UUID.randomUUID().toString();
+            String token = UuidUtil.randomUuid();
             return new AuthResult(true, token, null, player);
         } catch (Exception e) {
             String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();

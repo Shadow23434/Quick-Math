@@ -36,7 +36,7 @@ public class PlayerDAOImpl extends BaseDAO implements PlayerRepository {
 
     @Override
     public boolean insertPlayer(Player player) throws SQLException {
-        String sql = "INSERT INTO players (id, username, display_name, password_hash, gender, created_at) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO players (id, username, display_name, password_hash, gender, avatar_url, country_code, created_at, status, last_active_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -45,7 +45,11 @@ public class PlayerDAOImpl extends BaseDAO implements PlayerRepository {
             stmt.setString(3, player.getDisplayName());
             stmt.setString(4, player.getPasswordHash());
             stmt.setString(5, player.getGender());
-            stmt.setTimestamp(6, Timestamp.valueOf(player.getCreatedAt() != null ? player.getCreatedAt() : LocalDateTime.now()));
+            stmt.setString(6, player.getAvatarUrl());
+            stmt.setString(7, player.getCountryCode());
+            stmt.setTimestamp(8, Timestamp.valueOf(player.getCreatedAt() != null ? player.getCreatedAt() : LocalDateTime.now()));
+            stmt.setString(9, player.getStatus());
+            stmt.setTimestamp(10, Timestamp.valueOf(player.getLastActiveAt() != null ? player.getLastActiveAt() : LocalDateTime.now()));
 
             int rows = stmt.executeUpdate();
             return rows > 0;
@@ -107,6 +111,18 @@ public class PlayerDAOImpl extends BaseDAO implements PlayerRepository {
             stmt.setString(1, status);
             stmt.setString(2, username);
             stmt.executeUpdate();
+        }
+    }
+
+    @Override
+    public boolean existsByUsername(String username) throws SQLException {
+        String sql = "SELECT 1 FROM players WHERE username = ? LIMIT 1";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
         }
     }
 }

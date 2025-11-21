@@ -1,9 +1,9 @@
-package com.mathspeed.model.auth;
+package com.mathspeed.service.entity;
 
 import com.google.gson.annotations.SerializedName;
 import com.mathspeed.model.Player;
 
-public class LoginResponse {
+public class AuthResponse {
     private String token;
     @SerializedName(value = "message", alternate = {"error"})
     private String message;

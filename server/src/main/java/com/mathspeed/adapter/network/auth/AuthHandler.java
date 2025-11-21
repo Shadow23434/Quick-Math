@@ -20,6 +20,8 @@ public class AuthHandler implements HttpHandler {
     private final Pattern userPattern = Pattern.compile("\"username\"\\s*:\\s*\"([^\"]+)\"");
     private final Pattern passPattern = Pattern.compile("\"password\"\\s*:\\s*\"([^\"]+)\"");
     private final Pattern displayPattern = Pattern.compile("\"displayName\"\\s*:\\s*\"([^\"]+)\"");
+    private final Pattern genderPattern = Pattern.compile("\"gender\"\\s*:\\s*\"([^\"]+)\"");
+    private final Pattern countryPattern = Pattern.compile("\"countryCode\"\\s*:\\s*\"([^\"]+)\"");
 
     public AuthHandler(AuthService authService) {
         this.authService = authService;
@@ -111,6 +113,8 @@ public class AuthHandler implements HttpHandler {
         String username = extract(body, userPattern);
         String password = extract(body, passPattern);
         String displayName = extract(body, displayPattern);
+        String gender = extract(body, genderPattern);
+        String countryCode = extract(body, countryPattern);
 
         if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
             String json = "{\"ok\":false,\"error\":\"Missing registration fields\",\"status\":400}";
@@ -118,7 +122,7 @@ public class AuthHandler implements HttpHandler {
             return;
         }
 
-        AuthResult result = authService.register(username, password, displayName);
+        AuthResult result = authService.register(username, password, displayName, gender, countryCode);
         if (result.success) {
             Player p = result.player;
             StringBuilder sb = new StringBuilder();
