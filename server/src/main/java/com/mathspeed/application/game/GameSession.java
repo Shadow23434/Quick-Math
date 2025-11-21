@@ -2,20 +2,22 @@ package com.mathspeed.application.game;
 
 import com.mathspeed.adapter.network.ClientHandler;
 import com.mathspeed.adapter.network.protocol.MessageType;
+import com.mathspeed.domain.model.GameHistory;
+import com.mathspeed.domain.model.GameHistoryId;
+import com.mathspeed.domain.model.GameMatch;
+import com.mathspeed.domain.model.Player;
 import com.mathspeed.domain.port.GameRepository;
 import com.mathspeed.domain.puzzle.MathExpressionEvaluator;
 import com.mathspeed.domain.puzzle.MathPuzzleFormat;
 import com.mathspeed.domain.puzzle.MathPuzzleGenerator;
 
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -31,23 +33,18 @@ public class GameSession {
     private final MathPuzzleGenerator generator;
     private final ScheduledExecutorService scheduler;
 
-    // State that is only mutated on scheduler thread:
     private final AtomicInteger currentRound = new AtomicInteger(0);
     private final Map<ClientHandler, Integer> scores = new HashMap<>();
     private final Map<ClientHandler, Duration> totalPlayTime = new HashMap<>();
     private final List<Integer> difficultySequence;
 
-    // Per-round history for each player (kept on scheduler thread)
     private final Map<ClientHandler, List<RoundResult>> roundHistory = new HashMap<>();
 
-    // keep revealed targets for replay / reconnect
     private final List<Integer> revealedTargets = new ArrayList<>();
 
-    // pre-generated puzzles buffer to avoid generation latency between rounds
     private final List<MathPuzzleFormat> preGeneratedPuzzles = new ArrayList<>();
-    private final int bufferAhead = 2; // number of rounds to pre-generate ahead (tuneable)
+    private final int bufferAhead = 2;
 
-    // Futures scheduled on scheduler thread
     private ScheduledFuture<?> roundTimeoutFuture;
     private ScheduledFuture<?> startFuture;
     private ScheduledFuture<?> activationFuture;
@@ -55,14 +52,15 @@ public class GameSession {
     private MathPuzzleFormat currentPuzzle;
     private Instant roundStart;
     private boolean roundActive = false;
-    private int activeRoundIndex = -1; // index of the currently active round
+    private int activeRoundIndex = -1;
 
     private final boolean persistResults;
     private final GameRepository gameDAO;
 
     // matchSeed is now long (higher entropy)
     private final long matchSeed;
-    private long matchStartTimeMs = -1L;
+    private long matchStartTimeMs = -1L; // accurate start time (set when match actually starts)
+    private long matchEndTimeMs = -1L;   // accurate end time (set when match finishes)
     private final AtomicBoolean finished = new AtomicBoolean(false);
 
     private final Map<ClientHandler, Boolean> readyMap = new HashMap<>();
@@ -70,8 +68,8 @@ public class GameSession {
     private final int fastStartBufferMs = 500;
 
     // inter-round timing config (ms)
-    private final long minInterRoundGapMs = 100;    // minimum gap to allow clients render
-    private final long defaultInterRoundGapMs = 300; // default gap if no RTT info
+    private final long minInterRoundGapMs = 100;
+    private final long defaultInterRoundGapMs = 300;
 
     // uniqueness attempts when generating puzzles to avoid duplicate targets per match
     private final int MAX_UNIQUE_ATTEMPTS = 10;
@@ -106,8 +104,14 @@ public class GameSession {
         roundHistory.put(playerA, new ArrayList<>());
         roundHistory.put(playerB, new ArrayList<>());
 
-        try { playerA.setCurrentGame(this); } catch (Exception ignored) {}
-        try { playerB.setCurrentGame(this); } catch (Exception ignored) {}
+        try {
+            playerA.setCurrentGame(this);
+        } catch (Exception ignored) {
+        }
+        try {
+            playerB.setCurrentGame(this);
+        } catch (Exception ignored) {
+        }
 
         readyMap.put(playerA, false);
         readyMap.put(playerB, false);
@@ -117,16 +121,14 @@ public class GameSession {
 
     private List<Integer> generateDifficultyList(int rounds, long seed) {
         int capped = Math.max(1, Math.min(rounds, 20));
-        // base percentages (tune as needed)
         double easyPct = 0.45;
         double mediumPct = 0.40;
         double hardPct = 1.0 - easyPct - mediumPct;
 
-        int easyCount = (int)Math.round(capped * easyPct);
-        int mediumCount = (int)Math.round(capped * mediumPct);
+        int easyCount = (int) Math.round(capped * easyPct);
+        int mediumCount = (int) Math.round(capped * mediumPct);
         int hardCount = capped - easyCount - mediumCount;
 
-        // fix rounding issues
         if (hardCount < 0) {
             hardCount = 0;
             int sum = easyCount + mediumCount;
@@ -136,12 +138,10 @@ public class GameSession {
             }
         }
 
-        // ensure at least 1 per level when rounds >= 3
         if (capped >= 3) {
             if (easyCount == 0) easyCount = 1;
             if (mediumCount == 0) mediumCount = 1;
             if (hardCount == 0) hardCount = 1;
-            // adjust to match total
             while (easyCount + mediumCount + hardCount > capped) {
                 if (easyCount >= mediumCount && easyCount >= hardCount && easyCount > 1) easyCount--;
                 else if (mediumCount >= easyCount && mediumCount >= hardCount && mediumCount > 1) mediumCount--;
@@ -152,7 +152,6 @@ public class GameSession {
                 mediumCount++;
             }
         } else {
-            // small rounds: ensure sum == capped
             while (easyCount + mediumCount + hardCount != capped) {
                 int sum = easyCount + mediumCount + hardCount;
                 if (sum < capped) mediumCount++;
@@ -169,9 +168,6 @@ public class GameSession {
         repeatAdd(list, 2, mediumCount);
         repeatAdd(list, 3, hardCount);
 
-        // Shuffle removed to keep low->high ordering (easy then medium then hard).
-        // If you prefer a smooth ramp instead of blocky blocks, replace with a distribution algorithm.
-
         return Collections.unmodifiableList(list);
     }
 
@@ -179,21 +175,29 @@ public class GameSession {
         for (int i = 0; i < times; i++) list.add(value);
     }
 
-    public String getSessionId() { return sessionId; }
-    public ClientHandler getPlayerA() { return playerA; }
-    public ClientHandler getPlayerB() { return playerB; }
-    public long getMatchSeed() { return matchSeed; }
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public ClientHandler getPlayerA() {
+        return playerA;
+    }
+
+    public ClientHandler getPlayerB() {
+        return playerB;
+    }
+
+    public long getMatchSeed() {
+        return matchSeed;
+    }
 
     public void beginGame() {
+        // scheduled start time (may be moved earlier if both players ready)
         this.matchStartTimeMs = System.currentTimeMillis() + initialCountdownMs;
 
-        // Pre-generate puzzles so transitions are instant (with uniqueness enforcement)
         preGenerateAllPuzzles();
-
-        // Broadcast initial info immediately
         broadcastMatchInfo();
 
-        // Schedule countdown messages on scheduler (they will execute on scheduler thread)
         for (int i = 5; i >= 1; i--) {
             final int sec = i;
             scheduler.schedule(() -> {
@@ -207,10 +211,6 @@ public class GameSession {
         startFuture = scheduler.schedule(this::runStartMatch, delay, TimeUnit.MILLISECONDS);
     }
 
-    /**
-     * Pre-generate all puzzles for the match, attempting to avoid duplicate targets within the match.
-     * Deterministic based on matchSeed and roundIndex and attempt counter.
-     */
     private void preGenerateAllPuzzles() {
         preGeneratedPuzzles.clear();
         Set<Integer> usedTargets = new HashSet<>();
@@ -225,12 +225,10 @@ public class GameSession {
                 attempt++;
             }
             if (p == null) {
-                // fallback: generate without RNG (shouldn't happen)
                 long roundSeed = deriveRoundSeed(matchSeed, roundIndex, 0);
                 p = generator.generatePuzzle(difficultySequence.get(roundIndex), new Random(roundSeed));
             }
             if (usedTargets.contains(p.getTarget())) {
-                // couldn't avoid duplicate after attempts; log a warning but accept it
                 System.out.printf("WARN: duplicate target for round %d target=%d%n", roundIndex, p.getTarget());
             }
             usedTargets.add(p.getTarget());
@@ -241,7 +239,6 @@ public class GameSession {
     private void ensureBufferedPuzzles(int currentIndex) {
         int needUpTo = Math.min(totalRounds - 1, currentIndex + bufferAhead);
         Set<Integer> usedTargets = new HashSet<>();
-        // collect used from existing preGeneratedPuzzles
         for (MathPuzzleFormat mp : preGeneratedPuzzles) usedTargets.add(mp.getTarget());
 
         for (int i = preGeneratedPuzzles.size(); i <= needUpTo; i++) {
@@ -293,7 +290,7 @@ public class GameSession {
         msg.put("type", MessageType.MATCH_START_INFO.name());
         msg.put("seed", matchSeed);
         msg.put("start_time", matchStartTimeMs);
-        msg.put("server_time", now); // <-- added field for client clock sync
+        msg.put("server_time", now);
         msg.put("countdown_ms", Math.max(0, matchStartTimeMs - now));
         msg.put("question_count", totalRounds);
         msg.put("per_question_seconds", questionTimeoutSeconds);
@@ -304,14 +301,15 @@ public class GameSession {
     }
 
     private void runStartMatch() {
-        // runs on scheduler thread
+        // mark the actual start time precisely when match begins
+        this.matchStartTimeMs = System.currentTimeMillis();
+
         safeSendInfo(playerA, "Trận đấu bắt đầu!");
         safeSendInfo(playerB, "Trận đấu bắt đầu!");
         runStartNextRound();
     }
 
     private void runStartNextRound() {
-        // runs on scheduler thread
         if (finished.get()) return;
 
         int roundIndex = currentRound.getAndIncrement();
@@ -321,48 +319,37 @@ public class GameSession {
         }
 
         activeRoundIndex = roundIndex;
-
-        // Ensure puzzles for upcoming rounds are ready (buffered)
         ensureBufferedPuzzles(roundIndex);
 
-        // Use pre-generated puzzle (fast, no heavy computation at transition time)
         currentPuzzle = getPuzzleForRound(roundIndex);
         int difficulty = difficultySequence.get(roundIndex);
-        long roundSeed = deriveRoundSeed(matchSeed, roundIndex); // canonical seed (attempt 0)
+        long roundSeed = deriveRoundSeed(matchSeed, roundIndex);
 
-        // compute an inter-round gap to let clients render the new puzzle before accepting answers
         long interGap = computeInterRoundGapMs();
         long serverRoundStartMs = System.currentTimeMillis() + interGap;
 
         try {
             System.out.printf("DEBUG preparing_round: session=%s round=%d roundSeed=%d target=%d startAt=%d%n",
                     sessionId, roundIndex, roundSeed, currentPuzzle.getTarget(), serverRoundStartMs);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
-        // store revealed target for reconnect/replay (we reveal it to clients now)
         revealedTargets.add(currentPuzzle.getTarget());
 
-        // send NEW_ROUND immediately with server_round_start (clients will render but cannot answer until that time)
         Duration placeholderTime = Duration.ofSeconds(questionTimeoutSeconds);
         sendPuzzleToPlayers(currentPuzzle, difficulty, placeholderTime, roundIndex + 1, roundIndex, roundSeed, Instant.ofEpochMilli(serverRoundStartMs));
 
-        // Cancel any pending activation/timeout
         if (activationFuture != null && !activationFuture.isDone()) activationFuture.cancel(false);
         if (roundTimeoutFuture != null && !roundTimeoutFuture.isDone()) roundTimeoutFuture.cancel(false);
 
-        // Initially mark round as not active; activation will set roundActive=true at serverRoundStartMs
         roundActive = false;
         roundStart = null;
 
-        // Schedule activation task to start accepting answers at the precise serverRoundStartMs
         long delayToActivate = Math.max(0L, serverRoundStartMs - System.currentTimeMillis());
         activationFuture = scheduler.schedule(() -> {
-            // This runs on scheduler thread at activation time
             roundStart = Instant.ofEpochMilli(serverRoundStartMs);
             roundActive = true;
-            // Start the actual question timeout from activation moment
             roundTimeoutFuture = scheduler.schedule(this::onRoundTimeout, questionTimeoutSeconds * 1000L, TimeUnit.MILLISECONDS);
-            // Optionally notify players that round is now active (if UI needs cue)
             safeSendInfo(playerA, "Bắt đầu vòng " + (roundIndex + 1));
             safeSendInfo(playerB, "Bắt đầu vòng " + (roundIndex + 1));
         }, delayToActivate, TimeUnit.MILLISECONDS);
@@ -373,7 +360,7 @@ public class GameSession {
             long rttA = (playerA != null) ? playerA.getEstimatedRttMs() : 0L;
             long rttB = (playerB != null) ? playerB.getEstimatedRttMs() : 0L;
             long maxRtt = Math.max(0L, Math.max(rttA, rttB));
-            long computed = 2L * maxRtt + 50L; // conservative
+            long computed = 2L * maxRtt + 50L;
             computed = Math.min(1000L, computed);
             return Math.max(minInterRoundGapMs, Math.max(defaultInterRoundGapMs, computed));
         } catch (Exception ex) {
@@ -391,12 +378,10 @@ public class GameSession {
     }
 
     private void processAnswer(ClientHandler player, String expression, Instant serverRecv) {
-        // runs on scheduler thread
         if (currentPuzzle == null) {
             sendSimpleAnswerResult(player, false, "no_active_round");
             return;
         }
-        // If round not active yet or serverRecv before roundStart -> too early
         if (roundStart == null || serverRecv.isBefore(roundStart)) {
             sendSimpleAnswerResult(player, false, "too_early");
             return;
@@ -409,7 +394,7 @@ public class GameSession {
         int result;
         try {
             List<Integer> deck = new ArrayList<>();
-            for(int a = 1; a < 10; a++) deck.add(a);
+            for (int a = 1; a < 10; a++) deck.add(a);
             result = MathExpressionEvaluator.evaluate(expression, deck);
         } catch (IllegalArgumentException evalEx) {
             Map<String, Object> err = new HashMap<>();
@@ -442,11 +427,9 @@ public class GameSession {
 
         if (!correct) return;
 
-        // If already closed by another correct answer or timeout, ignore
         if (!roundActive) return;
         roundActive = false;
 
-        // Compute play time based on server timestamps and clamp to [0, questionTimeout]
         long playMs = Duration.between(roundStart, serverRecv).toMillis();
         long maxMs = questionTimeoutSeconds * 1000L;
         if (playMs < 0) playMs = 0;
@@ -456,27 +439,20 @@ public class GameSession {
         totalPlayTime.put(player, totalPlayTime.getOrDefault(player, Duration.ZERO).plus(playTime));
         scores.put(player, scores.getOrDefault(player, 0) + 1);
 
-        // record round result for both players (use serverRecv epoch as timestamp)
         recordRoundResultsOnCorrect(player, activeRoundIndex, playTime);
 
-        // cancel timeout and start next round immediately
         if (roundTimeoutFuture != null && !roundTimeoutFuture.isDone()) {
             roundTimeoutFuture.cancel(false);
         }
         if (activationFuture != null && !activationFuture.isDone()) {
-            activationFuture.cancel(false); // should not normally be pending
+            activationFuture.cancel(false);
         }
 
-        // Broadcast summary for this round (scores and times)
         broadcastRoundSummary(activeRoundIndex);
-
-        // start next round immediately on scheduler thread
         runStartNextRound();
     }
 
     private void recordRoundResultsOnCorrect(ClientHandler winner, int roundIndex, Duration winnerPlayTime) {
-        // winner: correct=true and playTime
-        // loser: correct=false, playTime=0
         ClientHandler loser = (winner == playerA) ? playerB : playerA;
 
         RoundResult rWinner = new RoundResult(roundIndex, true, winnerPlayTime.toMillis(), Instant.now().toEpochMilli());
@@ -487,29 +463,22 @@ public class GameSession {
     }
 
     private void onRoundTimeout() {
-        // runs on scheduler thread when a round times out
         if (!roundActive) {
-            // Already closed by correct answer
             return;
         }
         roundActive = false;
 
-        // record both players as incorrect with playTime=0
         RoundResult rA = new RoundResult(activeRoundIndex, false, 0L, Instant.now().toEpochMilli());
         RoundResult rB = new RoundResult(activeRoundIndex, false, 0L, Instant.now().toEpochMilli());
         roundHistory.get(playerA).add(rA);
         roundHistory.get(playerB).add(rB);
 
-        // Broadcast summary for this round (scores and times)
         broadcastRoundSummary(activeRoundIndex);
-
-        // start next round
         runStartNextRound();
     }
 
     public void handleReady(ClientHandler from) {
         if (from == null) return;
-        // perform ready handling on scheduler thread
         scheduler.execute(() -> {
             readyMap.put(from, true);
             ClientHandler other = (from == playerA) ? playerB : playerA;
@@ -535,27 +504,19 @@ public class GameSession {
         scheduler.execute(this::broadcastMatchInfo);
     }
 
-    /**
-     * Handle a user-initiated forfeit (still connected).
-     */
     public void handleForfeit(ClientHandler who) {
         if (who == null) return;
         scheduler.execute(() -> {
             if (finished.get()) return;
             ClientHandler other = (who == playerA) ? playerB : playerA;
 
-            // Inform both players appropriately
             safeSendInfo(who, "Bạn đã hủy trận. Bạn thua.");
             if (other != null) safeSendInfo(other, "Đối thủ đã hủy, bạn thắng (forfeit).");
 
-            // Apply forfeit rules (scores, round history, finish)
             applyForfeitScoringAndFinish(who);
         });
     }
 
-    /**
-     * Handle unexpected disconnect - treat as a forfeit with slightly different messaging.
-     */
     public void handlePlayerDisconnect(ClientHandler disconnected) {
         if (disconnected == null) return;
         scheduler.execute(() -> {
@@ -568,16 +529,6 @@ public class GameSession {
         });
     }
 
-    /**
-     * Centralized forfeit handling executed on the scheduler thread.
-     *
-     * Rules implemented:
-     * - forfeiter's score = 0
-     * - opponent's score = totalRounds (i.e. awarded 1 point per round)
-     * - totalPlayTime for both players kept as-is (equal to time they have already played)
-     * - fill any missing roundHistory entries: opponent correct=true, forfeiter correct=false, playTime=0
-     * - finish the game
-     */
     private void applyForfeitScoringAndFinish(ClientHandler forfeiter) {
         if (forfeiter == null) return;
         if (finished.get()) return;
@@ -585,28 +536,24 @@ public class GameSession {
         ClientHandler winner = (forfeiter == playerA) ? playerB : playerA;
         long nowTs = Instant.now().toEpochMilli();
 
-        // Set scores: forfeiter 0, winner full points for the match
         scores.put(forfeiter, 0);
         scores.put(winner, totalRounds);
 
-        // Ensure roundHistory lists exist
         List<RoundResult> histForfeiter = roundHistory.getOrDefault(forfeiter, new ArrayList<>());
         List<RoundResult> histWinner = roundHistory.getOrDefault(winner, new ArrayList<>());
         roundHistory.putIfAbsent(forfeiter, histForfeiter);
         roundHistory.putIfAbsent(winner, histWinner);
 
-        // Build set of recorded round indices for each player for quick lookup
         Set<Integer> recForfeiter = new HashSet<>();
         for (RoundResult r : roundHistory.get(forfeiter)) recForfeiter.add(r.roundIndex);
         Set<Integer> recWinner = new HashSet<>();
         for (RoundResult r : roundHistory.get(winner)) recWinner.add(r.roundIndex);
 
-        // For each round index not yet recorded, add entries: winner correct=true (playTime 0), forfeiter correct=false (playTime 0)
         for (int r = 0; r < totalRounds; r++) {
             boolean fHas = recForfeiter.contains(r);
             boolean wHas = recWinner.contains(r);
 
-            if (fHas && wHas) continue; // both already have result for this round
+            if (fHas && wHas) continue;
 
             if (!wHas) {
                 RoundResult rw = new RoundResult(r, true, 0L, nowTs);
@@ -618,12 +565,14 @@ public class GameSession {
             }
         }
 
-        // Persist results / notify and finish
         finishGameInternal();
     }
 
     private void finishGameInternal() {
         if (!finished.compareAndSet(false, true)) return;
+
+        // mark end time precisely when game finishes
+        this.matchEndTimeMs = System.currentTimeMillis();
 
         ClientHandler winner = null;
         int scoreA = scores.getOrDefault(playerA, 0);
@@ -643,242 +592,129 @@ public class GameSession {
         msg.put("scores", exportScores());
         msg.put("total_play_time_ms", exportPlayTime());
         msg.put("winner", winner != null ? safeGetPlayerId(winner) : null);
-        msg.put("round_history", exportRoundHistory()); // per-player round-by-round history
+        msg.put("round_history", exportRoundHistory());
         msg.put("revealed_targets", revealedTargets);
 
         String json = JsonUtil.toJson(msg);
         safeSendMessage(playerA, json);
         safeSendMessage(playerB, json);
 
-        // Persist results: attempt detailed DB write; fall back to legacy persistGameFinal if needed.
         persistResultsToDatabase(json);
 
-        try { playerA.clearCurrentGame(); } catch (Exception ignored) {}
-        try { playerB.clearCurrentGame(); } catch (Exception ignored) {}
+        try {
+            playerA.clearCurrentGame();
+        } catch (Exception ignored) {
+        }
+        try {
+            playerB.clearCurrentGame();
+        } catch (Exception ignored) {
+        }
 
-        try { if (activationFuture != null && !activationFuture.isDone()) activationFuture.cancel(false); } catch (Exception ignored) {}
-        try { if (roundTimeoutFuture != null && !roundTimeoutFuture.isDone()) roundTimeoutFuture.cancel(false); } catch (Exception ignored) {}
-        try { if (startFuture != null && !startFuture.isDone()) startFuture.cancel(false); } catch (Exception ignored) {}
-        try { scheduler.shutdownNow(); } catch (Exception ignored) {}
+        try {
+            if (activationFuture != null && !activationFuture.isDone()) activationFuture.cancel(false);
+        } catch (Exception ignored) {
+        }
+        try {
+            if (roundTimeoutFuture != null && !roundTimeoutFuture.isDone()) roundTimeoutFuture.cancel(false);
+        } catch (Exception ignored) {
+        }
+        try {
+            if (startFuture != null && !startFuture.isDone()) startFuture.cancel(false);
+        } catch (Exception ignored) {
+        }
+        try {
+            scheduler.shutdownNow();
+        } catch (Exception ignored) {
+        }
     }
 
-    /**
-     * Try to persist detailed match data to DB.
-     *
-     * Strategy:
-     * - If gameDAO exposes a getConnection() method (reflectively) we will use the returned Connection
-     *   and write rows to games, game_rounds, round_results, game_players, game_events and game_finals.
-     * - If not, fall back to calling gameDAO.persistGameFinal(sessionId, scores, playTime, roundHistory, winnerId)
-     *   if such method exists.
-     *
-     * This is defensive: we don't want persistence failures to prevent game shutdown,
-     * so exceptions are caught and logged.
-     */
     private void persistResultsToDatabase(String gameOverJson) {
         if (!persistResults || gameDAO == null) return;
 
-        // Build useful data structures
         Map<String, Integer> scoresMap = exportScores();
         Map<String, Long> playTimeMap = exportPlayTime();
         Map<String, List<Map<String, Object>>> roundHist = exportRoundHistory();
         String winnerId = null;
         try {
-            // determine winner id
             int scoreA = scores.getOrDefault(playerA, 0);
             int scoreB = scores.getOrDefault(playerB, 0);
             if (scoreA > scoreB) winnerId = safeGetPlayerId(playerA);
             else if (scoreB > scoreA) winnerId = safeGetPlayerId(playerB);
-        } catch (Exception ignored) {}
-
-        // 1) Try to get Connection from GameDAO via reflection: public Connection getConnection()
-        try {
-            Method getConn = gameDAO.getClass().getMethod("getConnection");
-            Object connObj = getConn.invoke(gameDAO);
-            if (connObj instanceof Connection) {
-                Connection conn = (Connection) connObj;
-                persistViaConnection(conn, scoresMap, playTimeMap, roundHist, winnerId, gameOverJson);
-                return;
-            }
-        } catch (NoSuchMethodException nsme) {
-            // fall through: method not present
-        } catch (Exception ex) {
-            System.err.println("[GameSession] Failed to obtain Connection from GameDAO: " + ex.getMessage());
-            ex.printStackTrace();
+        } catch (Exception ignored) {
         }
 
-        // 2) Fallback: call legacy persistGameFinal if present
         try {
-            Method pgf = gameDAO.getClass().getMethod("persistGameFinal", String.class, Map.class, Map.class, Map.class, String.class);
-            pgf.invoke(gameDAO, sessionId, scoresMap, playTimeMap, roundHist, winnerId);
-            return;
-        } catch (NoSuchMethodException nsme) {
-            // no such method; fallthrough
+            GameMatch match = new GameMatch();
+            match.setId(sessionId);
+
+            // Use the precise start time if available, otherwise null
+            if (matchStartTimeMs > 0) {
+                LocalDateTime started = Instant.ofEpochMilli(matchStartTimeMs).atZone(ZoneId.systemDefault()).toLocalDateTime();
+                match.setStartedAt(started);
+            } else {
+                match.setStartedAt(null);
+            }
+
+            match.setTotalRounds(totalRounds);
+            match.setStatus("finished");
+
+            // Use the precise end time if available; otherwise set to now
+            if (matchEndTimeMs > 0) {
+                LocalDateTime ended = Instant.ofEpochMilli(matchEndTimeMs).atZone(ZoneId.systemDefault()).toLocalDateTime();
+                match.setEndedAt(ended);
+            } else {
+                match.setEndedAt(LocalDateTime.now());
+            }
+
+            List<GameHistory> histories = new ArrayList<>(2);
+
+            // playerA
+            Player pA = null;
+            try { pA = playerA.getPlayer(); } catch (Exception ignored) {}
+            if (pA == null) {
+                pA = new Player();
+                pA.setId(safeGetPlayerId(playerA));
+                pA.setUsername(safeGetUsername(playerA));
+            }
+            GameHistory gha = new GameHistory();
+            gha.setId(new GameHistoryId(sessionId, pA.getId()));
+            gha.setMatch(match);
+            gha.setPlayer(pA);
+            gha.setFinalScore(scoresMap.getOrDefault(pA.getId(), 0));
+            gha.setTotalTime(playTimeMap.getOrDefault(pA.getId(), 0L));
+            gha.setResult(determineResultForPlayer(pA.getId(), winnerId));
+            // left_at: when match ended
+            if (matchEndTimeMs > 0) gha.setLeftAt(Instant.ofEpochMilli(matchEndTimeMs).atZone(ZoneId.systemDefault()).toLocalDateTime());
+            else gha.setLeftAt(LocalDateTime.now());
+            histories.add(gha);
+
+            // playerB
+            Player pB = null;
+            try { pB = playerB.getPlayer(); } catch (Exception ignored) {}
+            if (pB == null) {
+                pB = new Player();
+                pB.setId(safeGetPlayerId(playerB));
+                pB.setUsername(safeGetUsername(playerB));
+            }
+            GameHistory ghb = new GameHistory();
+            ghb.setId(new GameHistoryId(sessionId, pB.getId()));
+            ghb.setMatch(match);
+            ghb.setPlayer(pB);
+            ghb.setFinalScore(scoresMap.getOrDefault(pB.getId(), 0));
+            ghb.setTotalTime(playTimeMap.getOrDefault(pB.getId(), 0L));
+            ghb.setResult(determineResultForPlayer(pB.getId(), winnerId));
+            if (matchEndTimeMs > 0) ghb.setLeftAt(Instant.ofEpochMilli(matchEndTimeMs).atZone(ZoneId.systemDefault()).toLocalDateTime());
+            else ghb.setLeftAt(LocalDateTime.now());
+            histories.add(ghb);
+
+            gameDAO.persistGameFinal(match, histories, roundHist);
+            System.out.println("[GameSession] persisted via GameRepository for game=" + sessionId);
+
         } catch (Exception ex) {
-            System.err.println("[GameSession] Legacy persistGameFinal failed: " + ex.getMessage());
+            System.err.println("[GameSession] Failed to persist via GameRepository: " + ex.getMessage());
             ex.printStackTrace();
-        }
-
-        // 3) If we get here, no persistence performed; log JSON for debugging
-        System.out.println("[GameSession] No DB persistence method available on GameDAO. GameOver JSON:");
-        System.out.println(gameOverJson);
-    }
-
-    /**
-     * Persist using an existing JDBC Connection. This method will attempt to insert rows into:
-     * - games
-     * - game_players (for both players)
-     * - game_rounds (one per round)
-     * - round_results (per player per round)
-     * - game_events (GAME_OVER)
-     * - game_finals (snapshot)
-     *
-     * All operations performed in a transaction; errors will roll back and be logged.
-     */
-    private void persistViaConnection(Connection conn,
-                                      Map<String, Integer> scoresMap,
-                                      Map<String, Long> playTimeMap,
-                                      Map<String, List<Map<String, Object>>> roundHist,
-                                      String winnerId,
-                                      String gameOverJson) {
-        if (conn == null) return;
-        boolean previousAuto = true;
-        try {
-            previousAuto = conn.getAutoCommit();
-            conn.setAutoCommit(false);
-
-            // 1) Insert into games (if not exists) - create or update to finished
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "INSERT INTO games (id, created_at, started_at, ended_at, total_rounds, status) " +
-                            "VALUES (?, NOW(), ?, NOW(), ?, 'finished') " +
-                            "ON DUPLICATE KEY UPDATE ended_at=NOW(), total_rounds=VALUES(total_rounds), status='finished'")) {
-                ps.setString(1, sessionId);
-                if (matchStartTimeMs > 0) ps.setTimestamp(2, new Timestamp(matchStartTimeMs));
-                else ps.setTimestamp(2, null);
-                ps.setInt(3, totalRounds);
-                ps.executeUpdate();
-            }
-
-            // 2) Insert/Upsert game_players (two participants)
-            // Attempt to use safeGetPlayerId (may return username if id missing). For FK integrity, make sure real player ids are present.
-            String pAId = safeGetPlayerId(playerA);
-            String pBId = safeGetPlayerId(playerB);
-
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "INSERT INTO game_players (game_id, player_id, joined_at, left_at, final_score, total_time, result) " +
-                            "VALUES (?, ?, NOW(), NOW(), ?, ?, ?) " +
-                            "ON DUPLICATE KEY UPDATE final_score=VALUES(final_score), total_time=VALUES(total_time), result=VALUES(result), left_at=VALUES(left_at)")) {
-                // playerA
-                ps.setString(1, sessionId);
-                ps.setString(2, pAId);
-                ps.setInt(3, scoresMap.getOrDefault(pAId, 0));
-                ps.setLong(4, playTimeMap.getOrDefault(pAId, 0L));
-                String resA = determineResultForPlayer(pAId, winnerId);
-                ps.setString(5, resA);
-                ps.executeUpdate();
-
-                // playerB
-                ps.setString(1, sessionId);
-                ps.setString(2, pBId);
-                ps.setInt(3, scoresMap.getOrDefault(pBId, 0));
-                ps.setLong(4, playTimeMap.getOrDefault(pBId, 0L));
-                String resB = determineResultForPlayer(pBId, winnerId);
-                ps.setString(5, resB);
-                ps.executeUpdate();
-            }
-
-            // 3) Insert game_rounds and round_results
-            // For each round index, attempt to find preGeneratedPuzzles entry for target/seed.
-            for (int ri = 0; ri < totalRounds; ri++) {
-                String roundId = UUID.randomUUID().toString();
-                MathPuzzleFormat puzzle = (ri < preGeneratedPuzzles.size()) ? preGeneratedPuzzles.get(ri) : null;
-                Integer target = (puzzle != null) ? puzzle.getTarget() : null;
-                Integer difficulty = (ri < difficultySequence.size()) ? difficultySequence.get(ri) : null;
-                long roundSeed = deriveRoundSeed(matchSeed, ri);
-                long serverRoundStartMs = 0L; // unknown for persisted rows unless tracked earlier; leave 0
-                try (PreparedStatement ps = conn.prepareStatement(
-                        "INSERT INTO game_rounds (id, game_id, round_index, round_number, difficulty, target, time_seconds, seed, round_seed, server_round_start_ms) " +
-                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
-                    ps.setString(1, roundId);
-                    ps.setString(2, sessionId);
-                    ps.setInt(3, ri);
-                    ps.setInt(4, ri + 1);
-                    if (difficulty != null) ps.setInt(5, difficulty); else ps.setNull(5, java.sql.Types.INTEGER);
-                    if (target != null) ps.setInt(6, target); else ps.setNull(6, java.sql.Types.INTEGER);
-                    ps.setInt(7, (int) questionTimeoutSeconds);
-                    ps.setLong(8, matchSeed);
-                    ps.setLong(9, roundSeed);
-                    if (serverRoundStartMs > 0) ps.setLong(10, serverRoundStartMs); else ps.setNull(10, java.sql.Types.BIGINT);
-                    ps.executeUpdate();
-                }
-
-                // Insert round results for both players based on roundHistory map
-                // roundHist maps playerId -> list of round map entries {round_index, correct, round_play_time_ms, timestamp}
-                // We'll attempt to find the entries for this round for each player
-                for (ClientHandler ch : Arrays.asList(playerA, playerB)) {
-                    String playerId = safeGetPlayerId(ch);
-                    List<Map<String, Object>> rh = roundHist.getOrDefault(playerId, Collections.emptyList());
-                    Map<String, Object> entryForRound = null;
-                    for (Map<String, Object> me : rh) {
-                        Object idxObj = me.get("round_index");
-                        if (idxObj instanceof Number && ((Number) idxObj).intValue() == ri) {
-                            entryForRound = me;
-                            break;
-                        }
-                    }
-                    boolean correct = false;
-                    long playTimeMs = 0L;
-                    long ts = System.currentTimeMillis();
-                    if (entryForRound != null) {
-                        Object corr = entryForRound.get("correct");
-                        if (corr instanceof Boolean) correct = (Boolean) corr;
-                        else if (corr instanceof String) correct = Boolean.parseBoolean((String) corr);
-                        Object pt = entryForRound.get("round_play_time_ms");
-                        if (pt instanceof Number) playTimeMs = ((Number) pt).longValue();
-                        Object tstamp = entryForRound.get("timestamp");
-                        if (tstamp instanceof Number) ts = ((Number) tstamp).longValue();
-                    }
-                    try (PreparedStatement ps = conn.prepareStatement(
-                            "INSERT INTO round_results (id, round_id, player_id, correct, play_time_ms, timestamp_ms) VALUES (?, ?, ?, ?, ?, ?)")) {
-                        ps.setString(1, UUID.randomUUID().toString());
-                        ps.setString(2, roundId);
-                        ps.setString(3, playerId);
-                        ps.setBoolean(4, correct);
-                        ps.setLong(5, playTimeMs);
-                        ps.setLong(6, ts);
-                        ps.executeUpdate();
-                    }
-                }
-            }
-
-            // 4) Insert a final snapshot in game_finals
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "INSERT INTO game_finals (id, game_id, payload) VALUES (?, ?, ?)")) {
-                ps.setString(1, UUID.randomUUID().toString());
-                ps.setString(2, sessionId);
-                ps.setString(3, gameOverJson);
-                ps.executeUpdate();
-            }
-
-            // 5) Insert GAME_OVER event into game_events
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "INSERT INTO game_events (id, game_id, event_type, payload) VALUES (?, ?, ?, ?)")) {
-                ps.setString(1, UUID.randomUUID().toString());
-                ps.setString(2, sessionId);
-                ps.setString(3, "GAME_OVER");
-                ps.setString(4, gameOverJson);
-                ps.executeUpdate();
-            }
-
-            conn.commit();
-            System.out.println("[GameSession] Persisted match results to DB for game=" + sessionId);
-        } catch (Exception ex) {
-            try { conn.rollback(); } catch (Exception ignored) {}
-            System.err.println("[GameSession] Failed to persist match results DB: " + ex.getMessage());
-            ex.printStackTrace();
-        } finally {
-            try {
-                conn.setAutoCommit(previousAuto);
-            } catch (Exception ignored) {}
+            System.out.println("[GameSession] GameOver JSON:");
+            System.out.println(gameOverJson);
         }
     }
 
@@ -1000,21 +836,23 @@ public class GameSession {
     }
 
     private void safeSendInfo(ClientHandler p, String text) {
-        try { if (p != null) p.sendType(MessageType.INFO, text); } catch (Exception ignored) {}
+        try {
+            if (p != null) p.sendType(MessageType.INFO, text);
+        } catch (Exception ignored) {
+        }
     }
 
     private void safeSendMessage(ClientHandler p, String json) {
-        try { if (p != null) p.sendMessage(json); } catch (Exception ignored) {}
+        try {
+            if (p != null) p.sendMessage(json);
+        } catch (Exception ignored) {
+        }
     }
 
     private static long deriveRoundSeed(long sessionSeed, int roundIndex) {
         return deriveRoundSeed(sessionSeed, roundIndex, 0);
     }
 
-    /**
-     * Deterministic per-round seed derivation with an attempt counter to allow re-seeding when
-     * avoiding duplicate targets.
-     */
     private static long deriveRoundSeed(long sessionSeed, int roundIndex, int attempt) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
@@ -1024,7 +862,6 @@ public class GameSession {
             byte[] digest = md.digest();
             return ByteBuffer.wrap(digest, 0, 8).getLong();
         } catch (Exception ex) {
-            // fallback mixing
             long a = sessionSeed;
             long b = Integer.toUnsignedLong(roundIndex);
             long mixed = a * 0x9E3779B97F4A7C15L + ((b << 32) | b) + attempt;
@@ -1070,7 +907,10 @@ public class GameSession {
         }
 
         private static void serialize(Object obj, StringBuilder sb) {
-            if (obj == null) { sb.append("null"); return; }
+            if (obj == null) {
+                sb.append("null");
+                return;
+            }
             if (obj instanceof Number || obj instanceof Boolean) {
                 sb.append(obj.toString());
             } else if (obj instanceof String) {
@@ -1078,9 +918,9 @@ public class GameSession {
             } else if (obj instanceof Map) {
                 sb.append('{');
                 Map<?, ?> m = (Map<?, ?>) obj;
-                Iterator<? extends Map.Entry<?,?>> it = m.entrySet().iterator();
+                Iterator<? extends Map.Entry<?, ?>> it = m.entrySet().iterator();
                 while (it.hasNext()) {
-                    Map.Entry<?,?> e = it.next();
+                    Map.Entry<?, ?> e = it.next();
                     sb.append('"').append(escape(String.valueOf(e.getKey()))).append("\":");
                     serialize(e.getValue(), sb);
                     if (it.hasNext()) sb.append(',');
@@ -1103,7 +943,6 @@ public class GameSession {
                 }
                 sb.append(']');
             } else {
-                // Fallback to string representation
                 sb.append('"').append(escape(String.valueOf(obj))).append('"');
             }
         }
@@ -1113,13 +952,27 @@ public class GameSession {
             for (int i = 0; i < s.length(); i++) {
                 char c = s.charAt(i);
                 switch (c) {
-                    case '"': out.append("\\\""); break;
-                    case '\\': out.append("\\\\"); break;
-                    case '\b': out.append("\\b"); break;
-                    case '\f': out.append("\\f"); break;
-                    case '\n': out.append("\\n"); break;
-                    case '\r': out.append("\\r"); break;
-                    case '\t': out.append("\\t"); break;
+                    case '"':
+                        out.append("\\\"");
+                        break;
+                    case '\\':
+                        out.append("\\\\");
+                        break;
+                    case '\b':
+                        out.append("\\b");
+                        break;
+                    case '\f':
+                        out.append("\\f");
+                        break;
+                    case '\n':
+                        out.append("\\n");
+                        break;
+                    case '\r':
+                        out.append("\\r");
+                        break;
+                    case '\t':
+                        out.append("\\t");
+                        break;
                     default:
                         if (c < 0x20 || c > 0x7E) {
                             out.append(String.format("\\u%04x", (int) c));
@@ -1143,4 +996,5 @@ public class GameSession {
             this.timestampMs = timestampMs;
         }
     }
+
 }

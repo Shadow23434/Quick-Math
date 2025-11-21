@@ -10,10 +10,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Simple matchmaking: players call joinQueue/removeQueue.
- * This class pairs players every second.
- */
 public class Matchmaker {
     private final ClientRegistry clientRegistry;
     private final GameSessionManager sessionManager;
