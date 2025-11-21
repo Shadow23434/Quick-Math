@@ -23,12 +23,6 @@ public class GameHistory {
     @JoinColumn(name = "player_id", referencedColumnName = "id", nullable = false)
     private Player player;
 
-    @Column(name = "joined_at", columnDefinition = "DATETIME")
-    private LocalDateTime joinedAt;
-
-    @Column(name = "left_at", columnDefinition = "DATETIME")
-    private LocalDateTime leftAt;
-
     @Column(name = "final_score")
     private int finalScore;
 
@@ -45,7 +39,6 @@ public class GameHistory {
         this.match = match;
         this.player = player;
         this.id = new GameHistoryId(match.getId(), player.getId());
-        this.joinedAt = LocalDateTime.now();
     }
 
     // getters/setters
@@ -58,12 +51,6 @@ public class GameHistory {
 
     public Player getPlayer() { return player; }
     public void setPlayer(Player player) { this.player = player; }
-
-    public LocalDateTime getJoinedAt() { return joinedAt; }
-    public void setJoinedAt(LocalDateTime joinedAt) { this.joinedAt = joinedAt; }
-
-    public LocalDateTime getLeftAt() { return leftAt; }
-    public void setLeftAt(LocalDateTime leftAt) { this.leftAt = leftAt; }
 
     public int getFinalScore() { return finalScore; }
     public void setFinalScore(int finalScore) { this.finalScore = finalScore; }

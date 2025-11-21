@@ -640,6 +640,12 @@ public class GameSession {
             int scoreB = scores.getOrDefault(playerB, 0);
             if (scoreA > scoreB) winnerId = safeGetPlayerId(playerA);
             else if (scoreB > scoreA) winnerId = safeGetPlayerId(playerB);
+            else {
+                long timeA = playTimeMap.getOrDefault(safeGetPlayerId(playerA), 0L);
+                long timeB = playTimeMap.getOrDefault(safeGetPlayerId(playerB), 0L);
+                if (timeA < timeB) winnerId = safeGetPlayerId(playerA);
+                else if (timeB < timeA) winnerId = safeGetPlayerId(playerB);
+            }
         } catch (Exception ignored) {
         }
 
@@ -683,9 +689,6 @@ public class GameSession {
             gha.setFinalScore(scoresMap.getOrDefault(pA.getId(), 0));
             gha.setTotalTime(playTimeMap.getOrDefault(pA.getId(), 0L));
             gha.setResult(determineResultForPlayer(pA.getId(), winnerId));
-            // left_at: when match ended
-            if (matchEndTimeMs > 0) gha.setLeftAt(Instant.ofEpochMilli(matchEndTimeMs).atZone(ZoneId.systemDefault()).toLocalDateTime());
-            else gha.setLeftAt(LocalDateTime.now());
             histories.add(gha);
 
             // playerB
@@ -703,8 +706,6 @@ public class GameSession {
             ghb.setFinalScore(scoresMap.getOrDefault(pB.getId(), 0));
             ghb.setTotalTime(playTimeMap.getOrDefault(pB.getId(), 0L));
             ghb.setResult(determineResultForPlayer(pB.getId(), winnerId));
-            if (matchEndTimeMs > 0) ghb.setLeftAt(Instant.ofEpochMilli(matchEndTimeMs).atZone(ZoneId.systemDefault()).toLocalDateTime());
-            else ghb.setLeftAt(LocalDateTime.now());
             histories.add(ghb);
 
             gameDAO.persistGameFinal(match, histories, roundHist);

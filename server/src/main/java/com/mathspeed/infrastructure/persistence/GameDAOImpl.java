@@ -92,17 +92,15 @@ public class GameDAOImpl extends BaseDAO implements GameRepository {
                         match.getStartedAt() != null ? Timestamp.valueOf(match.getStartedAt()) : null);
 
                 // Ensure game_history rows exist (insert joined_at if provided on entities)
-                String ensureHistorySql = "INSERT INTO game_history (match_id, player_id, joined_at) VALUES (?, ?, ?) " +
+                String ensureHistorySql = "INSERT INTO game_history (match_id, player_id) VALUES (?, ?) " +
                         "ON DUPLICATE KEY UPDATE player_id = player_id";
                 try (PreparedStatement ensureHist = conn.prepareStatement(ensureHistorySql)) {
                     if (histories != null) {
                         for (GameHistory gh : histories) {
                             String pid = gh.getPlayer() != null ? gh.getPlayer().getId() : null;
                             if (pid == null) continue;
-                            Timestamp joined = gh.getJoinedAt() != null ? Timestamp.valueOf(gh.getJoinedAt()) : new Timestamp(System.currentTimeMillis());
                             ensureHist.setString(1, match.getId());
                             ensureHist.setString(2, pid);
-                            ensureHist.setTimestamp(3, joined);
                             ensureHist.addBatch();
                         }
                         ensureHist.executeBatch();
@@ -123,7 +121,7 @@ public class GameDAOImpl extends BaseDAO implements GameRepository {
                 }
 
                 // Update game_history rows with final_score, total_time, result, left_at
-                String updHistSql = "UPDATE game_history SET final_score = ?, total_time = ?, result = ?, left_at = COALESCE(left_at, ?) WHERE match_id = ? AND player_id = ?";
+                String updHistSql = "UPDATE game_history SET final_score = ?, total_time = ?, result = ? WHERE match_id = ? AND player_id = ?";
                 try (PreparedStatement updHist = conn.prepareStatement(updHistSql)) {
                     if (histories != null) {
                         for (GameHistory gh : histories) {
@@ -132,10 +130,8 @@ public class GameDAOImpl extends BaseDAO implements GameRepository {
                             updHist.setInt(1, gh.getFinalScore());
                             updHist.setLong(2, gh.getTotalTime());
                             updHist.setString(3, gh.getResult());
-                            Timestamp leftAt = gh.getLeftAt() != null ? Timestamp.valueOf(gh.getLeftAt()) : Timestamp.valueOf(LocalDateTime.now());
-                            updHist.setTimestamp(4, leftAt);
-                            updHist.setString(5, match.getId());
-                            updHist.setString(6, pid);
+                            updHist.setString(4, match.getId());
+                            updHist.setString(5, pid);
                             updHist.addBatch();
                         }
                         updHist.executeBatch();

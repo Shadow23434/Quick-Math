@@ -32,8 +32,6 @@ CREATE TABLE IF NOT EXISTS matches (
 CREATE TABLE IF NOT EXISTS game_history (
     match_id CHAR(36) NOT NULL,
     player_id CHAR(36) NOT NULL,
-    joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    left_at DATETIME NULL,
     final_score INT NOT NULL DEFAULT 0,       -- tổng điểm cuối trận (số điểm thu được)
     total_time BIGINT NOT NULL DEFAULT 0,  -- tổng thời gian chơi (ms) dùng để phân xử khi hòa
     result ENUM('win','lose','draw') DEFAULT NULL, -- kết quả trận cho người này (đặt khi trận kết thúc)
