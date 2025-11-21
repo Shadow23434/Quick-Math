@@ -89,7 +89,7 @@ public class PlayerDAOImpl extends BaseDAO implements PlayerRepository {
                         player.setCreatedAt(ts.toLocalDateTime());
                     }
 
-                    if (checkPassword(password, player.getPasswordHash())) {
+                    if (checkPassword(password.trim(), player.getPasswordHash())) {
                         return player;
                     }
                 }

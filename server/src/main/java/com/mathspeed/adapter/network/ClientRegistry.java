@@ -98,6 +98,14 @@ public class ClientRegistry {
         }
     }
 
+    public ClientHandler getClient(String username) {
+        if (username == null) return null;
+        String key = username == null ? null : username.trim().toLowerCase();
+        ClientHandler ch = clients.get(key);
+        System.out.println("[ClientRegistry] getClient key=" + key + " -> " + (ch != null ? ch.getUsername() : "null"));
+        return ch;
+    }
+
     public void shutdown() {
         for (ClientHandler ch : clients.values()) {
             if (ch != null) ch.disconnect();

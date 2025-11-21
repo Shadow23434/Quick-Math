@@ -1,8 +1,8 @@
 package com.mathspeed.application.game;
 
-import com.mathspeed.domain.port.GameRepository;
 import com.mathspeed.adapter.network.ClientHandler;
 import com.mathspeed.adapter.network.ClientRegistry;
+import com.mathspeed.domain.port.GameRepository;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,11 +11,11 @@ public class GameSessionManager {
     private final Map<String, GameSession> sessions = new ConcurrentHashMap<>();
     private final ClientRegistry clientRegistry;
     private final Locks locks = new Locks();
-    private final GameRepository GameRepository;
+    private final GameRepository gameDAO;
 
-    public GameSessionManager(ClientRegistry clientRegistry, GameRepository GameRepository) {
+    public GameSessionManager(ClientRegistry clientRegistry, GameRepository gameDAO) {
         this.clientRegistry = clientRegistry;
-        this.GameRepository = GameRepository;
+        this.gameDAO = gameDAO;
     }
 
     public synchronized GameSession createSessionSafely(ClientHandler p1,
@@ -23,27 +23,31 @@ public class GameSessionManager {
                                                         int totalRounds,
                                                         long questionTimeoutSeconds) {
         if (p1 == null || p2 == null) {
-            System.err.println("KhÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ tÃƒÂ¡Ã‚ÂºÃ‚Â¡o session: mÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢t trong hai player null");
+            System.err.println("Không thể tạo session: một trong hai player null");
             return null;
         }
 
         if (p1.getCurrentGame() != null) {
-            System.err.println("Player " + p1.getUsername() + " Ãƒâ€žÃ¢â‚¬ËœÃƒÆ’Ã‚Â£ Ãƒâ€žÃ¢â‚¬Ëœang tham gia session khÃƒÆ’Ã‚Â¡c");
+            System.err.println("Player " + p1.getUsername() + " đã đang tham gia session khác");
             return null;
         }
         if (p2.getCurrentGame() != null) {
-            System.err.println("Player " + p2.getUsername() + " Ãƒâ€žÃ¢â‚¬ËœÃƒÆ’Ã‚Â£ Ãƒâ€žÃ¢â‚¬Ëœang tham gia session khÃƒÆ’Ã‚Â¡c");
+            System.err.println("Player " + p2.getUsername() + " đã đang tham gia session khác");
             return null;
         }
 
         try {
-            GameSession session = new GameSession(p1, p2, totalRounds, questionTimeoutSeconds, this.GameRepository);
+            GameSession session = new GameSession(p1, p2, totalRounds, questionTimeoutSeconds, this.gameDAO);
+            // set current game cho cả hai trước khi publish/broadcast
             p1.setCurrentGame(session);
             p2.setCurrentGame(session);
 
             if (this.sessions != null) {
                 this.sessions.put(session.getSessionId(), session);
             }
+
+            // Sau khi states đã thay đổi (currentGame), broadcast danh sách người chơi
+            safeBroadcastPlayers();
 
             return session;
         } catch (Exception ex) {
@@ -53,7 +57,7 @@ public class GameSessionManager {
     }
 
     /**
-     * KÃƒÂ¡Ã‚ÂºÃ‚Â¿t thÃƒÆ’Ã‚Âºc session theo id
+     * Kết thúc session theo id
      */
     public void endSession(String gameId) {
         GameSession session = sessions.remove(gameId);
@@ -65,14 +69,21 @@ public class GameSessionManager {
                 System.err.println("Error finishing game " + gameId + ": " + e.getMessage());
             }
 
-            // XoÃƒÆ’Ã‚Â¡ session khÃƒÂ¡Ã‚Â»Ã‚Âi 2 ngÃƒâ€ Ã‚Â°ÃƒÂ¡Ã‚Â»Ã‚Âi chÃƒâ€ Ã‚Â¡i
-            session.getPlayerA().clearCurrentGame();
-            session.getPlayerB().clearCurrentGame();
+            // Xoá session khỏi 2 người chơi
+            try {
+                if (session.getPlayerA() != null) session.getPlayerA().clearCurrentGame();
+                if (session.getPlayerB() != null) session.getPlayerB().clearCurrentGame();
+            } catch (Exception ex) {
+                System.err.println("Error clearing currentGame for players of " + gameId + ": " + ex.getMessage());
+            }
+
+            // Broadcast sau khi trạng thái của player đã được clear
+            safeBroadcastPlayers();
         }
     }
 
     /**
-     * KiÃƒÂ¡Ã‚Â»Ã†â€™m tra xem ngÃƒâ€ Ã‚Â°ÃƒÂ¡Ã‚Â»Ã‚Âi chÃƒâ€ Ã‚Â¡i cÃƒÆ’Ã‚Â³ Ãƒâ€žÃ¢â‚¬Ëœang ÃƒÂ¡Ã‚Â»Ã…Â¸ trong session nÃƒÆ’Ã‚Â o khÃƒÆ’Ã‚Â´ng
+     * Kiểm tra xem người chơi có đang ở trong session nào không
      */
     private boolean isPlayerInSession(ClientHandler player) {
         for (GameSession s : sessions.values()) {
@@ -82,7 +93,7 @@ public class GameSessionManager {
     }
 
     /**
-     * DÃƒÂ¡Ã‚Â»Ã‚Â«ng toÃƒÆ’Ã‚Â n bÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢ session khi server shutdown
+     * Dừng toàn bộ session khi server shutdown
      */
     public void shutdown() {
         for (String id : sessions.keySet().toArray(new String[0])) {
@@ -93,9 +104,12 @@ public class GameSessionManager {
             }
         }
         sessions.clear();
+
+        // Sau khi dọn xong, cập nhật lại trạng thái người chơi cho tất cả client
+        safeBroadcastPlayers();
     }
 
-    // LÃƒÂ¡Ã‚Â»Ã¢â‚¬Âºp lock Ãƒâ€žÃ¢â‚¬ËœÃƒÂ¡Ã‚Â»Ã†â€™ trÃƒÆ’Ã‚Â¡nh viÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡c 2 thread cÃƒÆ’Ã‚Â¹ng tÃƒÂ¡Ã‚ÂºÃ‚Â¡o session cho 1 user
+    // Lớp lock để tránh việc 2 thread cùng tạo session cho 1 user
     private static class Locks {
         private final ConcurrentHashMap<String, Object> map = new ConcurrentHashMap<>();
 
@@ -104,8 +118,21 @@ public class GameSessionManager {
         }
     }
 
+
+    private void safeBroadcastPlayers() {
+        if (clientRegistry == null) return;
+        try {
+            clientRegistry.broadcastOnlinePlayers();
+        } catch (NoSuchMethodError nsme) {
+            System.err.println("ClientRegistry.broadcastOnlinePlayers() không tồn tại. Vui lòng thêm phương thức broadcast trong ClientRegistry hoặc gọi broadcast từ nơi phù hợp.");
+        } catch (Exception ex) {
+            System.err.println("Lỗi khi broadcast danh sách người chơi: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
     /**
-     * Helper: TÃƒÂ¡Ã‚ÂºÃ‚Â¡o JSON Ãƒâ€žÃ¢â‚¬ËœÃƒâ€ Ã‚Â¡n giÃƒÂ¡Ã‚ÂºÃ‚Â£n Ãƒâ€žÃ¢â‚¬ËœÃƒÂ¡Ã‚Â»Ã†â€™ gÃƒÂ¡Ã‚Â»Ã‚Â­i cho client
+     * Helper: Tạo JSON đơn giản để gửi cho client
      */
     private String toJson(Map<String, Object> map) {
         StringBuilder sb = new StringBuilder("{");
@@ -124,4 +151,3 @@ public class GameSessionManager {
         return sb.toString();
     }
 }
-

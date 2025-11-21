@@ -13,19 +13,6 @@ import java.net.SocketException;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * ClientHandler: updated to notify GameSession when this client disconnects so
- * ongoing match can finish immediately and opponent receives game_over.
- *
- * Added:
- * - FORFEIT / CANCEL command handling which calls GameSession.handleForfeit(this)
- *   (forfeit while still connected).
- *
- * Changes:
- * - Accept incoming tokens that are MessageType names (e.g. "PING") in addition to legacy plain commands.
- * - When a MessageType name is received, we handle it using the enum; otherwise we fall back to the original string-based switch.
- * - When acknowledging a client forfeit, reply with MessageType.FORFEIT_ACK instead of a hard-coded string.
- */
 public class ClientHandler implements Runnable {
     private final Socket socket;
     private final ClientRegistry clientRegistry;
@@ -41,6 +28,9 @@ public class ClientHandler implements Runnable {
     private volatile boolean running = true;
     private volatile long lastHeartbeat = System.currentTimeMillis();
     private final int DEFAULT_TOTAL_ROUNDS = 10;
+
+    private volatile long estimatedRttMs = 150L;
+    private volatile long timeOffsetMs = 0L;
 
     public ClientHandler(Socket socket,
                          ClientRegistry clientRegistry,
@@ -438,6 +428,8 @@ public class ClientHandler implements Runnable {
         }
     }
 
+    public long getEstimatedRttMs() { return estimatedRttMs; }
+    public long getTimeOffsetMs() { return timeOffsetMs; }
     public void sendMessage(String message) { sendRaw(message); }
 
     private synchronized void sendRaw(String message) {

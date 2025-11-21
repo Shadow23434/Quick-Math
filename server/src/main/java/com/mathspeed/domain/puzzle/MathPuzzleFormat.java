@@ -2,6 +2,8 @@ package com.mathspeed.domain.puzzle;
 
 import com.google.gson.Gson;
 
+import java.util.List;
+
 public class MathPuzzleFormat {
 
     private int target;
@@ -26,4 +28,3 @@ public class MathPuzzleFormat {
     }
 
 }
-

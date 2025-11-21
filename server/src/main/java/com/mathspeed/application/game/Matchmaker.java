@@ -1,5 +1,6 @@
 package com.mathspeed.application.game;
 
+
 import com.mathspeed.adapter.network.ClientHandler;
 import com.mathspeed.adapter.network.ClientRegistry;
 
@@ -20,9 +21,8 @@ public class Matchmaker {
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private volatile boolean running = true;
 
-    // MÃ¡ÂºÂ·c Ã„â€˜Ã¡Â»â€¹nh sÃ¡Â»â€˜ vÃƒÂ²ng vÃƒÂ  thÃ¡Â»Âi gian mÃ¡Â»â€”i round
     private final int DEFAULT_TOTAL_ROUNDS = 10;
-    private final long DEFAULT_ROUND_TIME_SECONDS = 25;
+    private final long DEFAULT_ROUND_TIME_SECONDS = 30;
 
     public Matchmaker(ClientRegistry clientRegistry, GameSessionManager sessionManager) {
         this.clientRegistry = clientRegistry;
@@ -46,7 +46,6 @@ public class Matchmaker {
             ClientHandler p2 = waitingQueue.poll();
             if (p1 == null || p2 == null) continue;
 
-            // GÃ¡Â»Âi GameSessionManager vÃ¡Â»â€ºi tham sÃ¡Â»â€˜ mÃ¡ÂºÂ·c Ã„â€˜Ã¡Â»â€¹nh
             sessionManager.createSessionSafely(p1, p2, DEFAULT_TOTAL_ROUNDS, DEFAULT_ROUND_TIME_SECONDS);
         }
     }

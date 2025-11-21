@@ -1,14 +1,20 @@
 CREATE DATABASE IF NOT EXISTS quickmath CHARACTER SET utf8mb4 COLLATE=utf8mb4_unicode_ci;
 USE quickmath;
 
-CREATE TABLE IF NOT EXISTS players (
-    id CHAR(36) NOT NULL PRIMARY KEY,   -- UUID
-    username VARCHAR(64) NOT NULL UNIQUE,
-    display_name VARCHAR(100),
-    password_hash VARCHAR(255) NOT NULL,
-    gender ENUM('male','female','other') DEFAULT 'male',
-    avatar_url VARCHAR(255) NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE `players` (
+  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `username` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `display_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'unknown',
+  `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `gender` enum('male','female','other') COLLATE utf8mb4_unicode_ci DEFAULT 'male',
+  `avatar_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT 'https://tse1.mm.bing.net/th/id/OIP.pLa0MvBoBWBLYBwKtdbLhQAAAA?rs=1&pid=ImgDetMain&o=7&rm=3',
+  `country_code` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT 'vn',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `status` enum('online','in_game','offline') COLLATE utf8mb4_unicode_ci DEFAULT 'offline',
+  `last_active_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `username` (`username`),
+  KEY `ix_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

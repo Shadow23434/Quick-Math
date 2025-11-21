@@ -200,4 +200,3 @@ public class MathExpressionEvaluator {
         return stack.pop();
     }
 }
-
