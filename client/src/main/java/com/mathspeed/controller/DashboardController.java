@@ -11,14 +11,11 @@ import org.slf4j.LoggerFactory;
 public class DashboardController {
     private static final Logger logger = LoggerFactory.getLogger(DashboardController.class);
 
-    @FXML private HeaderController headerController;
     public Button findFriendsButton;
-    public Button joinQuizButton;
     public Hyperlink seeAllFriendsLink;
     public Hyperlink seeAllQuizLink;
     @FXML private StackPane quizCarouselPane;
     @FXML private StackPane friendsCarouselPane;
-    private String username;
     private HorizontalCarousel quizCarousel;
     private HorizontalCarousel friendsCarousel;
 
@@ -110,18 +107,8 @@ public class DashboardController {
         });
     }
 
-    public void setUsername(String username) {
-        this.username = username;
-        if (headerController != null) {
-            String email = username + "@mathspeed.com";
-            headerController.setUserInfo(username, email);
-        } else {
-            logger.warn("Header controller not initialized yet, username will be set later");
-        }
-    }
-
     @FXML
-    public void handleFriends() {
+    public void handleSeeAllOnlineFriends() {
         com.mathspeed.client.SceneManager sceneManager = com.mathspeed.client.SceneManager.getInstance();
         sceneManager.navigate(com.mathspeed.client.SceneManager.Screen.FRIENDS);
         javafx.application.Platform.runLater(() -> {

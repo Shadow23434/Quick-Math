@@ -1,5 +1,7 @@
 package com.mathspeed.controller;
 
+import com.mathspeed.client.SessionManager;
+import com.mathspeed.model.Player;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -14,28 +16,17 @@ import org.slf4j.LoggerFactory;
 
 public class LibraryController {
     private static final Logger logger = LoggerFactory.getLogger(LibraryController.class);
-    @FXML private HeaderController headerController;
     @FXML private ProgressIndicator loadingIndicator;
     @FXML private Button allQuizzesBtn;
     @FXML private Button myQuizzesBtn;
     @FXML private Button favoritesBtn;
     @FXML private FlowPane quizContainer;
-    private String username;
     private String currentCategory = "all";
+    private final Player currentPlayer = SessionManager.getInstance().getCurrentPlayer();
 
     @FXML
     public void initialize() {
         javafx.application.Platform.runLater(this::loadQuizzes);
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-        if (headerController != null) {
-            String email = username + "@mathspeed.com";
-            headerController.setUserInfo(username, email);
-        } else {
-            logger.warn("Header controller not initialized yet, username will be set later");
-        }
     }
 
     private void setActiveCategory(String category) {
@@ -95,11 +86,11 @@ public class LibraryController {
         // Add user's created quizzes
         addQuizCard("quiz-card-cyan", "/images/map.png", 5,
                    "My Custom Geography Quiz",
-                   username, "https://i.pravatar.cc/150?img=12");
+                   currentPlayer.getUsername(), "https://i.pravatar.cc/150?img=12");
 
         addQuizCard("quiz-card-yellow", "/images/ruby.png", 8,
                    "My Brain Teasers Collection",
-                   username, "https://i.pravatar.cc/150?img=12");
+                   currentPlayer.getUsername(), "https://i.pravatar.cc/150?img=12");
     }
 
     private void loadFavoriteQuizzes() {

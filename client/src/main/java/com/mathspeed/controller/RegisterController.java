@@ -1,8 +1,7 @@
 package com.mathspeed.controller;
 
 import com.mathspeed.client.SceneManager;
-import com.mathspeed.client.WindowSizing;
-import com.mathspeed.util.ReloadManager;
+import com.mathspeed.util.WindowSizing;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;

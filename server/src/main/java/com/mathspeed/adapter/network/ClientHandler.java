@@ -206,7 +206,7 @@ public class ClientHandler implements Runnable {
             return;
         }
 
-        try { PlayerRepository.updateLastLogin(username); } catch (Exception ignored) {}
+        try { PlayerRepository.updateStatus(username, "online"); } catch (Exception e) { System.err.println("Failed to update last login for user: " + username + " - " + e.getClass().getSimpleName() + ": " + e.getMessage()); e.printStackTrace(); }
 
         clientRegistry.broadcastOnlinePlayers();
         sendType(MessageType.LOGIN_SUCCESS, null);

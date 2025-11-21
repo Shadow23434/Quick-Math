@@ -1,5 +1,7 @@
 package com.mathspeed.client;
 
+import com.mathspeed.model.Player;
+import com.mathspeed.util.WindowConfig;
 import com.mathspeed.util.ReloadManager;
 import com.mathspeed.util.ResourceLoader;
 import javafx.application.Platform;
@@ -7,6 +9,8 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import lombok.Getter;
+import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.File;
@@ -16,9 +20,11 @@ import javafx.geometry.Rectangle2D;
 public class SceneManager {
     private static final Logger logger = LoggerFactory.getLogger(SceneManager.class);
     private static SceneManager instance;
+    @Setter
     private Stage primaryStage;
-    private String currentUsername;
+    private Player currentPlayer;
     public enum Screen { DASHBOARD, LIBRARY, FRIENDS, PROFILE, LEADERBOARD, LOGIN, REGISTER, SPLASH }
+    @Getter
     private Screen currentScreen;
     private EnumMap<Screen, Parent> viewCache = new EnumMap<>(Screen.class);
     private EnumMap<Screen, Object> controllerCache = new EnumMap<>(Screen.class);
@@ -37,11 +43,7 @@ public class SceneManager {
         return instance;
     }
 
-    public void setPrimaryStage(Stage stage) { this.primaryStage = stage; }
-
-    public String getCurrentUsername() { return currentUsername; }
-    public Screen getCurrentScreen() { return currentScreen; }
-    private void setCurrent(Screen screen, String username) { this.currentScreen = screen; this.currentUsername = username; }
+    private void setCurrent(Screen screen, Player currentPlayer) { this.currentScreen = screen; this.currentPlayer = SessionManager.getInstance().getCurrentPlayer(); }
 
     public void switchToLogin() {
         // Ensure we reset shell/session state before showing login
@@ -167,7 +169,7 @@ public class SceneManager {
         }
     }
 
-    public void initShell(Stage stage, String username, Runnable onFullyReady) {
+    public void initShell(Stage stage, Player currentPlayer, Runnable onFullyReady) {
         this.primaryStage = stage;
         if (shellActive) {
             navigate(Screen.DASHBOARD);
@@ -176,7 +178,7 @@ public class SceneManager {
         }
         try {
             // Set current user and a default screen early so nested controllers can rely on non-null
-            setCurrent(Screen.DASHBOARD, username);
+            setCurrent(Screen.DASHBOARD, currentPlayer);
 
             // Try multiple candidate filenames (with underscore or hyphen) both on disk and classpath
             String[] candidates = {"main_shell.fxml", "main-shell.fxml"};
@@ -272,7 +274,7 @@ public class SceneManager {
             }
 
             shellActive = true;
-            if (shellController != null) shellController.init(username);
+            if (shellController != null) shellController.init();
             // Preload common screens in background
             new Thread(() -> {
                 Screen[] preload = { Screen.LIBRARY, Screen.FRIENDS, Screen.LEADERBOARD };
@@ -285,10 +287,10 @@ public class SceneManager {
         }
     }
 
-    public void loadShellAsync(Stage stage, String username, Runnable onSuccess, java.util.function.Consumer<Exception> onError) {
+    public void loadShellAsync(Stage stage, Player currentPlayer, Runnable onSuccess, java.util.function.Consumer<Exception> onError) {
         javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
             @Override protected Void call() {
-                Platform.runLater(() -> initShell(stage, username, onSuccess));
+                Platform.runLater(() -> initShell(stage, currentPlayer, onSuccess));
                 return null;
             }
         };
@@ -302,7 +304,7 @@ public class SceneManager {
             logger.warn("Cannot navigate - shell not active");
             return;
         }
-        setCurrent(screen, currentUsername);
+        setCurrent(screen, currentPlayer);
         shellController.show(screen);
         try {
             com.mathspeed.controller.ShellController sc = shellController;
@@ -348,17 +350,6 @@ public class SceneManager {
         Object controller = loader.getController();
         // Cache controller
         controllerCache.put(screen, controller);
-        // Set username
-        if (controller != null && currentUsername != null) {
-            try {
-                java.lang.reflect.Method setUsernameMethod = controller.getClass().getMethod("setUsername", String.class);
-                setUsernameMethod.invoke(controller, currentUsername);
-            } catch (NoSuchMethodException e) {
-                logger.debug("Controller for {} doesn't have setUsername method", screen);
-            } catch (Exception e) {
-                logger.warn("Failed to set username on controller for screen: {}", screen, e);
-            }
-        }
         loadStylesheetsForView(root, screen);
         viewCache.put(screen, root);
         return root;
@@ -424,7 +415,7 @@ public class SceneManager {
             if (viewCache != null) viewCache.clear();
             shellActive = false;
             shellController = null;
-            currentUsername = null;
+            currentPlayer = null;
             currentScreen = null;
         } catch (Exception e) {
             logger.warn("Error during logout reset", e);

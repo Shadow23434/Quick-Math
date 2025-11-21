@@ -1,13 +1,15 @@
 package com.mathspeed.controller;
 
 import com.mathspeed.client.SceneManager;
+import com.mathspeed.client.SessionManager;
+import com.mathspeed.model.Player;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import lombok.Setter;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 public class BottomNavController {
-
     @FXML private FontIcon homeIcon;
     @FXML private Label homeLabel;
     @FXML private FontIcon libraryIcon;
@@ -17,15 +19,10 @@ public class BottomNavController {
     @FXML private FontIcon leaderboardIcon;
     @FXML private Label leaderboardLabel;
     @FXML private Button joinQuizButton;
-
-    private String username;
+    private Player currentPlayer;
 
     public enum Screen {
         HOME, LIBRARY, FRIENDS, LEADERBOARD
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
     }
 
     public void setActiveScreen(Screen screen) {
@@ -67,6 +64,7 @@ public class BottomNavController {
 
     @FXML
     private void initialize() {
+        currentPlayer = SessionManager.getInstance().getCurrentPlayer();
         // Sync initial active screen if SceneManager already knows current screen
         SceneManager sm = SceneManager.getInstance();
         SceneManager.Screen cs = sm.getCurrentScreen();
@@ -82,39 +80,32 @@ public class BottomNavController {
                 default -> { /* ignore */ }
             }
         }
-        if (username == null) {
-            username = sm.getCurrentUsername();
-        }
-    }
-
-    private boolean ensureUsername() {
-        if (username == null || username.isBlank()) {
-            username = SceneManager.getInstance().getCurrentUsername();
-        }
-        return username != null && !username.isBlank();
     }
 
     @FXML
     private void onHomeClicked() {
-        if (!ensureUsername()) return;
+        if (currentPlayer == null) return;
         setActiveScreen(Screen.HOME);
         SceneManager.getInstance().navigate(SceneManager.Screen.DASHBOARD);
     }
+
     @FXML
     private void onLibraryClicked() {
-        if (!ensureUsername()) return;
+        if (currentPlayer == null) return;
         setActiveScreen(Screen.LIBRARY);
         SceneManager.getInstance().navigate(SceneManager.Screen.LIBRARY);
     }
+
     @FXML
     private void onFriendsClicked() {
-        if (!ensureUsername()) return;
+        if (currentPlayer == null) return;
         setActiveScreen(Screen.FRIENDS);
         SceneManager.getInstance().navigate(SceneManager.Screen.FRIENDS);
     }
+
     @FXML
     private void onLeaderboardClicked() {
-        if (!ensureUsername()) return;
+        if (currentPlayer == null) return;
         setActiveScreen(Screen.LEADERBOARD);
         SceneManager.getInstance().navigate(SceneManager.Screen.LEADERBOARD);
     }

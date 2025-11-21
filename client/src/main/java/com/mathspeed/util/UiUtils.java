@@ -1,4 +1,4 @@
-package com.mathspeed.client;
+package com.mathspeed.util;
 
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;

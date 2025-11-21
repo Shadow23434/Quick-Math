@@ -74,6 +74,15 @@ public class PlayerDAOImpl extends BaseDAO implements PlayerRepository {
                     player.setPasswordHash(rs.getString("password_hash"));
                     player.setGender(rs.getString("gender"));
                     player.setAvatarUrl(rs.getString("avatar_url"));
+                    player.setStatus(rs.getString("status"));
+
+                    String country = rs.getString("country_code");
+                    if (country != null) player.setCountryCode(country);
+
+                    Timestamp lastActiveTs = rs.getTimestamp("last_active_at");
+                    if (lastActiveTs != null) {
+                        player.setLastActiveAt(lastActiveTs.toLocalDateTime());
+                    }
 
                     Timestamp ts = rs.getTimestamp("created_at");
                     if (ts != null) {
@@ -90,14 +99,14 @@ public class PlayerDAOImpl extends BaseDAO implements PlayerRepository {
     }
 
     @Override
-    public void updateLastLogin(String username) throws SQLException {
-        String sql = "UPDATE players SET last_login = NOW() WHERE username = ?";
+    public void updateStatus(String username, String status) throws SQLException {
+        String sql = "UPDATE players SET last_active_at = NOW(), status = ? WHERE username = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, username);
+            stmt.setString(1, status);
+            stmt.setString(2, username);
             stmt.executeUpdate();
         }
     }
 }
-

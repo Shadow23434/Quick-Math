@@ -1,41 +1,46 @@
 package com.mathspeed.controller;
 
 import com.mathspeed.client.SceneManager;
+import com.mathspeed.client.SessionManager;
+import com.mathspeed.model.Player;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class HeaderController {
     private static final Logger logger = LoggerFactory.getLogger(HeaderController.class);
-
-    @FXML private ImageView avatarImageView;
-    @FXML private Label userGreetingLabel;
-    @FXML private Label userEmailLabel;
-    @FXML private Button searchButton;
     @FXML private Button notificationButton;
-    @FXML private Button reloadButton;
-
-    @Getter
-    private String username;
-    @Getter
-    private String email;
+    @FXML private ImageView avatarImageView;
+    @FXML private Label disPlayNameLabel;
+    @FXML private Label userNameLabel;
+    private Player currentPlayer;
 
     @FXML
     public void initialize() {
+        // refresh current player from session
+        currentPlayer = SessionManager.getInstance().getCurrentPlayer();
+
         Platform.runLater(() -> {
             applyCSSToComponents();
+            if (currentPlayer != null) {
+                updateUserDisplay(
+                        currentPlayer.getAvatarUrl(),
+                        currentPlayer.getDisplayName(),
+                        currentPlayer.getUsername()
+                );
+            }
         });
     }
 
     private void applyCSSToComponents() {
         if (avatarImageView != null) {
-            javafx.scene.Parent root = avatarImageView.getParent();
+            Parent root = avatarImageView.getParent();
             while (root != null && root.getParent() != null) {
                 root = root.getParent();
                 if (root.getStyleClass().contains("header-section")) {
@@ -46,47 +51,27 @@ public class HeaderController {
             }
         }
 
-        // Apply CSS to individual components
-        if (userGreetingLabel != null) userGreetingLabel.applyCss();
-        if (userEmailLabel != null) userEmailLabel.applyCss();
-        if (searchButton != null) searchButton.applyCss();
+        // Apply CSS to individual UI components (not model)
+        if (disPlayNameLabel != null) disPlayNameLabel.applyCss();
+        if (userNameLabel != null) userNameLabel.applyCss();
         if (notificationButton != null) notificationButton.applyCss();
-        if (reloadButton != null) reloadButton.applyCss();
     }
 
-    public void setUserInfo(String username, String email) {
-        this.username = username;
-        this.email = email;
-        updateUserDisplay();
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-        updateUserDisplay();
-    }
-
-    public void setAvatarUrl(String avatarUrl) {
-        if (avatarImageView != null && avatarUrl != null && !avatarUrl.isEmpty()) {
-            try {
-                Image image = new Image(avatarUrl, true);
-                avatarImageView.setImage(image);
-            } catch (Exception e) {
-                logger.warn("Failed to load avatar from URL: {}", avatarUrl, e);
-            }
-        }
-    }
-
-    private void updateUserDisplay() {
+    private void updateUserDisplay(String avatarUrl, String displayName, String username) {
         Platform.runLater(() -> {
-            if (username != null && !username.isEmpty()) {
-                if (userGreetingLabel != null) {
-                    userGreetingLabel.setText("Hi, " + username);
+            if (avatarImageView != null && avatarUrl != null && !avatarUrl.isEmpty()) {
+                try {
+                    Image image = new Image(avatarUrl, true);
+                    avatarImageView.setImage(image);
+                } catch (Exception e) {
+                    logger.warn("Failed to load avatar from URL: {}", avatarUrl, e);
                 }
             }
-            if (email != null && !email.isEmpty()) {
-                if (userEmailLabel != null) {
-                    userEmailLabel.setText(email);
-                }
+            if (username != null && !username.isEmpty() && userNameLabel != null) {
+                userNameLabel.setText("@" + username);
+            }
+            if (displayName != null && !displayName.isEmpty() && disPlayNameLabel != null) {
+                disPlayNameLabel.setText("Hi, " + displayName);
             }
         });
     }
@@ -99,16 +84,16 @@ public class HeaderController {
     @FXML
     private void handleNotifications() {
         SceneManager sceneManager = SceneManager.getInstance();
-        // Ensure username is set before navigating
-        if ((username == null || username.isBlank()) && sceneManager.getCurrentUsername() != null) {
-            username = sceneManager.getCurrentUsername();
-        }
-        if (username == null || username.isBlank()) {
+        Player player = SessionManager.getInstance().getCurrentPlayer();
+        String username = (player == null) ? null : player.getUsername();
+
+        if (username == null || username.trim().isEmpty()) {
             logger.warn("Cannot navigate to Friends - username not available");
             return;
         }
 
         sceneManager.navigate(SceneManager.Screen.FRIENDS);
+
         Platform.runLater(() -> {
             Object controller = sceneManager.getController(SceneManager.Screen.FRIENDS);
             if (controller instanceof com.mathspeed.controller.FriendsController fc) {

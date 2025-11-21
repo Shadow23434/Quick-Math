@@ -14,7 +14,7 @@
             maxHeight="60">
     <left>
         <!-- Left: User Avatar + User Info -->
-        <HBox alignment="CENTER_LEFT" spacing="10" onMouseClicked="#handleProfile">
+        <HBox alignment="CENTER_LEFT" spacing="10" onMouseClicked="#handleProfile" style="-fx-cursor: hand;">
             <ImageView fx:id="avatarImageView" fitWidth="40" fitHeight="40" preserveRatio="true" styleClass="avatar-image">
                 <image>
                     <javafx.scene.image.Image url="https://i.pravatar.cc/150?img=12"/>
@@ -24,8 +24,8 @@
                 </clip>
             </ImageView>
             <VBox spacing="2" alignment="CENTER_LEFT">
-                <Label fx:id="userGreetingLabel" text="Hi, Player" styleClass="user-greeting"/>
-                <Label fx:id="userEmailLabel" text="player@null.com" styleClass="user-email"/>
+                <Label fx:id="disPlayNameLabel" text="Hi, Player" styleClass="user-display-name"/>
+                <Label fx:id="userNameLabel" text="&#64;player" styleClass="user-name"/>
             </VBox>
         </HBox>
     </left>
@@ -45,4 +45,3 @@
         </HBox>
     </right>
 </BorderPane>
-

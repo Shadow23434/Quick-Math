@@ -27,6 +27,15 @@ public class Player {
     @Column(name = "avatar_url", length = 255)
     private String avatarUrl;
 
+    @Column(name = "country_code", length = 255)
+    private String countryCode;
+
+    @Column(name = "status", columnDefinition = "ENUM('online','offline','in_game') DEFAULT 'offline'")
+    private String status = "offline";
+
+    @Column(name = "last_active_at", nullable = false)
+    private LocalDateTime lastActiveAt;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -47,6 +56,15 @@ public class Player {
         }
         if (this.gender == null) {
             this.gender = "male";
+        }
+        if (this.avatarUrl == null) {
+            this.avatarUrl = "https://tse1.mm.bing.net/th/id/OIP.pLa0MvBoBWBLYBwKtdbLhQAAAA?rs=1&pid=ImgDetMain&o=7&rm=3";
+        }
+        if (this.status == null) {
+            this.status = "offline";
+        }
+        if (this.countryCode == null) {
+            this.countryCode = "vn";
         }
     }
 
@@ -100,6 +118,30 @@ public class Player {
 
     public void setAvatarUrl(String avatarUrl) {
         this.avatarUrl = avatarUrl;
+    }
+
+    public String getCountryCode() {
+        return countryCode;
+    }
+
+    public void setCountryCode(String countryCode) {
+        this.countryCode = countryCode;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getLastActiveAt() {
+        return lastActiveAt;
+    }
+
+    public void setLastActiveAt(LocalDateTime lastActiveAt) {
+        this.lastActiveAt = lastActiveAt;
     }
 
     public LocalDateTime getCreatedAt() {

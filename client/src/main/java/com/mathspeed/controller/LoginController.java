@@ -1,11 +1,13 @@
 package com.mathspeed.controller;
 
 import com.mathspeed.client.SceneManager;
-import com.mathspeed.client.WindowSizing;
+import com.mathspeed.client.SessionManager;
+import com.mathspeed.model.Player;
+import com.mathspeed.service.AuthService;
+import com.mathspeed.util.ApiErrorHandler;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.scene.input.KeyEvent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
@@ -33,7 +35,6 @@ public class LoginController {
     @FXML private Button loginButton;
     @FXML private Hyperlink registerButton;
     @FXML private ProgressIndicator loadingIndicator;
-    @FXML private StackPane rootPane;
     @FXML private StackPane loadingOverlay;
     private Label loadingOverlayMessage;
 
@@ -50,31 +51,6 @@ public class LoginController {
         setupEmailField();
         setupEnterKeyLogin();
         setupCustomCheckboxIcon();
-
-        // Ensure login uses default compact sizing by default
-        WindowSizing.applyToNode(usernameField, false);
-
-        // If overlay was included, locate its internal message label for later updates
-        try {
-            if (loadingOverlay != null) {
-                Object node = loadingOverlay.lookup("#loadingMessage");
-                if (node instanceof Label) loadingOverlayMessage = (Label) node;
-            }
-        } catch (Exception ignored) {}
-
-        if (usernameField != null) {
-            usernameField.sceneProperty().addListener((obs, oldS, newS) -> {
-                if (newS != null) {
-                    newS.addEventFilter(KeyEvent.KEY_PRESSED, ev -> {
-                        if (ev.isControlDown() && ev.getCode() == javafx.scene.input.KeyCode.D) {
-                            WindowSizing.toggleGlobalAndApply(usernameField);
-                            System.out.println("Window mode toggled. Now desktop=" + WindowSizing.isGlobalDesktopMode());
-                            ev.consume();
-                        }
-                    });
-                }
-            });
-        }
     }
 
     private void setupIcons() {
@@ -314,67 +290,93 @@ public class LoginController {
         String username = usernameField.getText().trim();
         String password = passwordHiddenField.getText();
 
-        // Clear previous errors
-        errorLabel.setVisible(false);
-        errorLabel.setManaged(false);
-
-        // Validation
+        if (username.isEmpty() && (password == null || password.isEmpty())) {
+            handleLoginFailure(ApiErrorHandler.MSG_MISSING_CREDENTIALS, null);
+            return;
+        }
         if (username.isEmpty()) {
-            showError("Please enter your email");
-            usernameField.requestFocus();
+            handleLoginFailure("Please enter your username.", null);
+            return;
+        }
+        if (password == null || password.isEmpty()) {
+            handleLoginFailure("Please enter your password.", null);
             return;
         }
 
-        if (password.isEmpty()) {
-            showError("Please enter your password");
-            passwordHiddenField.requestFocus();
-            return;
-        }
-
-        // Show loading state
-        if (loadingIndicator != null) {
-            loadingIndicator.setVisible(true);
-            loadingIndicator.setManaged(true);
-        }
-        if (loadingOverlayMessage != null) {
-            // if overlay label exists, ensure its visible text is updated
-            Platform.runLater(() -> {
-                loadingOverlayMessage.setVisible(true);
-                loadingOverlayMessage.setManaged(true);
-                loadingOverlayMessage.setText("Loading...");
-            });
-        }
+        showLoadingOverlay("Loading...");
         if (loginButton != null) loginButton.setDisable(true);
 
-        // Also show the full-screen overlay if available
-        showLoadingOverlay("Loading...");
+        AuthService authService = new AuthService();
+        authService.login(username, password)
+                .thenAccept(response -> {
+                    Platform.runLater(() -> {
+                        if (response != null && response.isSuccess()) {
+                            SessionManager.getInstance().startSession(
+                                    response.getToken(),
+                                    response.getPlayer()
+                            );
+                            performSceneTransition(response.getPlayer());
 
-        // Ensure any previous shell/session is fully reset (especially after logout)
+                        } else {
+                            int statusCode = (response != null) ? response.getStatusCodeOrDefault(500) : 500;
+                            String serverMsg = (response != null) ? response.getMessage() : null;
+
+                            String userMsg = ApiErrorHandler.getUserFriendlyMessage(statusCode, serverMsg);
+                            handleLoginFailure(userMsg, serverMsg);
+                        }
+                     });
+                 })
+                .exceptionally(ex -> {
+                    // Sử dụng helper cho lỗi mạng
+                    String networkMsg = ApiErrorHandler.getNetworkErrorMessage(ex);
+                    Platform.runLater(() -> handleLoginFailure(networkMsg, ex.getMessage()));
+                    return null;
+                });
+    }
+
+    private void handleLoginFailure(String userMessage, String serverDebugMessage) {
+        logger.error(userMessage);
+        if (serverDebugMessage != null) {
+            logger.error("Server/System detail: {}", serverDebugMessage);
+        }
+
+        showError(userMessage);
+
+        if (errorLabel != null) {
+            if (serverDebugMessage != null && !serverDebugMessage.trim().isEmpty()) {
+                Tooltip t = new Tooltip(serverDebugMessage);
+                t.setWrapText(true);
+                t.setMaxWidth(600);
+                errorLabel.setTooltip(t);
+            } else {
+                errorLabel.setTooltip(null);
+            }
+        }
+
+        hideLoadingOverlay();
+        if (loadingIndicator != null) {
+            loadingIndicator.setVisible(false);
+            loadingIndicator.setManaged(false);
+        }
+    }
+
+    private void performSceneTransition(Player currentPlayer) {
         SceneManager.getInstance().logout();
 
         Stage stage = (Stage) loginButton.getScene().getWindow();
-        // Call loadShellAsync with success and error handlers (method expects 4 args)
-        SceneManager.getInstance().loadShellAsync(stage, username,
-                // onSuccess: hide loader and leave UI to shell
+
+        SceneManager.getInstance().loadShellAsync(stage, currentPlayer,
                 () -> {
+                    // On Success
                     try {
-                        // Hide both small indicator and overlay on success
                         if (loadingIndicator != null) { loadingIndicator.setVisible(false); loadingIndicator.setManaged(false); }
                         if (loginButton != null) loginButton.setDisable(false);
                         hideLoadingOverlay();
                     } catch (Exception ignored) {}
                 },
-                // onError: log and show error message to user
                 (ex) -> {
+                    // On Error
                     logger.error("Failed to load shell asynchronously", ex);
-                    Platform.runLater(() -> {
-                        showError("Failed to start application. Please try again.");
-                        try {
-                            if (loadingIndicator != null) { loadingIndicator.setVisible(false); loadingIndicator.setManaged(false); }
-                            if (loginButton != null) loginButton.setDisable(false);
-                            hideLoadingOverlay();
-                        } catch (Exception ignored) {}
-                    });
                 }
         );
     }

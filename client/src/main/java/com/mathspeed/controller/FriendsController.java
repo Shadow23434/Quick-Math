@@ -13,14 +13,12 @@ import org.slf4j.LoggerFactory;
 public class FriendsController {
     private static final Logger logger = LoggerFactory.getLogger(FriendsController.class);
     private String pendingStartFilter = null;
-    @FXML private HeaderController headerController;
     @FXML private ProgressIndicator loadingIndicator;
     @FXML private Button allFriendsBtn;
     @FXML private Button onlineBtn;
     @FXML private Button requestsBtn;
     @FXML private TextField searchField;
     @FXML private FlowPane friendsContainer;
-    private String username;
     private String currentFilter = "all";
 
     @FXML
@@ -44,7 +42,6 @@ public class FriendsController {
         loadFriends();
     }
 
-
     public void showOnlineImmediately() {
         if (onlineBtn == null) {
             // Not initialized yet; set flag
@@ -54,16 +51,6 @@ public class FriendsController {
         }
         setActiveFilter("online");
         loadFriends();
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-        if (headerController != null) {
-            String email = username + "@mathspeed.com";
-            headerController.setUserInfo(username, email);
-        } else {
-            logger.warn("Header controller not initialized yet, username will be set later");
-        }
     }
 
     private void setActiveFilter(String filter) {
@@ -271,25 +258,5 @@ public class FriendsController {
     private void handleSearchFriend() {
         String query = searchField.getText();
         logger.info("Searching for friend: " + query);
-    }
-
-    @FXML
-    private void handleHome() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.DASHBOARD);
-    }
-
-    @FXML
-    private void handleLibrary() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.LIBRARY);
-    }
-
-    @FXML
-    private void handleFriends() {
-        // already on friends
-    }
-
-    @FXML
-    public void handleLeaderboard() {
-        com.mathspeed.client.SceneManager.getInstance().navigate(com.mathspeed.client.SceneManager.Screen.LEADERBOARD);
     }
 }

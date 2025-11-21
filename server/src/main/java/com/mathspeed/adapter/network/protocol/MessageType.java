@@ -1,4 +1,5 @@
 package com.mathspeed.adapter.network.protocol;
+
 public enum MessageType {
     LOGIN_REQUEST, LOGIN_SUCCESS, LOGIN_FAILED, REGISTER_SUCCESS, LOGOUT,
     PING, PONG, PLAYER_LIST_UPDATE,

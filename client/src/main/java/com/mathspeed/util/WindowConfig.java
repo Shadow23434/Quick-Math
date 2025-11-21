@@ -1,4 +1,4 @@
-package com.mathspeed.client;
+package com.mathspeed.util;
 
 public final class WindowConfig {
     public static final double MIN_WIDTH = 360.0;

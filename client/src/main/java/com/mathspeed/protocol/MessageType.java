@@ -26,5 +26,5 @@ public enum MessageType {
 
     // General
     ERROR,
-    DISCONNECT
+    DISCONNECT,
 }

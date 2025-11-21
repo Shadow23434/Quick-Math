@@ -9,12 +9,17 @@ import com.mathspeed.application.game.ChallengeManager;
 import com.mathspeed.application.game.GameSessionManager;
 import com.mathspeed.application.game.Matchmaker;
 import com.mathspeed.adapter.network.ServerAcceptor;
+import com.mathspeed.adapter.network.HttpServer;
+import com.mathspeed.adapter.network.auth.AuthHandler;
+import com.mathspeed.adapter.network.HealthHandler;
+import com.mathspeed.application.auth.AuthService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class Main {
     private static final Logger logger = LogManager.getLogger(Main.class);
     private static final int PORT = 8888;
+    private static final int HTTP_PORT = 8080;
 
     public static void main(String[] args) {
         logger.info("Server starting on port " + PORT);
@@ -28,6 +33,18 @@ public class Main {
         ChallengeManager challengeManager = new ChallengeManager(clientRegistry, sessionManager);
         ServerAcceptor acceptor = new ServerAcceptor(PORT, clientRegistry, matchmaker, challengeManager, playerRepository);
 
+        // shared HTTP server for multiple features
+        HttpServer httpServer = new HttpServer(HTTP_PORT);
+        AuthService authService = new AuthService(playerRepository);
+        try {
+            // register contexts/handlers
+            httpServer.createContext("/api/auth", new AuthHandler(authService));
+            httpServer.createContext("/api/health", new HealthHandler());
+            httpServer.start();
+        } catch (Exception e) {
+            System.err.println("Failed to start shared HTTP server: " + e.getMessage());
+        }
+
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("Shutdown requested, stopping server...");
             acceptor.shutdown();
@@ -35,6 +52,8 @@ public class Main {
             challengeManager.shutdown();
             sessionManager.shutdown();
             clientRegistry.shutdown();
+            // stop shared HTTP server
+            httpServer.stop();
             System.out.println("Server stopped.");
         }));
 

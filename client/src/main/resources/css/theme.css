@@ -375,19 +375,19 @@
     -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 5, 0, 0, 2);
 }
 
-.header-section .user-greeting {
+.header-section .user-display-name {
     -fx-font-family: "Poppins SemiBold";
     -fx-text-fill: -text-light;
     -fx-font-size: 14px;
-    -fx-max-width: 100px;
+    -fx-max-width: 200px;
     -fx-text-overrun: ellipsis;
 }
 
-.header-section .user-email {
+.header-section .user-name {
     -fx-font-family: "Poppins Medium";
     -fx-text-fill: #d6d1fc;
     -fx-font-size: 11px;
-    -fx-max-width: 100px;
+    -fx-max-width: 200px;
     -fx-text-overrun: ellipsis;
 }
 
@@ -428,6 +428,7 @@
 }
 
 .bottom-appbar-item {
+    -fx-cursor: hand;
     -fx-alignment: center;
     -fx-spacing: 4;
     -fx-padding: 0 4;

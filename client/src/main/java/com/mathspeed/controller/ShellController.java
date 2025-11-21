@@ -1,7 +1,8 @@
 package com.mathspeed.controller;
 
-import com.mathspeed.client.UiUtils;
-import com.mathspeed.client.WindowConfig;
+import com.mathspeed.model.Player;
+import com.mathspeed.util.UiUtils;
+import com.mathspeed.util.WindowConfig;
 import com.mathspeed.client.SceneManager;
 import javafx.fxml.FXML;
 import javafx.scene.Parent;
@@ -27,9 +28,8 @@ public class ShellController {
     @FXML private StackPane bottomNav;
     @Getter
     @FXML private BottomNavController bottomNavController;
-
-    private String username;
-
+    private Player currentPlayer;
+    @Getter
     private final CompletableFuture<Void> firstScreenReady = new CompletableFuture<>();
     private boolean firstReadySignalled = false;
 
@@ -37,8 +37,6 @@ public class ShellController {
     private ScheduledExecutorService readyTimeoutScheduler;
     private ScheduledFuture<?> readyTimeoutFuture;
     private static final long READY_TIMEOUT_MS = 10_000L; // 10 seconds
-
-    public CompletableFuture<Void> getFirstScreenReady() { return firstScreenReady; }
 
     @FXML
     private void initialize() {
@@ -56,11 +54,7 @@ public class ShellController {
         }
     }
 
-    public void init(String username) {
-        this.username = username;
-        if (bottomNavController != null) {
-            bottomNavController.setUsername(username);
-        }
+    public void init() {
         show(SceneManager.Screen.DASHBOARD);
     }
 

@@ -85,7 +85,7 @@
                                 <Button fx:id="findFriendsButton"
                                         text="Find Friends"
                                         styleClass="primary-button"
-                                        onAction="#handleFriends"
+                                        onAction="#handleSeeAllOnlineFriends"
                                         maxWidth="120"/>
                             </VBox>
                         </StackPane>
@@ -134,7 +134,7 @@
                         <Label text="Online Friends" styleClass="section-title"/>
                         <Region HBox.hgrow="ALWAYS"/>
                         <Hyperlink fx:id="seeAllFriendsLink" text="See All"
-                                   onAction="#handleFriends"
+                                   onAction="#handleSeeAllOnlineFriends"
                                    styleClass="hyper-link"
                                    contentDisplay="RIGHT">
                             <graphic>
