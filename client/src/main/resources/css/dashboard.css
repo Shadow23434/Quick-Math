@@ -550,3 +550,62 @@
     -fx-background-radius: 10px;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 4, 0, 0, 1);
 }
+
+/* Profile */
+.display-name-row {
+    -fx-alignment: center;
+    -fx-spacing: 8;
+}
+
+.country-flag {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 4, 0, 0, 1);
+    -fx-background-radius: 3;
+    -fx-padding: 0 2 0 2;
+}
+
+.gender-label {
+    -fx-font-family: "Poppins Medium";
+    -fx-font-size: 16px;
+    -fx-text-fill: #555555;
+    -fx-background-color: rgba(0,0,0,0.03);
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-min-height: 18px;
+    -fx-alignment: center;
+}
+
+/* Gender badge & icon */
+.gender-badge {
+    -fx-alignment: center;
+    -fx-spacing: 6;
+}
+
+.gender-icon {
+    -fx-icon-size: 16px;
+    -fx-fill: #777777; /* default */
+}
+
+.gender-icon-male {
+    -fx-fill: #3b82f6; /* blue */
+}
+
+.gender-icon-female {
+    -fx-fill: #ec4899; /* pink */
+}
+
+.gender-icon-neutral {
+    -fx-fill: #6b7280; /* gray */
+}
+
+.country-row {
+    -fx-alignment: center-left;
+    -fx-spacing: 6;
+}
+
+.country-name {
+    -fx-font-family: "Poppins Medium";
+    -fx-font-size: 13px;
+    -fx-text-fill: #555555;
+    -fx-padding: 0 0 0 4; /* small gap from flag */
+}

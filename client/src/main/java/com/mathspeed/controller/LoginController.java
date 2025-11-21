@@ -336,10 +336,6 @@ public class LoginController {
 
     private void handleLoginFailure(String userMessage, String serverDebugMessage) {
         logger.error(userMessage);
-        if (serverDebugMessage != null) {
-            logger.error("Server/System detail: {}", serverDebugMessage);
-        }
-
         showError(userMessage);
 
         if (errorLabel != null) {

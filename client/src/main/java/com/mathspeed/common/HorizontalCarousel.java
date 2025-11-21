@@ -1,4 +1,4 @@
-package com.mathspeed.util;
+package com.mathspeed.common;
 
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;

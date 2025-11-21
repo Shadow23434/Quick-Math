@@ -1,6 +1,8 @@
 package com.mathspeed.service;
 
 import com.google.gson.Gson;
+import com.mathspeed.model.auth.LogoutRequest;
+import com.mathspeed.util.Config;
 import com.mathspeed.util.GsonFactory;
 import com.mathspeed.model.auth.LoginRequest;
 import com.mathspeed.model.auth.LoginResponse;
@@ -10,9 +12,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.mathspeed.client.SessionManager;
 
 public class AuthService {
-    private static final String API_URL = "http://localhost:8080/api/auth";
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
+    private static final String AUTH_URL = Config.getApiUrl() + "/auth";
     private final HttpClient client;
     private final Gson gson;
 
@@ -21,6 +27,7 @@ public class AuthService {
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
         this.gson = GsonFactory.createGson();
+        logger.info("AuthService using AUTH URL: {}", AUTH_URL);
     }
 
     public CompletableFuture<LoginResponse> login(String username, String password) {
@@ -28,7 +35,7 @@ public class AuthService {
         String jsonBody = gson.toJson(requestBody);
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(API_URL + "/login"))
+                .uri(URI.create(AUTH_URL + "/login"))
                 .header("Content-Type", "application/json")
                 .timeout(Duration.ofSeconds(10))
                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
@@ -57,6 +64,52 @@ public class AuthService {
                             LoginResponse errorResponse = new LoginResponse();
                             errorResponse.setSuccess(false);
                             errorResponse.setMessage("Authentication failed: HTTP " + response.statusCode());
+                            errorResponse.setStatusCode(response.statusCode());
+                            return errorResponse;
+                        }
+                    } catch (Exception e) {
+                        return createErrorResponse("Error parsing server response: " + e.getMessage(), 500);
+                    }
+                })
+                .exceptionally(ex -> createErrorResponse("Connection error: " + ex.getMessage()));
+    }
+
+    public CompletableFuture<LoginResponse> logout(String username) {
+        String token = SessionManager.getInstance().getAuthToken();
+        LogoutRequest logoutRequest = new LogoutRequest(username);
+        String jsonBody = gson.toJson(logoutRequest);
+
+        HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
+                .uri(URI.create(AUTH_URL + "/logout"))
+                .header("Content-Type", "application/json")
+                .timeout(Duration.ofSeconds(10))
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody));
+
+        if (token != null && !token.isBlank()) {
+            reqBuilder.header("Authorization", "Bearer " + token);
+        }
+
+        HttpRequest request = reqBuilder.build();
+
+        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(response -> {
+                    try {
+                        if (response.statusCode() == 200) {
+                            LoginResponse lr = gson.fromJson(response.body(), LoginResponse.class);
+                            return lr != null ? lr : createErrorResponse("Invalid server response", response.statusCode());
+                        } else {
+                            try {
+                                LoginResponse parsed = gson.fromJson(response.body(), LoginResponse.class);
+                                if (parsed != null) {
+                                    parsed.setSuccess(false);
+                                    if (parsed.getStatusCode() == null) parsed.setStatusCode(response.statusCode());
+                                    return parsed;
+                                }
+                            } catch (Exception ignored) {}
+
+                            LoginResponse errorResponse = new LoginResponse();
+                            errorResponse.setSuccess(false);
+                            errorResponse.setMessage("Logout failed: HTTP " + response.statusCode());
                             errorResponse.setStatusCode(response.statusCode());
                             return errorResponse;
                         }

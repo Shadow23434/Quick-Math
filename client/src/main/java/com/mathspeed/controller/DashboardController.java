@@ -1,6 +1,6 @@
 package com.mathspeed.controller;
 
-import com.mathspeed.util.HorizontalCarousel;
+import com.mathspeed.common.HorizontalCarousel;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.StackPane;

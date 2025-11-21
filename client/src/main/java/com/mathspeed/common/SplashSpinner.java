@@ -1,4 +1,4 @@
-package com.mathspeed.util;
+package com.mathspeed.common;
 
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;

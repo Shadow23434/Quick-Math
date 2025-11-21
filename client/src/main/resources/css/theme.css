@@ -386,7 +386,7 @@
 .header-section .user-name {
     -fx-font-family: "Poppins Medium";
     -fx-text-fill: #d6d1fc;
-    -fx-font-size: 11px;
+    -fx-font-size: 12px;
     -fx-max-width: 200px;
     -fx-text-overrun: ellipsis;
 }
