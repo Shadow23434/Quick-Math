@@ -50,7 +50,7 @@ public class ClientHandler implements Runnable {
         System.out.println("ClientHandler started for " + remote);
 
         try {
-            socket.setSoTimeout(0); // disable timeout, dÃ¹ng heartbeat
+            socket.setSoTimeout(0);
             this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             this.out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
 
@@ -59,20 +59,17 @@ public class ClientHandler implements Runnable {
                 line = line.trim();
                 if (line.isEmpty()) continue;
 
-                refreshHeartbeat(); // <-- update má»—i láº§n nháº­n dá»¯ liá»‡u
+                refreshHeartbeat();
                 String[] parts = line.split(" ", 3);
                 String cmdToken = parts[0].toUpperCase();
 
-                // First try to parse as MessageType name, if clients send MessageType-based commands.
                 MessageType incomingType = null;
                 try {
                     incomingType = MessageType.valueOf(cmdToken);
                 } catch (IllegalArgumentException ignored) {
-                    // not a MessageType name; we'll fall back to legacy string commands
                 }
 
                 if (incomingType != null) {
-                    // Handle a small set of MessageType-based commands directly
                     switch (incomingType) {
                         case PING:
                             sendType(MessageType.PONG, null);
@@ -370,7 +367,6 @@ public class ClientHandler implements Runnable {
             return;
         }
         try {
-            // delegate to GameSession which runs logic on its scheduler thread
             session.handleForfeit(this);
             // use explicit MessageType acknowledgement instead of ad-hoc string
             sendType(MessageType.FORFEIT_ACK, null);

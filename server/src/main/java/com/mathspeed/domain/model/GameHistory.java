@@ -1,83 +1,100 @@
 package com.mathspeed.domain.model;
 
+
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.Objects;
+
 
 @Entity
 @Table(name = "game_history")
 public class GameHistory {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
 
-    @Column(name = "player1_id", nullable = false)
-    private Integer player1Id;
+    @EmbeddedId
+    private GameHistoryId id;
 
-    @Column(name = "player2_id", nullable = false)
-    private Integer player2Id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("matchId")
+    @JoinColumn(name = "match_id", referencedColumnName = "id", nullable = false)
+    private GameMatch match;
 
-    @Column(name = "player1_score")
-    private Integer player1Score = 0;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("playerId")
+    @JoinColumn(name = "player_id", referencedColumnName = "id", nullable = false)
+    private Player player;
 
-    @Column(name = "player2_score")
-    private Integer player2Score = 0;
+    @Column(name = "joined_at", columnDefinition = "DATETIME")
+    private LocalDateTime joinedAt;
 
-    @Column(name = "player1_time")
-    private Integer player1Time = 0;
+    @Column(name = "left_at", columnDefinition = "DATETIME")
+    private LocalDateTime leftAt;
 
-    @Column(name = "player2_time")
-    private Integer player2Time = 0;
+    @Column(name = "final_score")
+    private int finalScore;
 
-    @Column(name = "winner_id")
-    private Integer winnerId;
+    @Column(name = "total_time")
+    private long totalTime;
 
-    @Column(name = "question_count")
-    private Integer questionCount = 0;
+    // result: 'win','lose','draw'
+    @Column(name = "result", length = 8)
+    private String result;
 
-    @Column(name = "played_at")
-    private LocalDateTime playedAt;
+    public GameHistory() { }
 
-    @PrePersist
-    protected void onCreate() {
-        playedAt = LocalDateTime.now();
+    public GameHistory(GameMatch match, Player player) {
+        this.match = match;
+        this.player = player;
+        this.id = new GameHistoryId(match.getId(), player.getId());
+        this.joinedAt = LocalDateTime.now();
     }
 
-    // Constructors
-    public GameHistory() {}
+    // getters/setters
 
-    public GameHistory(Integer player1Id, Integer player2Id) {
-        this.player1Id = player1Id;
-        this.player2Id = player2Id;
+    public GameHistoryId getId() { return id; }
+    public void setId(GameHistoryId id) { this.id = id; }
+
+    public GameMatch getMatch() { return match; }
+    public void setMatch(GameMatch match) { this.match = match; }
+
+    public Player getPlayer() { return player; }
+    public void setPlayer(Player player) { this.player = player; }
+
+    public LocalDateTime getJoinedAt() { return joinedAt; }
+    public void setJoinedAt(LocalDateTime joinedAt) { this.joinedAt = joinedAt; }
+
+    public LocalDateTime getLeftAt() { return leftAt; }
+    public void setLeftAt(LocalDateTime leftAt) { this.leftAt = leftAt; }
+
+    public int getFinalScore() { return finalScore; }
+    public void setFinalScore(int finalScore) { this.finalScore = finalScore; }
+
+    public long getTotalTime() { return totalTime; }
+    public void setTotalTime(long totalTime) { this.totalTime = totalTime; }
+
+    public String getResult() { return result; }
+    public void setResult(String result) { this.result = result; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        GameHistory that = (GameHistory) o;
+        return Objects.equals(id, that.id);
     }
 
-    public Integer getId() { return id; }
-    public void setId(Integer id) { this.id = id; }
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
+    }
 
-    public Integer getPlayer1Id() { return player1Id; }
-    public void setPlayer1Id(Integer player1Id) { this.player1Id = player1Id; }
-
-    public Integer getPlayer2Id() { return player2Id; }
-    public void setPlayer2Id(Integer player2Id) { this.player2Id = player2Id; }
-
-    public Integer getPlayer1Score() { return player1Score; }
-    public void setPlayer1Score(Integer player1Score) { this.player1Score = player1Score; }
-
-    public Integer getPlayer2Score() { return player2Score; }
-    public void setPlayer2Score(Integer player2Score) { this.player2Score = player2Score; }
-
-    public Integer getPlayer1Time() { return player1Time; }
-    public void setPlayer1Time(Integer player1Time) { this.player1Time = player1Time; }
-
-    public Integer getPlayer2Time() { return player2Time; }
-    public void setPlayer2Time(Integer player2Time) { this.player2Time = player2Time; }
-
-    public Integer getWinnerId() { return winnerId; }
-    public void setWinnerId(Integer winnerId) { this.winnerId = winnerId; }
-
-    public Integer getQuestionCount() { return questionCount; }
-    public void setQuestionCount(Integer questionCount) { this.questionCount = questionCount; }
-
-    public LocalDateTime getPlayedAt() { return playedAt; }
-    public void setPlayedAt(LocalDateTime playedAt) { this.playedAt = playedAt; }
+    @Override
+    public String toString() {
+        return "GameHistory{" +
+                "matchId=" + (id != null ? id.getMatchId() : "null") +
+                ", playerId=" + (id != null ? id.getPlayerId() : "null") +
+                ", finalScore=" + finalScore +
+                ", result='" + result + '\'' +
+                '}';
+    }
 }
-

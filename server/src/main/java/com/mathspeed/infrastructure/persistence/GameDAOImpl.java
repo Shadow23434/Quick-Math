@@ -1,8 +1,11 @@
 package com.mathspeed.infrastructure.persistence;
 
+import com.mathspeed.domain.model.GameHistory;
+import com.mathspeed.domain.model.GameMatch;
 import com.mathspeed.domain.port.GameRepository;
 
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.*;
 
 public class GameDAOImpl extends BaseDAO implements GameRepository {
@@ -12,24 +15,24 @@ public class GameDAOImpl extends BaseDAO implements GameRepository {
     }
 
     @Override
-    public void insertGame(String gameId, int totalRounds) throws Exception {
-        String sql = "INSERT INTO games (id, total_rounds, status, created_at) VALUES (?, ?, 'pending', NOW()) " +
+    public void insertGame(String matchId, int totalRounds) throws Exception {
+        String sql = "INSERT INTO matches (id, total_rounds, status, created_at) VALUES (?, ?, 'pending', NOW()) " +
                 "ON DUPLICATE KEY UPDATE id = id";
 
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, gameId);
+            ps.setString(1, matchId);
             ps.setInt(2, totalRounds);
             ps.executeUpdate();
         }
     }
 
     @Override
-    public void insertGamePlayersByIds(String gameId, List<String> userIds) throws Exception {
+    public void insertGamePlayersByIds(String matchId, List<String> userIds) throws Exception {
         if (userIds == null || userIds.isEmpty()) return;
 
-        String sql = "INSERT INTO game_players (game_id, player_id, joined_at) VALUES (?, ?, NOW()) " +
+        String sql = "INSERT INTO game_history (match_id, player_id, joined_at) VALUES (?, ?, NOW()) " +
                 "ON DUPLICATE KEY UPDATE player_id = player_id";
 
         try (Connection conn = getConnection();
@@ -38,7 +41,7 @@ public class GameDAOImpl extends BaseDAO implements GameRepository {
             conn.setAutoCommit(false);
             try {
                 for (String userId : userIds) {
-                    ps.setString(1, gameId);
+                    ps.setString(1, matchId);
                     ps.setString(2, userId);
                     ps.addBatch();
                 }
@@ -53,133 +56,125 @@ public class GameDAOImpl extends BaseDAO implements GameRepository {
         }
     }
 
-    /**
-     * Ensure a games row exists. If it doesn't, insert a minimal row.
-     */
-    private void ensureGameExists(Connection conn, String gameId, Integer totalRounds, Long startedAtMs) throws SQLException {
-        // Insert or no-op if already present
-        String sql = "INSERT INTO games (id, total_rounds, status, created_at, started_at) " +
+    public void ensureMatchExists(String matchId, Integer totalRounds, Timestamp startedAt) throws SQLException {
+        try (Connection conn = getConnection()) {
+            ensureMatchExists(conn, matchId, totalRounds, startedAt);
+        }
+    }
+
+    private void ensureMatchExists(Connection conn, String matchId, Integer totalRounds, Timestamp startedAt) throws SQLException {
+        String sql = "INSERT INTO matches (id, total_rounds, status, created_at, started_at) " +
                 "VALUES (?, ?, 'pending', NOW(), ?) " +
                 "ON DUPLICATE KEY UPDATE id = id";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, gameId);
-            if (totalRounds != null) ps.setInt(2, totalRounds); else ps.setInt(2, 0);
-            if (startedAtMs != null) ps.setTimestamp(3, new Timestamp(startedAtMs)); else ps.setTimestamp(3, null);
+            ps.setString(1, matchId);
+            ps.setInt(2, totalRounds != null ? totalRounds : 0);
+            if (startedAt != null) ps.setTimestamp(3, startedAt); else ps.setTimestamp(3, null);
             ps.executeUpdate();
         }
     }
 
     @Override
-    public void persistGameFinal(String gameId,
-                                 Map<String, Integer> scores,
-                                 Map<String, Long> totalPlayTimeMs,
-                                 Map<String, List<Map<String, Object>>> roundHistory,
-                                 String winnerUserId) throws Exception {
-        // Ensure the auxiliary table exists
+    public void persistGameFinal(GameMatch match,
+                                 List<GameHistory> histories,
+                                 Map<String, List<Map<String, Object>>> roundHistory) throws Exception {
+        if (match == null) throw new IllegalArgumentException("match is required");
         ensureGameRoundsTable();
 
-        // Prepare SQL statements
-        String ensurePlayerSql = "INSERT INTO game_players (game_id, player_id, joined_at) VALUES (?, ?, NOW()) " +
-                "ON DUPLICATE KEY UPDATE player_id = player_id";
-        String updateGameSql = "UPDATE games SET status = 'finished', ended_at = NOW(), total_rounds = ? WHERE id = ?";
-        String updatePlayerSql = "UPDATE game_players SET final_score = ?, total_time = ?, result = ? WHERE game_id = ? AND player_id = ?";
-        String insertRoundSql = "INSERT INTO game_rounds (game_id, round_index, player_id, correct, round_play_time_ms, timestamp_ms) VALUES (?, ?, ?, ?, ?, ?)";
-
-        try (Connection conn = getConnection();
-             PreparedStatement ensurePlayerStmt = conn.prepareStatement(ensurePlayerSql);
-             PreparedStatement updGame = conn.prepareStatement(updateGameSql);
-             PreparedStatement updPlayer = conn.prepareStatement(updatePlayerSql);
-             PreparedStatement insRound = conn.prepareStatement(insertRoundSql)) {
-
+        boolean previousAuto = true;
+        try (Connection conn = getConnection()) {
+            previousAuto = conn.getAutoCommit();
             conn.setAutoCommit(false);
+
             try {
-                ensureGameExists(conn, gameId, scores != null ? scores.size() : null, null);
+                // Ensure matches row exists (use started_at if provided)
+                ensureMatchExists(conn, match.getId(), match.getTotalRounds() > 0 ? match.getTotalRounds() : null,
+                        match.getStartedAt() != null ? Timestamp.valueOf(match.getStartedAt()) : null);
 
-                Set<String> participants = new HashSet<>();
-                if (scores != null) participants.addAll(scores.keySet());
-                if (roundHistory != null) participants.addAll(roundHistory.keySet());
-                for (String pid : participants) {
-                    ensurePlayerStmt.setString(1, gameId);
-                    ensurePlayerStmt.setString(2, pid);
-                    ensurePlayerStmt.addBatch();
+                // Ensure game_history rows exist (insert joined_at if provided on entities)
+                String ensureHistorySql = "INSERT INTO game_history (match_id, player_id, joined_at) VALUES (?, ?, ?) " +
+                        "ON DUPLICATE KEY UPDATE player_id = player_id";
+                try (PreparedStatement ensureHist = conn.prepareStatement(ensureHistorySql)) {
+                    if (histories != null) {
+                        for (GameHistory gh : histories) {
+                            String pid = gh.getPlayer() != null ? gh.getPlayer().getId() : null;
+                            if (pid == null) continue;
+                            Timestamp joined = gh.getJoinedAt() != null ? Timestamp.valueOf(gh.getJoinedAt()) : new Timestamp(System.currentTimeMillis());
+                            ensureHist.setString(1, match.getId());
+                            ensureHist.setString(2, pid);
+                            ensureHist.setTimestamp(3, joined);
+                            ensureHist.addBatch();
+                        }
+                        ensureHist.executeBatch();
+                    }
                 }
-                if (!participants.isEmpty()) ensurePlayerStmt.executeBatch();
 
-                // 2) Update games to finished and set total_rounds to size of roundHistory or existing totalRounds
-                int totalRounds = 0;
-                // Try infer totalRounds from roundHistory sizes (max round_index+1)
+                // Update matches -> set status finished, started_at = COALESCE(started_at, ?), ended_at = ?, total_rounds = ?
+                String updMatchSql = "UPDATE matches SET status = 'finished', started_at = COALESCE(started_at, ?), ended_at = ?, total_rounds = ? WHERE id = ?";
+                try (PreparedStatement updMatch = conn.prepareStatement(updMatchSql)) {
+                    Timestamp startedAt = match.getStartedAt() != null ? Timestamp.valueOf(match.getStartedAt()) : null;
+                    Timestamp endedAt = match.getEndedAt() != null ? Timestamp.valueOf(match.getEndedAt()) : new Timestamp(System.currentTimeMillis());
+                    // If startedAt is null, COALESCE will preserve existing started_at in DB
+                    updMatch.setTimestamp(1, startedAt);
+                    updMatch.setTimestamp(2, endedAt);
+                    updMatch.setInt(3, match.getTotalRounds());
+                    updMatch.setString(4, match.getId());
+                    updMatch.executeUpdate();
+                }
+
+                // Update game_history rows with final_score, total_time, result, left_at
+                String updHistSql = "UPDATE game_history SET final_score = ?, total_time = ?, result = ?, left_at = COALESCE(left_at, ?) WHERE match_id = ? AND player_id = ?";
+                try (PreparedStatement updHist = conn.prepareStatement(updHistSql)) {
+                    if (histories != null) {
+                        for (GameHistory gh : histories) {
+                            String pid = gh.getPlayer() != null ? gh.getPlayer().getId() : null;
+                            if (pid == null) continue;
+                            updHist.setInt(1, gh.getFinalScore());
+                            updHist.setLong(2, gh.getTotalTime());
+                            updHist.setString(3, gh.getResult());
+                            Timestamp leftAt = gh.getLeftAt() != null ? Timestamp.valueOf(gh.getLeftAt()) : Timestamp.valueOf(LocalDateTime.now());
+                            updHist.setTimestamp(4, leftAt);
+                            updHist.setString(5, match.getId());
+                            updHist.setString(6, pid);
+                            updHist.addBatch();
+                        }
+                        updHist.executeBatch();
+                    }
+                }
+
+                // Insert per-round rows into game_rounds (batch)
                 if (roundHistory != null && !roundHistory.isEmpty()) {
-                    int maxIdx = -1;
-                    for (List<Map<String, Object>> rh : roundHistory.values()) {
-                        if (rh == null) continue;
-                        for (Map<String, Object> e : rh) {
-                            Number idx = (Number) e.get("round_index");
-                            if (idx != null) maxIdx = Math.max(maxIdx, idx.intValue());
+                    String insRoundSql = "INSERT INTO game_rounds (match_id, round_index, player_id, correct, round_play_time_ms, timestamp_ms) VALUES (?, ?, ?, ?, ?, ?)";
+                    try (PreparedStatement insRound = conn.prepareStatement(insRoundSql)) {
+                        for (Map.Entry<String, List<Map<String, Object>>> ph : roundHistory.entrySet()) {
+                            String playerId = ph.getKey();
+                            List<Map<String, Object>> rounds = ph.getValue();
+                            if (rounds == null || rounds.isEmpty()) continue;
+                            for (Map<String, Object> r : rounds) {
+                                Number idxN = (Number) r.get("round_index");
+                                Object corrObj = r.get("correct");
+                                Boolean correctB = null;
+                                if (corrObj instanceof Boolean) correctB = (Boolean) corrObj;
+                                else if (corrObj instanceof Number) correctB = ((Number) corrObj).intValue() != 0;
+                                Number playTimeN = (Number) r.get("round_play_time_ms");
+                                Number tsN = (Number) r.get("timestamp");
+
+                                int roundIndex = idxN != null ? idxN.intValue() : -1;
+                                boolean correct = correctB != null && correctB;
+                                long playTime = playTimeN != null ? playTimeN.longValue() : 0L;
+                                long ts = tsN != null ? tsN.longValue() : System.currentTimeMillis();
+
+                                insRound.setString(1, match.getId());
+                                insRound.setInt(2, roundIndex);
+                                insRound.setString(3, playerId);
+                                insRound.setBoolean(4, correct);
+                                insRound.setLong(5, playTime);
+                                insRound.setLong(6, ts);
+                                insRound.addBatch();
+                            }
                         }
+                        insRound.executeBatch();
                     }
-                    if (maxIdx >= 0) totalRounds = maxIdx + 1;
-                }
-                // fallback: set to 0 if undetermined
-                updGame.setInt(1, totalRounds);
-                updGame.setString(2, gameId);
-                updGame.executeUpdate();
-
-                // 3) Update each player's final_score, total_time, result
-                if (scores != null) {
-                    for (Map.Entry<String, Integer> e : scores.entrySet()) {
-                        String userId = e.getKey();
-                        int finalScore = e.getValue();
-                        long totalTime = totalPlayTimeMs != null ? totalPlayTimeMs.getOrDefault(userId, 0L) : 0L;
-
-                        String result;
-                        if (winnerUserId != null) {
-                            if (winnerUserId.equals(userId)) result = "win";
-                            else result = "lose";
-                        } else {
-                            // draw when no winner provided
-                            result = "draw";
-                        }
-
-                        updPlayer.setInt(1, finalScore);
-                        updPlayer.setLong(2, totalTime);
-                        updPlayer.setString(3, result);
-                        updPlayer.setString(4, gameId);
-                        updPlayer.setString(5, userId);
-                        updPlayer.addBatch();
-                    }
-                    updPlayer.executeBatch();
-                }
-
-                // 4) Insert per-round history rows
-                if (roundHistory != null && !roundHistory.isEmpty()) {
-                    for (Map.Entry<String, List<Map<String, Object>>> ph : roundHistory.entrySet()) {
-                        String userId = ph.getKey();
-                        List<Map<String, Object>> rounds = ph.getValue();
-                        if (rounds == null || rounds.isEmpty()) continue;
-                        for (Map<String, Object> r : rounds) {
-                            Number idxN = (Number) r.get("round_index");
-                            Object corrObj = r.get("correct");
-                            Boolean correctB = null;
-                            if (corrObj instanceof Boolean) correctB = (Boolean) corrObj;
-                            else if (corrObj instanceof Number) correctB = ((Number) corrObj).intValue() != 0;
-                            Number playTimeN = (Number) r.get("round_play_time_ms");
-                            Number tsN = (Number) r.get("timestamp");
-
-                            int roundIndex = idxN != null ? idxN.intValue() : -1;
-                            boolean correct = correctB != null && correctB;
-                            long playTime = playTimeN != null ? playTimeN.longValue() : 0L;
-                            long ts = tsN != null ? tsN.longValue() : System.currentTimeMillis();
-
-                            insRound.setString(1, gameId);
-                            insRound.setInt(2, roundIndex);
-                            insRound.setString(3, userId);
-                            insRound.setBoolean(4, correct);
-                            insRound.setLong(5, playTime);
-                            insRound.setLong(6, ts);
-                            insRound.addBatch();
-                        }
-                    }
-                    insRound.executeBatch();
                 }
 
                 conn.commit();
@@ -187,21 +182,22 @@ public class GameDAOImpl extends BaseDAO implements GameRepository {
                 conn.rollback();
                 throw ex;
             } finally {
-                try { conn.setAutoCommit(true); } catch (Exception ignored) {}
+                try { conn.setAutoCommit(previousAuto); } catch (Exception ignored) {}
             }
         }
     }
 
     @Override
-    public void persistRound(String gameId, int roundIndex, List<Map<String, Object>> playersSummary) throws Exception {
+    public void persistRound(String matchId, int roundIndex, List<Map<String, Object>> playersSummary) throws Exception {
         ensureGameRoundsTable();
-        String insertRoundSql = "INSERT INTO game_rounds (game_id, round_index, player_id, correct, round_play_time_ms, timestamp_ms) VALUES (?, ?, ?, ?, ?, ?)";
+        String insertRoundSql = "INSERT INTO game_rounds (match_id, round_index, player_id, correct, round_play_time_ms, timestamp_ms) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(insertRoundSql)) {
             conn.setAutoCommit(false);
             try {
-                // Ensure game exists and players exist
-                ensureGameExists(conn, gameId, null, null);
+                // Ensure match exists
+                ensureMatchExists(conn, matchId, null, null);
+
                 for (Map<String, Object> p : playersSummary) {
                     String playerId = String.valueOf(p.get("id"));
                     Boolean correctB = (Boolean) p.get("correct");
@@ -212,16 +208,16 @@ public class GameDAOImpl extends BaseDAO implements GameRepository {
                     long playTime = playTimeN != null ? playTimeN.longValue() : 0L;
                     long ts = tsN != null ? tsN.longValue() : System.currentTimeMillis();
 
-                    // ensure player row exists in game_players
-                    try (PreparedStatement ensurePlayer = conn.prepareStatement(
-                            "INSERT INTO game_players (game_id, player_id, joined_at) VALUES (?, ?, NOW()) " +
+                    // ensure history row exists for this player in match
+                    try (PreparedStatement ensureHist = conn.prepareStatement(
+                            "INSERT INTO game_history (match_id, player_id, joined_at) VALUES (?, ?, NOW()) " +
                                     "ON DUPLICATE KEY UPDATE player_id = player_id")) {
-                        ensurePlayer.setString(1, gameId);
-                        ensurePlayer.setString(2, playerId);
-                        ensurePlayer.executeUpdate();
+                        ensureHist.setString(1, matchId);
+                        ensureHist.setString(2, playerId);
+                        ensureHist.executeUpdate();
                     }
 
-                    ps.setString(1, gameId);
+                    ps.setString(1, matchId);
                     ps.setInt(2, roundIndex);
                     ps.setString(3, playerId);
                     ps.setBoolean(4, correct);
@@ -243,20 +239,38 @@ public class GameDAOImpl extends BaseDAO implements GameRepository {
     private void ensureGameRoundsTable() throws SQLException {
         String ddl = "CREATE TABLE IF NOT EXISTS game_rounds (" +
                 "id BIGINT AUTO_INCREMENT PRIMARY KEY," +
-                "game_id CHAR(36) NOT NULL," +
+                "match_id CHAR(36) NOT NULL," +
                 "round_index INT NOT NULL," +
                 "player_id CHAR(36) NOT NULL," +
                 "correct TINYINT(1) NOT NULL DEFAULT 0," +
                 "round_play_time_ms BIGINT NOT NULL DEFAULT 0," +
                 "timestamp_ms BIGINT NOT NULL," +
-                "INDEX ix_gr_game (game_id)," +
+                "INDEX ix_gr_match (match_id)," +
                 "INDEX ix_gr_player (player_id)," +
-                "CONSTRAINT fk_gr_game FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE ON UPDATE CASCADE," +
+                "CONSTRAINT fk_gr_match FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE ON UPDATE CASCADE," +
                 "CONSTRAINT fk_gr_player FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE RESTRICT ON UPDATE CASCADE" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         try (Connection conn = getConnection();
              Statement st = conn.createStatement()) {
             st.execute(ddl);
         }
+    }
+
+    private int inferTotalRounds(Map<String, List<Map<String, Object>>> roundHistory) {
+        int maxIdx = -1;
+        if (roundHistory == null) return 0;
+        for (List<Map<String, Object>> rh : roundHistory.values()) {
+            if (rh == null) continue;
+            for (Map<String, Object> e : rh) {
+                Number idx = (Number) e.get("round_index");
+                if (idx != null) maxIdx = Math.max(maxIdx, idx.intValue());
+            }
+        }
+        return maxIdx >= 0 ? maxIdx + 1 : 0;
+    }
+
+    private String determineResultForPlayer(String playerId, String winnerId) {
+        if (winnerId == null) return "draw";
+        return winnerId.equals(playerId) ? "win" : "lose";
     }
 }

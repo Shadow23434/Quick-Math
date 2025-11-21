@@ -25,6 +25,7 @@ pnpm-debug.log*
 
 # Sensitive / env
 **/db.properties
+**/config.properties
 .env
 .env.*
 secrets.*

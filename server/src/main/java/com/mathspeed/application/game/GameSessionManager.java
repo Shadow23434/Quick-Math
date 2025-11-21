@@ -38,7 +38,6 @@ public class GameSessionManager {
 
         try {
             GameSession session = new GameSession(p1, p2, totalRounds, questionTimeoutSeconds, this.gameDAO);
-            // set current game cho cả hai trước khi publish/broadcast
             p1.setCurrentGame(session);
             p2.setCurrentGame(session);
 
@@ -46,7 +45,6 @@ public class GameSessionManager {
                 this.sessions.put(session.getSessionId(), session);
             }
 
-            // Sau khi states đã thay đổi (currentGame), broadcast danh sách người chơi
             safeBroadcastPlayers();
 
             return session;
