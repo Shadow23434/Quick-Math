@@ -1,6 +1,6 @@
 /* Error Label */
 .error-label {
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-text-fill: #d32f2f;
     -fx-background-color: #ffebee;
     -fx-padding: 10;
@@ -9,7 +9,7 @@
 }
 
 .register-text {
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-fill: -text-color;
     -fx-font-size: 13px;
 }
@@ -24,7 +24,7 @@
 .loading-message {
     -fx-text-fill: white;
     -fx-font-size: 15px;
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
 }
 
 /* Spinner inherits theme colors optionally */

@@ -1,32 +1,32 @@
 @font-face {
-    font-family: "Poppins Thin";
-    src: url("../fonts/Poppins-Thin.ttf");
+    font-family: "Roboto Thin";
+    src: url("../fonts/roboto/Roboto-Thin.ttf");
 }
 
 @font-face {
-    font-family: "Poppins Light";
-    src: url("../fonts/Poppins-Light.ttf");
+    font-family: "Roboto Light";
+    src: url("../fonts/roboto/Roboto-Light.ttf");
 }
 
 @font-face {
-    font-family: "Poppins";
-    src: url("../fonts/Poppins-Regular.ttf");
+    font-family: "Roboto";
+    src: url("../fonts/roboto/Roboto-Regular.ttf");
 }
 
 @font-face {
-    font-family: "Poppins Medium";
-    src: url("../fonts/Poppins-Medium.ttf");
+    font-family: "Roboto Medium";
+    src: url("../fonts/roboto/Roboto-Medium.ttf");
 }
 
 @font-face {
-    font-family: "Poppins SemiBold";
-    src: url("../fonts/Poppins-SemiBold.ttf");
+    font-family: "Roboto SemiBold";
+    src: url("../fonts/roboto/Roboto-SemiBold.ttf");
 }
 
 @font-face {
-    font-family: "Poppins";
+    font-family: "Roboto";
     font-weight: bold;
-    src: url("../fonts/Poppins-Bold.ttf");
+    src: url("../fonts/roboto/Roboto-Bold.ttf");
 }
 
 .root {
@@ -40,7 +40,7 @@
     -text-dark: #1b1f26;
     -shadow-color: rgba(0,0,0,0.2);
     -shadow-strong: rgba(0,0,0,0.3);
-    -fx-font-family: 'Poppins';
+    -fx-font-family: 'Roboto';
     -fx-focus-color: #725bf5;
     -fx-faint-focus-color: rgba(114, 91, 245, 0.1);
     -fx-text-base-color: #1b1f26;
@@ -48,14 +48,14 @@
 
 /* Title */
 .title {
-    -fx-font-family: "Poppins";
+    -fx-font-family: "Roboto";
     -fx-font-weight: bold;
     -fx-text-fill: -text-light;
     -fx-font-size: 18px;
 }
 
 .subtitle {
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-text-fill: -text-light;
     -fx-font-size: 13px;
 }
@@ -86,7 +86,7 @@
 
 /* Field Labels */
 .container .field-label {
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-text-fill: -text-dark;
     -fx-font-size: 13px;
 }
@@ -94,7 +94,7 @@
 /* Text Fields */
 .container .text-field {
     -fx-pref-height: 40;
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-font-size: 13px;
     -fx-text-fill: -text-dark;
     -fx-text-inner-color: -primary-color;
@@ -129,7 +129,7 @@
 }
 
 .container .text-field.password-hidden-field.has-text {
-    -fx-font-family: "Poppins Light";
+    -fx-font-family: "Roboto Light";
     -fx-font-size: 10px;
     -fx-padding: 5 64 5 0;
 }
@@ -164,7 +164,7 @@
 
 /* Password Strength Label */
 .password-strength-label {
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-font-size: 11px;
     -fx-padding: 2 6 2 6;
     -fx-background-radius: 3;
@@ -187,7 +187,7 @@
 
 /* Password Hint */
 .password-hint {
-    -fx-font-family: "Poppins";
+    -fx-font-family: "Roboto";
     -fx-font-size: 11px;
     -fx-text-fill: rgba(102,108,120,0.8);
     -fx-padding: 2 0 0 0;
@@ -199,7 +199,7 @@
 
 /* CheckBox */
 .check-box {
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-label-padding: 0 0 0 8px;
     -fx-text-fill: -text-dark;
     -fx-font-size: 12px;
@@ -245,7 +245,7 @@
 /* Buttons */
 .primary-button {
     -fx-background-color: -primary-color;
-    -fx-font-family: "Poppins";
+    -fx-font-family: "Roboto";
     -fx-font-weight: bold;
     -fx-text-fill: -text-light;
     -fx-background-radius: 10;
@@ -264,7 +264,7 @@
 
 /* Hyper Link */
 .hyper-link {
-    -fx-font-family: "Poppins SemiBold";
+    -fx-font-family: "Roboto SemiBold";
     -fx-font-size: 13px;
     -fx-text-fill: -primary-color;
     -fx-underline: false;
@@ -376,7 +376,7 @@
 }
 
 .header-section .user-display-name {
-    -fx-font-family: "Poppins SemiBold";
+    -fx-font-family: "Roboto SemiBold";
     -fx-text-fill: -text-light;
     -fx-font-size: 14px;
     -fx-max-width: 200px;
@@ -384,7 +384,7 @@
 }
 
 .header-section .user-name {
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-text-fill: #d6d1fc;
     -fx-font-size: 12px;
     -fx-max-width: 200px;
@@ -443,7 +443,7 @@
 .bottom-appbar-label {
     -fx-font-size: 12px;
     -fx-text-fill: -text-color;
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
 }
 
 .bottom-appbar-icon-active {

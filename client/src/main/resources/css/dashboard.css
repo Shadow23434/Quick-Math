@@ -9,37 +9,37 @@
 }
 
 .rank-number {
-    -fx-font-family: "Poppins Bold";
+    -fx-font-family: "Roboto Bold";
     -fx-font-size: 18px;
     -fx-text-fill: -primary-color;
 }
 
 .leaderboard-name {
-    -fx-font-family: "Poppins SemiBold";
+    -fx-font-family: "Roboto SemiBold";
     -fx-font-size: 14px;
     -fx-text-fill: -text-dark;
 }
 
 .leaderboard-score {
-    -fx-font-family: "Poppins Regular";
+    -fx-font-family: "Roboto Regular";
     -fx-font-size: 12px;
     -fx-text-fill: #888;
 }
 
 .trend-up {
-    -fx-font-family: "Poppins SemiBold";
+    -fx-font-family: "Roboto SemiBold";
     -fx-font-size: 12px;
     -fx-text-fill: #4caf50;
 }
 
 .trend-down {
-    -fx-font-family: "Poppins SemiBold";
+    -fx-font-family: "Roboto SemiBold";
     -fx-font-size: 12px;
     -fx-text-fill: #f44336;
 }
 
 .trend-neutral {
-    -fx-font-family: "Poppins SemiBold";
+    -fx-font-family: "Roboto SemiBold";
     -fx-font-size: 12px;
     -fx-text-fill: #888;
 }
@@ -91,7 +91,7 @@
 
 /* Stats */
 .stat-label {
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-text-fill: #53575a;
     -fx-font-size: 13px;
 }
@@ -115,7 +115,7 @@
 }
 
 .stat-text {
-    -fx-font-family: "Poppins SemiBold";
+    -fx-font-family: "Roboto SemiBold";
     -fx-text-fill: -text-dark;
     -fx-font-size: 14px;
 }
@@ -133,7 +133,7 @@
 }
 
 .find-friend-label {
-    -fx-font-family: "Poppins SemiBold";
+    -fx-font-family: "Roboto SemiBold";
     -fx-text-fill: -text-light;
     -fx-font-size: 14px;
 }
@@ -167,7 +167,7 @@
 
 /* Discover Quiz Section */
 .section-title {
-    -fx-font-family: "Poppins SemiBold";
+    -fx-font-family: "Roboto SemiBold";
     -fx-text-fill: -text-dark;
     -fx-font-size: 16px;
     -fx-background-color: -text-light;
@@ -259,7 +259,7 @@
 }
 
 .question-badge .badge-text {
-    -fx-font-family: "Poppins SemiBold";
+    -fx-font-family: "Roboto SemiBold";
     -fx-text-fill: -text-dark;
     -fx-font-size: 12px;
 }
@@ -272,7 +272,7 @@
 }
 
 .quiz-title {
-    -fx-font-family: "Poppins SemiBold";
+    -fx-font-family: "Roboto SemiBold";
     -fx-text-fill: -text-dark;
     -fx-font-size: 13px;
     -fx-line-spacing: 2;
@@ -296,13 +296,13 @@
 }
 
 .avatar-initials {
-    -fx-font-family: "Poppins SemiBold";
+    -fx-font-family: "Roboto SemiBold";
     -fx-text-fill: -primary-color;
     -fx-font-size: 10px;
 }
 
 .author-name {
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-text-fill: #888;
     -fx-font-size: 11px;
 }
@@ -402,7 +402,7 @@
     -fx-alignment: center;
 }
 .friend-name {
-    -fx-font-family: "Poppins SemiBold";
+    -fx-font-family: "Roboto SemiBold";
     -fx-font-size: 13px;
     -fx-text-fill: #23262F;
     -fx-alignment: center;
@@ -417,7 +417,7 @@
     -fx-border-radius: 20px;
     -fx-background-radius: 20px;
     -fx-text-fill: -primary-color;
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-font-size: 13px;
     -fx-padding: 8 16;
     -fx-cursor: hand;
@@ -440,7 +440,7 @@
     -fx-border-width: 1px;
     -fx-border-radius: 10px;
     -fx-padding: 10 15;
-    -fx-font-family: "Poppins Regular";
+    -fx-font-family: "Roboto";
     -fx-font-size: 13px;
     -fx-text-fill: -text-dark;
 }
@@ -458,7 +458,7 @@
     -fx-border-radius: 10px;
     -fx-background-radius: 10px;
     -fx-text-fill: -text-dark;
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-font-size: 13px;
     -fx-padding: 12 20;
     -fx-cursor: hand;
@@ -474,7 +474,7 @@
     -fx-background-color: #ff6b6b;
     -fx-background-radius: 10px;
     -fx-text-fill: white;
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-font-size: 13px;
     -fx-padding: 12 20;
     -fx-cursor: hand;
@@ -512,7 +512,7 @@
     -fx-min-height: 24px;
     -fx-alignment: center;
     -fx-text-fill: white;
-    -fx-font-family: "Poppins Bold";
+    -fx-font-family: "Roboto Bold";
     -fx-font-size: 12px;
 }
 
@@ -523,7 +523,7 @@
     -fx-min-height: 24px;
     -fx-alignment: center;
     -fx-text-fill: white;
-    -fx-font-family: "Poppins Bold";
+    -fx-font-family: "Roboto Bold";
     -fx-font-size: 12px;
 }
 
@@ -534,13 +534,13 @@
 }
 
 .podium-name {
-    -fx-font-family: "Poppins SemiBold";
+    -fx-font-family: "Roboto SemiBold";
     -fx-font-size: 14px;
     -fx-text-fill: -text-dark;
 }
 
 .podium-score {
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-font-size: 13px;
     -fx-text-fill: -primary-color;
 }
@@ -564,7 +564,7 @@
 }
 
 .gender-label {
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-font-size: 16px;
     -fx-text-fill: #555555;
     -fx-background-color: rgba(0,0,0,0.03);
@@ -604,7 +604,7 @@
 }
 
 .country-name {
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-font-size: 13px;
     -fx-text-fill: #555555;
     -fx-padding: 0 0 0 4; /* small gap from flag */
