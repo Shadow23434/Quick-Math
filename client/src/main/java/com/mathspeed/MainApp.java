@@ -20,7 +20,6 @@ public class MainApp extends Application {
         stage.setHeight(600);
         stage.show();
 
-        // Lấy controller và xử lý tùy loại controller trả về
         Object controller = loader.getController();
     }
 
