@@ -430,6 +430,13 @@
 .category-button-active {
     -fx-background-color: -primary-color;
     -fx-text-fill: white;
+    -fx-cursor: default;
+}
+
+.category-button.category-button-active:hover {
+    -fx-background-color: -primary-color;
+    -fx-text-fill: white;
+    -fx-cursor: default;
 }
 
 /* Search Field */

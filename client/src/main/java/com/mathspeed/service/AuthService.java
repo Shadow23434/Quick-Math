@@ -26,7 +26,6 @@ public class AuthService {
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
         this.gson = GsonFactory.createGson();
-        logger.info("AuthService using AUTH URL: {}", AUTH_URL);
     }
 
     public CompletableFuture<AuthResponse> login(String username, String password) {

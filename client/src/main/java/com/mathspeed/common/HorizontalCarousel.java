@@ -6,6 +6,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
@@ -18,6 +19,8 @@ import javafx.util.Duration;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.mathspeed.model.Player;
 
 public class HorizontalCarousel extends StackPane {
     private static final Logger logger = LoggerFactory.getLogger(HorizontalCarousel.class);
@@ -309,6 +312,92 @@ public class HorizontalCarousel extends StackPane {
         challengeBtn.setMaxWidth(90);
 
         card.getChildren().addAll(avatarPane, nameLabel, challengeBtn);
+        container.getChildren().add(card);
+        Platform.runLater(this::updateNavButtonVisibility);
+    }
+
+    // New overload to accept Player and render status + label + disable logic
+    public void addFriendsCard(Player player) {
+        String name = player.getDisplayName() != null && !player.getDisplayName().isBlank() ? player.getDisplayName() : player.getUsername();
+        String avatarUrl = player.getAvatarUrl() != null ? player.getAvatarUrl() : "";
+        String rawStatus = player.getStatus() != null ? player.getStatus() : "offline";
+        String statusText;
+        String statusColor;
+        boolean isOnline = false;
+
+        if ("online".equalsIgnoreCase(rawStatus)) {
+            statusText = "Online";
+            statusColor = "#4caf50";
+            isOnline = true;
+        } else if ("in_game".equalsIgnoreCase(rawStatus) || "in-game".equalsIgnoreCase(rawStatus) || "busy".equalsIgnoreCase(rawStatus)) {
+            statusText = "In game";
+            statusColor = "#ff0033";
+        } else {
+            statusText = "Offline";
+            statusColor = "#9e9e9e";
+        }
+
+        VBox card = new VBox(6);
+        card.setAlignment(Pos.CENTER);
+        card.getStyleClass().add("friend-card");
+        card.setMinWidth(100);
+        card.setPrefWidth(100);
+        card.setMaxWidth(100);
+
+        // Avatar
+        StackPane avatarPane = new StackPane();
+        avatarPane.getStyleClass().add("friend-avatar");
+        ImageView avatarImg;
+        try {
+            if (avatarUrl == null || avatarUrl.isBlank()) {
+                java.io.InputStream is = getClass().getResourceAsStream("/images/logo.png");
+                if (is != null) avatarImg = new ImageView(new Image(is));
+                else avatarImg = new ImageView();
+            } else {
+                avatarImg = new ImageView(new Image(avatarUrl, true));
+            }
+        } catch (Exception e) {
+            avatarImg = new ImageView();
+        }
+        avatarImg.setFitWidth(56);
+        avatarImg.setFitHeight(56);
+        avatarImg.getStyleClass().add("avatar-image");
+        Circle avatarClip = new Circle(28, 28, 28);
+        avatarImg.setClip(avatarClip);
+        avatarPane.getChildren().add(avatarImg);
+
+        // Status indicator
+        Circle statusIndicator = new Circle(6);
+        statusIndicator.setStyle(String.format("-fx-fill: %s; -fx-stroke: white; -fx-stroke-width: 2;", statusColor));
+        StackPane.setAlignment(statusIndicator, Pos.BOTTOM_RIGHT);
+        avatarPane.getChildren().add(statusIndicator);
+
+        // Name
+        Label nameLabel = new Label(name);
+        nameLabel.getStyleClass().add("friend-name");
+
+        // Status text
+        Label statusLabel = new Label(statusText);
+        statusLabel.getStyleClass().add("friend-status");
+        statusLabel.setStyle(String.format("-fx-font-size: 11px; -fx-text-fill: %s; -fx-font-weight: 500;", statusColor));
+
+        // Challenge button
+        Button challengeBtn = new Button("Challenge");
+        challengeBtn.getStyleClass().add("primary-button");
+        challengeBtn.setMaxWidth(90);
+        challengeBtn.setOnAction(e -> {
+            // In dashboard context we might trigger a challenge action; keep a log for now
+            logger.info("Challenge from carousel: {}", name);
+        });
+
+        if (!isOnline) {
+            challengeBtn.setDisable(true);
+            challengeBtn.setOpacity(0.6);
+            Tooltip offlineTip = new Tooltip(statusText.equals("In game") ? "Friend is in a game" : "Friend is offline");
+            Tooltip.install(challengeBtn, offlineTip);
+        }
+
+        card.getChildren().addAll(avatarPane, nameLabel, statusLabel, challengeBtn);
         container.getChildren().add(card);
         Platform.runLater(this::updateNavButtonVisibility);
     }

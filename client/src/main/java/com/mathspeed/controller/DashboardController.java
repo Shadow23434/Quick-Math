@@ -1,6 +1,9 @@
 package com.mathspeed.controller;
 
+import com.mathspeed.client.SessionManager;
 import com.mathspeed.common.HorizontalCarousel;
+import com.mathspeed.model.Player;
+import com.mathspeed.service.FriendService;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.StackPane;
@@ -18,9 +21,11 @@ public class DashboardController {
     @FXML private StackPane friendsCarouselPane;
     private HorizontalCarousel quizCarousel;
     private HorizontalCarousel friendsCarousel;
+    private Player currentPlayer;
 
     @FXML
     public void initialize() {
+        currentPlayer = SessionManager.getInstance().getCurrentPlayer();
         javafx.application.Platform.runLater(() -> {
             initializeQuizCarousel();
             initializeFriendsCarousel();
@@ -80,12 +85,24 @@ public class DashboardController {
         friendsCarousel = new HorizontalCarousel();
         friendsCarousel.setSpacing(15);
 
-        friendsCarousel.addFriendsCard("Alice", "https://i.pravatar.cc/150?img=24");
-        friendsCarousel.addFriendsCard("Bob", "https://i.pravatar.cc/150?img=33");
-        friendsCarousel.addFriendsCard("Charlie", "https://i.pravatar.cc/150?img=29");
-        friendsCarousel.addFriendsCard("David", "https://i.pravatar.cc/150?img=20");
-        friendsCarousel.addFriendsCard("Eve", "https://i.pravatar.cc/150?img=25");
-        friendsCarousel.addFriendsCard("Frank", "https://i.pravatar.cc/150?img=30");
+        FriendService friendService = new FriendService();
+        friendService.getAllFriends(currentPlayer.getId()).thenAccept(list -> {
+            javafx.application.Platform.runLater(() -> {
+                if (list == null || list.isEmpty()) {
+                    Label empty = new Label("No online friends");
+                    empty.getStyleClass().add("muted-label");
+                } else {
+                    for (Player f : list) {
+                        friendsCarousel.addFriendsCard(f);
+                    }
+                }
+            });
+        }).exceptionally(ex -> {
+            logger.error("Failed to load online friends", ex);
+            javafx.application.Platform.runLater(() -> {
+            });
+            return null;
+        });
 
         friendsCarouselPane.getChildren().add(friendsCarousel);
 
@@ -108,13 +125,13 @@ public class DashboardController {
     }
 
     @FXML
-    public void handleSeeAllOnlineFriends() {
+    public void handleSeeAllFriends() {
         com.mathspeed.client.SceneManager sceneManager = com.mathspeed.client.SceneManager.getInstance();
         sceneManager.navigate(com.mathspeed.client.SceneManager.Screen.FRIENDS);
         javafx.application.Platform.runLater(() -> {
             Object controller = sceneManager.getController(com.mathspeed.client.SceneManager.Screen.FRIENDS);
             if (controller instanceof FriendsController fc) {
-                fc.showOnlineImmediately();
+                fc.showAllImmediately();
             }
         });
     }
