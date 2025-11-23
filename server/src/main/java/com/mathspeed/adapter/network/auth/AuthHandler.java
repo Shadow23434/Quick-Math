@@ -15,6 +15,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * HTTP handler that exposes auth-related endpoints.
+ * POST /api/auth/login
+ * POST /api/auth/register
+ * POST /api/auth/logout
+ */
 public class AuthHandler implements HttpHandler {
     private final AuthService authService;
     private final Pattern userPattern = Pattern.compile("\"username\"\\s*:\\s*\"([^\"]+)\"");

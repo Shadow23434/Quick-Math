@@ -6,6 +6,7 @@ import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class PlayerDAOImpl extends BaseDAO implements PlayerRepository {
 
@@ -125,4 +126,158 @@ public class PlayerDAOImpl extends BaseDAO implements PlayerRepository {
             }
         }
     }
+
+    @Override
+    public boolean existsById(String id) throws Exception {
+        String sql = "SELECT 1 FROM players WHERE id = ? LIMIT 1";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    @Override
+    public List<Player> getAllPlayers(String excludePlayerId) throws Exception {
+        boolean exclude = excludePlayerId != null && !excludePlayerId.isEmpty();
+        String sql = (exclude)
+                ? "SELECT * FROM players WHERE id <> ?"
+                : "SELECT * FROM players";
+
+        List<Player> players = new java.util.ArrayList<>();
+
+        try (Connection conn = getConnection()) {
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                if (exclude) {
+                    stmt.setString(1, excludePlayerId);
+                }
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        Player player = new Player();
+                        player.setId(rs.getString("id"));
+                        player.setUsername(rs.getString("username"));
+                        player.setDisplayName(rs.getString("display_name"));
+                        player.setPasswordHash(rs.getString("password_hash"));
+                        player.setGender(rs.getString("gender"));
+                        player.setAvatarUrl(rs.getString("avatar_url"));
+                        player.setStatus(rs.getString("status"));
+
+                        String country = rs.getString("country_code");
+                        if (country != null) player.setCountryCode(country);
+
+                        Timestamp lastActiveTs = rs.getTimestamp("last_active_at");
+                        if (lastActiveTs != null) {
+                            player.setLastActiveAt(lastActiveTs.toLocalDateTime());
+                        }
+
+                        Timestamp ts = rs.getTimestamp("created_at");
+                        if (ts != null) {
+                            player.setCreatedAt(ts.toLocalDateTime());
+                        }
+
+                        players.add(player);
+                    }
+                }
+            }
+        }
+
+        return players;
+    }
+
+    @Override
+    public List<Player> getOnlinePlayers(String excludePlayerId) throws Exception {
+        boolean exclude = excludePlayerId != null && !excludePlayerId.isEmpty();
+        String sql = exclude
+                ? "SELECT * FROM players WHERE status = ? AND id <> ?"
+                : "SELECT * FROM players WHERE status = ?";
+
+        List<Player> players = new java.util.ArrayList<>();
+
+        try (Connection conn = getConnection()) {
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, "online");
+                if (exclude) {
+                    stmt.setString(2, excludePlayerId);
+                }
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        Player player = new Player();
+                        player.setId(rs.getString("id"));
+                        player.setUsername(rs.getString("username"));
+                        player.setDisplayName(rs.getString("display_name"));
+                        player.setPasswordHash(rs.getString("password_hash"));
+                        player.setGender(rs.getString("gender"));
+                        player.setAvatarUrl(rs.getString("avatar_url"));
+                        player.setStatus(rs.getString("status"));
+
+                        String country = rs.getString("country_code");
+                        if (country != null) player.setCountryCode(country);
+
+                        Timestamp lastActiveTs = rs.getTimestamp("last_active_at");
+                        if (lastActiveTs != null) {
+                            player.setLastActiveAt(lastActiveTs.toLocalDateTime());
+                        }
+
+                        Timestamp ts = rs.getTimestamp("created_at");
+                        if (ts != null) {
+                            player.setCreatedAt(ts.toLocalDateTime());
+                        }
+
+                        players.add(player);
+                    }
+                }
+            }
+        }
+
+        return players;
+    }
+
+    @Override
+    public List<Player> searchPlayers(String keyword, String excludePlayerId) throws Exception {
+        String sql = "SELECT * FROM players WHERE display_name LIKE ? AND id <> ?";
+        List<Player> players = new java.util.ArrayList<>();
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            String pattern = "%" + (keyword != null ? keyword : "") + "%";
+            stmt.setString(1, pattern);
+            stmt.setString(2, pattern);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Player player = new Player();
+                    player.setId(rs.getString("id"));
+                    player.setUsername(rs.getString("username"));
+                    player.setDisplayName(rs.getString("display_name"));
+                    player.setPasswordHash(rs.getString("password_hash"));
+                    player.setGender(rs.getString("gender"));
+                    player.setAvatarUrl(rs.getString("avatar_url"));
+                    player.setStatus(rs.getString("status"));
+
+                    String country = rs.getString("country_code");
+                    if (country != null) player.setCountryCode(country);
+
+                    Timestamp lastActiveTs = rs.getTimestamp("last_active_at");
+                    if (lastActiveTs != null) {
+                        player.setLastActiveAt(lastActiveTs.toLocalDateTime());
+                    }
+
+                    Timestamp ts = rs.getTimestamp("created_at");
+                    if (ts != null) {
+                        player.setCreatedAt(ts.toLocalDateTime());
+                    }
+
+                    players.add(player);
+                }
+            }
+        }
+
+        return players;
+    }
+
 }

@@ -28,7 +28,6 @@ CREATE TABLE IF NOT EXISTS matches (
     INDEX (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
 CREATE TABLE IF NOT EXISTS game_history (
     match_id CHAR(36) NOT NULL,
     player_id CHAR(36) NOT NULL,

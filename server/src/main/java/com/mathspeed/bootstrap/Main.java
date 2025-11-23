@@ -13,6 +13,8 @@ import com.mathspeed.adapter.network.HttpServer;
 import com.mathspeed.adapter.network.auth.AuthHandler;
 import com.mathspeed.adapter.network.HealthHandler;
 import com.mathspeed.application.auth.AuthService;
+import com.mathspeed.application.friend.FriendService;
+import com.mathspeed.adapter.network.friend.FriendHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -36,10 +38,11 @@ public class Main {
         // shared HTTP server for multiple features
         HttpServer httpServer = new HttpServer(HTTP_PORT);
         AuthService authService = new AuthService(playerRepository);
+        FriendService friendService = new FriendService(playerRepository);
         try {
-            // register contexts/handlers
-            httpServer.createContext("/api/auth", new AuthHandler(authService));
             httpServer.createContext("/api/health", new HealthHandler());
+            httpServer.createContext("/api/auth", new AuthHandler(authService));
+            httpServer.createContext("/api/friends/", new FriendHandler(friendService));
             httpServer.start();
         } catch (Exception e) {
             System.err.println("Failed to start shared HTTP server: " + e.getMessage());
