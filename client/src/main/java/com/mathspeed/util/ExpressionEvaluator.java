@@ -46,6 +46,12 @@ public class ExpressionEvaluator {
         }
 
         private double parseFactor() throws Exception {
+            // Handle unary minus
+            if (pos < expr.length() && expr.charAt(pos) == '-') {
+                pos++;
+                return -parseFactor();
+            }
+            
             if (pos < expr.length() && expr.charAt(pos) == '(') {
                 pos++;
                 double result = parseExpression();
@@ -64,8 +70,18 @@ public class ExpressionEvaluator {
             }
 
             StringBuilder num = new StringBuilder();
+            boolean hasDecimal = false;
+            
             while (pos < expr.length() && (Character.isDigit(expr.charAt(pos)) || expr.charAt(pos) == '.')) {
-                num.append(expr.charAt(pos++));
+                char c = expr.charAt(pos);
+                if (c == '.') {
+                    if (hasDecimal) {
+                        throw new Exception("Multiple decimal points in number at position " + pos);
+                    }
+                    hasDecimal = true;
+                }
+                num.append(c);
+                pos++;
             }
 
             if (num.length() == 0) {
