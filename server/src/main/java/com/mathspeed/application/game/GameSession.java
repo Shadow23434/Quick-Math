@@ -74,6 +74,9 @@ public class GameSession {
     // uniqueness attempts when generating puzzles to avoid duplicate targets per match
     private final int MAX_UNIQUE_ATTEMPTS = 10;
 
+    // inter-round countdown (ms) to show between rounds (except before first round)
+    private final long interRoundCountdownMs = 3000L; // 3s
+
     public GameSession(ClientHandler playerA,
                        ClientHandler playerB,
                        int totalRounds,
@@ -295,9 +298,43 @@ public class GameSession {
         msg.put("question_count", totalRounds);
         msg.put("per_question_seconds", questionTimeoutSeconds);
 
+        try {
+            List<Map<String, Object>> playersInfo = new ArrayList<>(2);
+
+            Map<String, Object> aInfo = new LinkedHashMap<>();
+            aInfo.put("id", safeGetPlayerId(playerA));
+            aInfo.put("username", safeGetUsername(playerA));
+            aInfo.put("display_name", safeGetDisplayName(playerA));
+            playersInfo.add(aInfo);
+
+            Map<String, Object> bInfo = new LinkedHashMap<>();
+            bInfo.put("id", safeGetPlayerId(playerB));
+            bInfo.put("username", safeGetUsername(playerB));
+            bInfo.put("display_name", safeGetDisplayName(playerB));
+            playersInfo.add(bInfo);
+
+            msg.put("players", playersInfo);
+        } catch (Exception ex) {
+            System.err.println("Warning: failed to collect player display info: " + ex.getMessage());
+        }
+
         String json = JsonUtil.toJson(msg);
         safeSendMessage(playerA, json);
         safeSendMessage(playerB, json);
+    }
+
+    private String safeGetDisplayName(ClientHandler p) {
+        try {
+            if (p == null) return null;
+            if (p.getPlayer() != null) {
+                String dn = p.getPlayer().getDisplayName();
+                if (dn != null && !dn.isEmpty()) return dn;
+            }
+            // fallback to username
+            return safeGetUsername(p);
+        } catch (Exception e) {
+            return (p != null) ? p.getUsername() : null;
+        }
     }
 
     private void runStartMatch() {
@@ -306,10 +343,14 @@ public class GameSession {
 
         safeSendInfo(playerA, "Trận đấu bắt đầu!");
         safeSendInfo(playerB, "Trận đấu bắt đầu!");
-        runStartNextRound();
+        runStartNextRound(false); // first round: do not prepend inter-round countdown
     }
 
-    private void runStartNextRound() {
+    /**
+     * Start next round. If skipInterGap is true, do not add computeInterRoundGapMs() lead time;
+     * round will be scheduled to start immediately (serverRoundStart ~= now).
+     */
+    private void runStartNextRound(boolean skipInterGap) {
         if (finished.get()) return;
 
         int roundIndex = currentRound.getAndIncrement();
@@ -325,19 +366,21 @@ public class GameSession {
         int difficulty = difficultySequence.get(roundIndex);
         long roundSeed = deriveRoundSeed(matchSeed, roundIndex);
 
-        long interGap = computeInterRoundGapMs();
+        long interGap = skipInterGap ? 0L : computeInterRoundGapMs();
         long serverRoundStartMs = System.currentTimeMillis() + interGap;
+        long serverRoundEndMs = serverRoundStartMs + questionTimeoutSeconds * 1000L;
 
         try {
-            System.out.printf("DEBUG preparing_round: session=%s round=%d roundSeed=%d target=%d startAt=%d%n",
-                    sessionId, roundIndex, roundSeed, currentPuzzle.getTarget(), serverRoundStartMs);
+            System.out.printf("DEBUG preparing_round: session=%s round=%d roundSeed=%d target=%d startAt=%d endAt=%d%n",
+                    sessionId, roundIndex, roundSeed, currentPuzzle.getTarget(), serverRoundStartMs, serverRoundEndMs);
         } catch (Exception ignored) {
         }
 
         revealedTargets.add(currentPuzzle.getTarget());
 
         Duration placeholderTime = Duration.ofSeconds(questionTimeoutSeconds);
-        sendPuzzleToPlayers(currentPuzzle, difficulty, placeholderTime, roundIndex + 1, roundIndex, roundSeed, Instant.ofEpochMilli(serverRoundStartMs));
+        // send server_round_start and server_round_end + server_time to clients
+        sendPuzzleToPlayers(currentPuzzle, difficulty, placeholderTime, roundIndex + 1, roundIndex, roundSeed, Instant.ofEpochMilli(serverRoundStartMs), serverRoundEndMs);
 
         if (activationFuture != null && !activationFuture.isDone()) activationFuture.cancel(false);
         if (roundTimeoutFuture != null && !roundTimeoutFuture.isDone()) roundTimeoutFuture.cancel(false);
@@ -449,7 +492,14 @@ public class GameSession {
         }
 
         broadcastRoundSummary(activeRoundIndex);
-        runStartNextRound();
+
+        // schedule inter-round countdown and next round (3s), unless match finished
+        if (currentRound.get() >= totalRounds) {
+            // no more rounds
+            finishGameInternal();
+        } else {
+            scheduleInterRoundCountdownThenNext();
+        }
     }
 
     private void recordRoundResultsOnCorrect(ClientHandler winner, int roundIndex, Duration winnerPlayTime) {
@@ -474,7 +524,48 @@ public class GameSession {
         roundHistory.get(playerB).add(rB);
 
         broadcastRoundSummary(activeRoundIndex);
-        runStartNextRound();
+
+        // schedule inter-round countdown and next round (3s), unless match finished
+        if (currentRound.get() >= totalRounds) {
+            finishGameInternal();
+        } else {
+            scheduleInterRoundCountdownThenNext();
+        }
+    }
+
+    /**
+     * Schedule an inter-round countdown (3s) to inform clients then start next round immediately after countdown.
+     * This keeps the initial match start unaffected (initialCountdownMs handled elsewhere).
+     */
+    private void scheduleInterRoundCountdownThenNext() {
+        try {
+            // Inform clients about upcoming round with a 3s countdown
+            safeSendInfo(playerA, "Bắt đầu vòng tiếp theo sau 3 giây...");
+            safeSendInfo(playerB, "Bắt đầu vòng tiếp theo sau 3 giây...");
+
+            // Optionally send countdown ticks (1,2,3) - small scheduled notifications
+            scheduler.schedule(() -> {
+                safeSendInfo(playerA, "3...");
+                safeSendInfo(playerB, "3...");
+            }, 0, TimeUnit.MILLISECONDS);
+
+            scheduler.schedule(() -> {
+                safeSendInfo(playerA, "2...");
+                safeSendInfo(playerB, "2...");
+            }, 1, TimeUnit.SECONDS);
+
+            scheduler.schedule(() -> {
+                safeSendInfo(playerA, "1...");
+                safeSendInfo(playerB, "1...");
+            }, 2, TimeUnit.SECONDS);
+
+            // After interRoundCountdownMs, start the next round but skip additional inter-gap (we already had the countdown)
+            scheduler.schedule(() -> runStartNextRound(true), interRoundCountdownMs, TimeUnit.MILLISECONDS);
+        } catch (Exception ex) {
+            System.err.println("Failed to schedule inter-round countdown: " + ex.getMessage());
+            // fallback: start immediately
+            runStartNextRound(true);
+        }
     }
 
     public void handleReady(ClientHandler from) {
@@ -771,6 +862,8 @@ public class GameSession {
         msg.put("type", MessageType.ROUND_RESULT.name());
         msg.put("round_index", roundIndex);
         msg.put("round_number", roundIndex + 1);
+        msg.put("server_time", System.currentTimeMillis());
+        msg.put("server_round_end", this.roundStart != null ? this.roundStart.plusMillis(questionTimeoutSeconds * 1000L).toEpochMilli() : -1L);
 
         String roundWinner = null;
         List<RoundResult> histA = roundHistory.getOrDefault(playerA, Collections.emptyList());
@@ -800,6 +893,7 @@ public class GameSession {
         String id = safeGetPlayerId(p);
         m.put("id", id);
         m.put("username", safeGetUsername(p));
+        m.put("display_name", safeGetDisplayName(p));
         if (last != null) {
             m.put("correct", last.correct);
             m.put("round_play_time_ms", last.playTimeMillis);
@@ -833,6 +927,7 @@ public class GameSession {
         resMsg.put("type", MessageType.ANSWER_RESULT.name());
         resMsg.put("accepted", accepted);
         resMsg.put("reason", reason);
+        resMsg.put("server_time", System.currentTimeMillis());
         safeSendMessage(player, JsonUtil.toJson(resMsg));
     }
 
@@ -883,7 +978,7 @@ public class GameSession {
     }
 
     private void sendPuzzleToPlayers(MathPuzzleFormat puzzle, int difficulty, Duration roundTime,
-                                     int roundNumber, int roundIndex, long roundSeed, Instant serverRoundStartInstant) {
+                                     int roundNumber, int roundIndex, long roundSeed, Instant serverRoundStartInstant, long serverRoundEndMs) {
         Map<String, Object> msg = new LinkedHashMap<>();
         msg.put("type", MessageType.NEW_ROUND.name());
         msg.put("round", roundNumber);
@@ -894,6 +989,8 @@ public class GameSession {
         msg.put("round_seed", roundSeed);   // per-round seed for reproducibility
         msg.put("round_index", roundIndex);
         msg.put("server_round_start", serverRoundStartInstant.toEpochMilli());
+        msg.put("server_round_end", serverRoundEndMs);
+        msg.put("server_time", System.currentTimeMillis());
 
         String json = JsonUtil.toJson(msg);
         safeSendMessage(playerA, json);

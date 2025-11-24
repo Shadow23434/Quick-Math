@@ -74,6 +74,10 @@ public class ClientHandler implements Runnable {
                         case PING:
                             sendType(MessageType.PONG, null);
                             break;
+                        case TIME_PING:
+                            // If MessageType includes TIME_PING, delegate to the same handler as legacy text
+                            handleTimePing(parts);
+                            break;
                         case DISCONNECT:
                         case LOGOUT:
                             sendType(MessageType.DISCONNECT, null);
@@ -120,6 +124,9 @@ public class ClientHandler implements Runnable {
             case "FORFEIT": handleForfeitCommand(); break; // user-initiated forfeit (stay connected)
             case "CANCEL": handleForfeitCommand(); break; // alias
             case "PING": sendType(MessageType.PONG, null); break;
+            case "TIME_PING": // legacy plain-text TIME_PING <client_send_ms>
+                handleTimePing(parts);
+                break;
             case "QUIT": sendType(MessageType.DISCONNECT, null); running = false; break;
             default: sendType(MessageType.ERROR, "Unknown command"); break;
         }
@@ -374,6 +381,23 @@ public class ClientHandler implements Runnable {
             sendType(MessageType.ERROR, "Failed to forfeit match");
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Handle a simple TIME_PING from client.
+     * Expected: TIME_PING <client_send_ms>
+     * Reply (JSON): {"type":"time_pong","client_send":<client_send_ms>,"server_time":<server_time_ms>}
+     */
+    private void handleTimePing(String[] parts) {
+        long serverTime = System.currentTimeMillis();
+        long clientSend = -1L;
+        if (parts.length >= 2) {
+            try {
+                clientSend = Long.parseLong(parts[1].trim());
+            } catch (NumberFormatException ignored) {}
+        }
+        String json = "{\"type\":\"time_pong\",\"client_send\":" + clientSend + ",\"server_time\":" + serverTime + "}";
+        sendMessage(json);
     }
 
     public GameSession getGameSession() { return currentGame.get(); }

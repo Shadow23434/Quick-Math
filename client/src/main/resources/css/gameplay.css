@@ -1,0 +1,389 @@
+/* Gameplay UI styles - updated button colors and hovers for a modern cohesive look */
+
+.gameplay-view {
+    -fx-background-color: transparent;
+}
+
+/* Header Section */
+.gameplay-header {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #e9ecef;
+    -fx-border-width: 0 0 1 0;
+}
+
+.score-container {
+    -fx-spacing: 5;
+}
+
+.player-label {
+    -fx-font-family: "Poppins Medium";
+    -fx-font-size: 12;
+    -fx-text-fill: #6c757d;
+    -fx-letter-spacing: 0.5;
+}
+
+.opponent-label {
+    -fx-font-family: "Poppins Medium";
+    -fx-font-size: 12;
+    -fx-text-fill: #6c757d;
+    -fx-letter-spacing: 0.5;
+}
+
+.score-text {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-font-size: 24;
+    -fx-text-fill: #2c3e50;
+}
+
+.timer-container {
+    -fx-padding: 10 20;
+    -fx-background-color: #fff3cd;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.timer-icon {
+    -fx-icon-size: 18;
+    -fx-icon-color: #856404;
+}
+
+.timer-text {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-font-size: 18;
+    -fx-text-fill: #856404;
+}
+
+/* Gameplay Scroll Pane */
+.gameplay-scroll-pane {
+    -fx-fit-to-width: true;
+    -fx-hbar-policy: never;
+    -fx-padding: 0;
+}
+
+.gameplay-scroll-pane:focused {
+    -fx-faint-focus-color: transparent;
+    -fx-focus-color: transparent;
+}
+
+.gameplay-scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+/* Target Section */
+.target-label {
+    -fx-font-family: "Poppins Medium";
+    -fx-font-size: 13;
+    -fx-text-fill: #6c757d;
+    -fx-letter-spacing: 0.5;
+}
+
+.target-number {
+    -fx-font-family: "Poppins Bold";
+    -fx-font-size: 48;
+    -fx-text-fill: #2c3e50;
+    -fx-padding: 10 0;
+}
+
+/* Input Section */
+.input-section {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e9ecef;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 15;
+}
+
+.expression-container {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #dee2e6;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-min-height: 70;
+}
+
+.expression-text {
+    -fx-font-family: "Poppins Regular";
+    -fx-font-size: 20;
+    -fx-text-fill: #2c3e50;
+    -fx-line-spacing: 5;
+}
+
+/* Button Rows */
+.button-row {
+    -fx-spacing: 12;
+    -fx-padding: 10 0;
+}
+
+.action-button {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-font-size: 14;
+    -fx-padding: 12 20;
+    -fx-text-fill: #ffffff;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-min-width: 100;
+    -fx-effect: dropshadow(gaussian, rgba(16,24,40,0.06), 6, 0, 0, 2);
+    -fx-transition: all 120ms ease-in-out;
+}
+
+.action-button:hover {
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+.action-button:pressed {
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+
+/* Submit / Success */
+.submit-button {
+    -fx-background-color: #16a34a; /* green-600 */
+    -fx-text-fill: #ffffff;
+}
+
+.submit-button:hover {
+    -fx-background-color: #15803d; /* green-700 */
+}
+
+/* Exit / Purple Vibrant */
+.exit-button {
+    -fx-background-color: #8b5cf6; /* violet-500 */
+    -fx-text-fill: #ffffff;
+}
+
+.exit-button:hover {
+    -fx-background-color: #7c3aed; /* violet-600 */
+}
+
+/* Section Labels */
+.section-label {
+    -fx-font-family: "Poppins Medium";
+    -fx-font-size: 12;
+    -fx-text-fill: #6c757d;
+    -fx-letter-spacing: 0.5;
+}
+
+/* Operators Row */
+.operators-row {
+    -fx-spacing: 10;
+    -fx-padding: 10;
+}
+
+.operator-button {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-font-size: 18;
+    -fx-padding: 12 18;
+    -fx-min-width: 50;
+    -fx-min-height: 50;
+    -fx-background-color: linear-gradient(#4f46e5, #4338ca); /* indigo gradient */
+    -fx-text-fill: #ffffff;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(79,70,229,0.12), 6, 0, 0, 2);
+}
+
+.operator-button:hover {
+    -fx-background-color: linear-gradient(#3730a3, #2c2b8a); /* darker indigo */
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+.operator-button:pressed {
+    -fx-scale-x: 0.95;
+    -fx-scale-y: 0.95;
+}
+
+.operator-separator {
+    -fx-padding: 5 10;
+}
+
+/* Backspace / Cyan Bright */
+.backspace-button {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-font-size: 18;
+    -fx-padding: 12 18;
+    -fx-min-width: 50;
+    -fx-min-height: 50;
+    -fx-background-color: #06b6d4; /* cyan-500 */
+    -fx-text-fill: #ffffff;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(6,182,212,0.10), 6, 0, 0, 2);
+}
+
+.backspace-button:hover {
+    -fx-background-color: #0891b2; /* cyan-600 */
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+.backspace-button:pressed {
+    -fx-scale-x: 0.95;
+    -fx-scale-y: 0.95;
+}
+
+.backspace-icon {
+    -fx-icon-size: 18;
+    -fx-icon-color: #ffffff;
+}
+
+/* Numbers Grid */
+.numbers-grid {
+    -fx-hgap: 10;
+    -fx-vgap: 10;
+}
+
+.number-button {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-font-size: 20;
+    -fx-padding: 15 20;
+    -fx-min-width: 60;
+    -fx-min-height: 60;
+    -fx-background-color: linear-gradient(#06b6d4, #0891b2); /* cyan -> teal */
+    -fx-text-fill: #ffffff;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(6,182,212,0.10), 6, 0, 0, 2);
+}
+
+.number-button:hover {
+    -fx-background-color: linear-gradient(#0891b2, #048093);
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+.number-button:pressed {
+    -fx-scale-x: 0.95;
+    -fx-scale-y: 0.95;
+}
+
+/* Backspace / Cyan Bright */
+/* Backspace / Cyan Bright */
+.backspace-button {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-font-size: 20;
+    -fx-padding: 15 20;
+    -fx-min-width: 60;
+    -fx-min-height: 60;
+    -fx-background-color: #06b6d4; /* cyan-500 */
+    -fx-text-fill: #ffffff;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(6,182,212,0.10), 6, 0, 0, 2);
+}
+
+.backspace-button:hover {
+    -fx-background-color: #0891b2; /* cyan-600 */
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+.backspace-button:pressed {
+    -fx-scale-x: 0.95;
+    -fx-scale-y: 0.95;
+}
+
+.backspace-icon {
+    -fx-icon-size: 22;
+    -fx-icon-color: #ffffff;
+}
+
+.bracket-button {
+    -fx-font-family: "Poppins SemiBold";
+    -fx-font-size: 18;
+    -fx-padding: 12 18;
+    -fx-min-width: 50;
+    -fx-min-height: 50;
+    -fx-background-color: linear-gradient(#7c3aed, #6d28d9); /* purple gradient */
+    -fx-text-fill: #ffffff;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(124,58,237,0.10), 6, 0, 0, 2);
+}
+
+.bracket-button:hover {
+    -fx-background-color: linear-gradient(#5a32a3, #4c2884);
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+.bracket-button:pressed {
+    -fx-scale-x: 0.95;
+    -fx-scale-y: 0.95;
+}
+
+/* Subtle focus outlines for accessibility */
+.button:focused, .button:armed {
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+    -fx-effect: dropshadow(gaussian, rgba(16,24,40,0.06), 8, 0, 0, 4);
+}
+
+
+/* Countdown Overlay Styles */
+.countdown-overlay {
+    -fx-background-color: rgba(0, 0, 0, 0.8);
+}
+
+.countdown-container {
+    -fx-background-color: linear-gradient(to bottom, #2c5aa0, #1e3c72);
+    -fx-background-radius: 15;
+    -fx-padding: 40;
+    -fx-border-color: #4a90e2;
+    -fx-border-width: 2;
+    -fx-border-radius: 15;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 10, 0, 0, 0);
+    -fx-max-width: 300;
+}
+
+.countdown-message {
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-alignment: center;
+}
+
+.countdown-number {
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-size: 72px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #ffcc00;
+    -fx-alignment: center;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 5, 0, 0, 0);
+}
+
+/* Responsive adjustments */
+@media (max-width: 480) {
+    .number-button {
+        -fx-font-size: 16;
+        -fx-padding: 12 15;
+        -fx-min-width: 50;
+        -fx-min-height: 50;
+    }
+
+    .operator-button,
+    .bracket-button,
+    .backspace-button{
+        -fx-font-size: 16;
+        -fx-padding: 10 15;
+        -fx-min-width: 45;
+        -fx-min-height: 45;
+    }
+
+    .action-button {
+        -fx-font-size: 12;
+        -fx-padding: 10 15;
+        -fx-min-width: 80;
+    }
+}
+

@@ -34,7 +34,7 @@ public class TestClient {
              PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
              Scanner scanner = new Scanner(System.in)) {
 
-            System.out.println("✅ Connected to server at " + SERVER_HOST + ":" + SERVER_PORT);
+            System.out.println("Connected to server at " + SERVER_HOST + ":" + SERVER_PORT);
             System.out.println("Connection: " + socket.getLocalSocketAddress() + " -> " + socket.getRemoteSocketAddress());
 
             // Thread để đọc responses từ server
@@ -89,18 +89,18 @@ public class TestClient {
                 Thread.sleep(100);
             }
 
-            System.out.println("✅ Disconnected from server.");
+            System.out.println("Disconnected from server.");
 
         } catch (UnknownHostException e) {
-            System.err.println("❌ Unknown host: " + SERVER_HOST);
+            System.err.println("Unknown host: " + SERVER_HOST);
             System.err.println("   Make sure server hostname is correct.");
         } catch (ConnectException e) {
-            System.err.println("❌ Connection refused to " + SERVER_HOST + ":" + SERVER_PORT);
+            System.err.println("Connection refused to " + SERVER_HOST + ":" + SERVER_PORT);
             System.err.println("   Make sure server is running on port " + SERVER_PORT);
         } catch (IOException e) {
-            System.err.println("❌ I/O error: " + e.getMessage());
+            System.err.println("I/O error: " + e.getMessage());
         } catch (InterruptedException e) {
-            System.err.println("❌ Interrupted: " + e.getMessage());
+            System.err.println("Interrupted: " + e.getMessage());
             Thread.currentThread().interrupt();
         }
     }
