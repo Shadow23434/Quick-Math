@@ -1,0 +1,175 @@
+/* Root container */
+.root, .stack-pane {
+    -fx-font-family: "Segoe UI", "Helvetica Neue", "Arial";
+    -fx-background-color: linear-gradient(to bottom, #f3f7fb 0%, #ffffff 40%, #eef4fb 100%);
+}
+
+/* Overall result view box */
+.result-view {
+    -fx-padding: 18;
+    -fx-alignment: top-center;
+}
+
+/* Header */
+.title-label {
+    -fx-font-size: 20px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #1b2838;
+    -fx-padding: 6 10 6 6;
+}
+
+/* Small button in header */
+.small-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: #2b6cb0;
+    -fx-font-weight: 600;
+}
+.small-button:hover {
+    -fx-underline: true;
+}
+
+/* Winner banner */
+.winner-banner {
+    -fx-padding: 12 20;
+    -fx-alignment: center;
+    -fx-background-color: linear-gradient(to right, #ffd347 0%, #ffb400 100%);
+    -fx-background-radius: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.18), 10, 0, 0, 4);
+    -fx-border-color: rgba(255,255,255,0.4);
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+}
+
+/* Winner text (big) */
+.winner-text {
+    -fx-font-size: 18px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #2b2b2b;
+    -fx-padding: 0 0 2 0;
+}
+
+/* Summary below winner (smaller) */
+.summary-text {
+    -fx-font-size: 13px;
+    -fx-text-fill: #1b2838;
+    -fx-opacity: 0.9;
+}
+
+/* Player card containers */
+.player-card {
+    -fx-background-color: white;
+    -fx-background-radius: 10;
+    -fx-padding: 10;
+    -fx-alignment: center;
+    -fx-effect: dropshadow(gaussian, rgba(11,33,63,0.08), 8, 0, 0, 4);
+    -fx-border-color: rgba(30,60,90,0.05);
+}
+
+/* Name and username */
+.name-label {
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #0f3747;
+}
+.username-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6e7780;
+    -fx-font-style: italic;
+}
+
+/* Stat labels / values */
+.stat-label {
+    -fx-font-size: 11px;
+    -fx-text-fill: #6b7280;
+}
+.stat-value {
+    -fx-font-size: 18px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #0b4f6c;
+}
+
+/* Section title above list */
+.section-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-padding: 6 0;
+}
+
+/* Round list styling */
+.round-list {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(20,40,60,0.06);
+    -fx-padding: 6;
+}
+.list-cell {
+    -fx-padding: 8 10;
+    -fx-background-color: transparent;
+}
+.list-cell:filled:selected, .list-cell:filled:selected:hover {
+    -fx-background-color: linear-gradient(to right, rgba(43,108,176,0.10), rgba(43,108,176,0.06));
+}
+
+/* Buttons */
+.button {
+    -fx-cursor: hand;
+    -fx-font-weight: 700;
+    -fx-text-fill: white;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12;
+}
+
+/* Primary action (Rematch) */
+.primary-button {
+    -fx-background-color: linear-gradient(to bottom, #2da44e, #1f8f3a);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 6, 0, 0, 2);
+}
+.primary-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #3bd05c, #27a047);
+}
+
+/* Secondary actions (Lobby / Home) */
+.secondary-button {
+    -fx-background-color: linear-gradient(to bottom, #ffffff, #f2f6fb);
+    -fx-border-color: rgba(15,60,90,0.08);
+    -fx-text-fill: #0b4f6c;
+    -fx-font-weight: 700;
+}
+.secondary-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #eef6ff, #e6f0fb);
+}
+
+/* Note text */
+.note-label {
+    -fx-font-size: 11px;
+    -fx-text-fill: #6b7280;
+    -fx-padding: 8 0;
+}
+
+/* Small responsive tweaks */
+@media screen and (max-width: 420px) {
+    .winner-text { -fx-font-size: 16px; }
+    .summary-text { -fx-font-size: 12px; }
+    .stat-value { -fx-font-size: 16px; }
+}
+
+.winner-card {
+    -fx-border-color: linear-gradient(from 0% 0% to 100% 0%, #ffd966, #ffb400);
+    -fx-border-width: 2;
+    -fx-border-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(255,180,50,0.15), 14, 0, 0, 6);
+}
+
+.button:focused {
+    -fx-effect: dropshadow(gaussian, rgba(43,108,176,0.18), 8, 0, 0, 2);
+    -fx-border-color: rgba(43,108,176,0.3);
+    -fx-border-width: 1;
+}
+
+/* Utility: subtle divider style */
+.separator {
+    -fx-background-color: rgba(30,40,50,0.06);
+}
+
+/* End of match_result.css */
