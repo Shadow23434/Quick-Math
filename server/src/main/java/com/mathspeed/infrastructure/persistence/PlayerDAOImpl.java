@@ -5,6 +5,7 @@ import com.mathspeed.domain.model.Player;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -186,7 +187,27 @@ public class PlayerDAOImpl extends BaseDAO implements PlayerRepository {
             }
         }
     }
-
+    public List<Player> getLeaderboard(int limit) throws SQLException {
+        String sql = "SELECT * FROM players ORDER BY wins DESC, games_played ASC LIMIT ?";
+        List<Player> list = new ArrayList<>();
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, limit);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Player p = new Player();
+                    p.setId(rs.getString("id"));
+                    p.setUsername(rs.getString("username"));
+                    p.setDisplayName(rs.getString("display_name"));
+                    p.setAvatarUrl(rs.getString("avatar_url"));
+                    p.setWins(rs.getInt("wins"));
+                    p.setGamesPlayed(rs.getInt("games_played"));
+                    list.add(p);
+                }
+            }
+        }
+        return list;
+    }
     @Override
     public boolean existsById(String id) throws Exception {
         String sql = "SELECT 1 FROM players WHERE id = ? LIMIT 1";
