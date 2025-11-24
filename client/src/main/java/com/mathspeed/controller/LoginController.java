@@ -9,7 +9,9 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.InputMethodEvent;
 import javafx.scene.layout.StackPane;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
@@ -30,7 +32,7 @@ public class LoginController {
     @FXML private Label passwordHintLabel;
     @FXML private CheckBox rememberMeCheckBox;
     @FXML private Label checkIconLabel;
-    @FXML private Hyperlink forgotPasswordLink;
+    @FXML private Hyperlink changePasswordLink;
     @FXML private Label errorLabel;
     @FXML private Button loginButton;
     @FXML private Hyperlink registerButton;
@@ -43,6 +45,10 @@ public class LoginController {
     private FontIcon eyeSlashIcon;
     private FontIcon checkIcon;
 
+    // Flags to track IME composition state for multilingual input
+    private volatile boolean usernameComposing = false;
+    private volatile boolean passwordComposing = false;
+
     @FXML
     public void initialize() {
         loadSavedCredentials();
@@ -51,6 +57,7 @@ public class LoginController {
         setupEmailField();
         setupEnterKeyLogin();
         setupCustomCheckboxIcon();
+        setupInputMethodHandlers();
     }
 
     private void setupIcons() {
@@ -107,23 +114,44 @@ public class LoginController {
     }
 
     private void setupPasswordField() {
-        // Sync password hidden field and visible field
+        // Sync password hidden field and visible field but avoid interfering with IME composition.
         passwordHiddenField.textProperty().addListener((obs, oldVal, newVal) -> {
-            passwordVisibleField.setText(newVal);
+            // Only programmatically update the visible field when not composing
+            if (!passwordComposing) {
+                if (!passwordVisibleField.getText().equals(newVal)) {
+                    passwordVisibleField.setText(newVal);
+                }
+            }
             updateClearPasswordButtonVisibility();
             updatePasswordFieldStyle(newVal);
             checkPasswordStrength(newVal);
         });
 
         passwordVisibleField.textProperty().addListener((obs, oldVal, newVal) -> {
-            passwordHiddenField.setText(newVal);
+            // Only programmatically update the hidden field when not composing
+            if (!passwordComposing) {
+                if (!passwordHiddenField.getText().equals(newVal)) {
+                    passwordHiddenField.setText(newVal);
+                }
+            }
             updatePasswordFieldStyle(newVal);
         });
 
         // Focus handling
-        passwordHiddenField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> updateClearPasswordButtonVisibility());
+        passwordHiddenField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            if (!isNowFocused) {
+                // Ensure composing flag is cleared when focus lost to avoid stale state
+                passwordComposing = false;
+            }
+            updateClearPasswordButtonVisibility();
+        });
 
-        passwordVisibleField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> updateClearPasswordButtonVisibility());
+        passwordVisibleField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            if (!isNowFocused) {
+                passwordComposing = false;
+            }
+            updateClearPasswordButtonVisibility();
+        });
     }
 
     private void setupEmailField() {
@@ -135,23 +163,89 @@ public class LoginController {
     }
 
     private void setupEnterKeyLogin() {
-        usernameField.setOnKeyPressed(event -> {
-            if (event.getCode() == KeyCode.ENTER) {
+        // Use KeyReleased so that composition (IME) has a chance to commit first;
+        // also guard with composition flags so Enter won't trigger while composing multilingual input.
+        usernameField.setOnKeyReleased(event -> {
+            if (event.getCode() == KeyCode.ENTER && !usernameComposing) {
                 passwordHiddenField.requestFocus();
             }
         });
 
-        passwordHiddenField.setOnKeyPressed(event -> {
-            if (event.getCode() == KeyCode.ENTER) {
+        passwordHiddenField.setOnKeyReleased(event -> {
+            if (event.getCode() == KeyCode.ENTER && !passwordComposing) {
                 handleLogin();
             }
         });
 
-        passwordVisibleField.setOnKeyPressed(event -> {
-            if (event.getCode() == KeyCode.ENTER) {
+        passwordVisibleField.setOnKeyReleased(event -> {
+            if (event.getCode() == KeyCode.ENTER && !passwordComposing) {
                 handleLogin();
             }
         });
+    }
+
+    // Register InputMethodEvent handlers to track composing state (IME)
+    private void setupInputMethodHandlers() {
+        try {
+            if (usernameField != null) {
+                usernameField.addEventHandler(InputMethodEvent.INPUT_METHOD_TEXT_CHANGED, (InputMethodEvent e) -> {
+                    boolean composing = (e.getComposed() != null && !e.getComposed().isEmpty());
+                    // If composition just ended, ensure final text is applied if needed
+                    if (usernameComposing && !composing) {
+                        // commit happened; no further action usually required, but clear flag
+                        Platform.runLater(() -> usernameComposing = false);
+                    } else {
+                        usernameComposing = composing;
+                    }
+                });
+
+                // Also clear composing on focus loss for safety
+                usernameField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+                    if (!isNowFocused) usernameComposing = false;
+                });
+            }
+
+            if (passwordHiddenField != null) {
+                passwordHiddenField.addEventHandler(InputMethodEvent.INPUT_METHOD_TEXT_CHANGED, (InputMethodEvent e) -> {
+                    boolean composing = (e.getComposed() != null && !e.getComposed().isEmpty());
+
+                    // If composition just ended (was composing, now not), synchronize fields to final committed text
+                    if (passwordComposing && !composing) {
+                        passwordComposing = false;
+                        Platform.runLater(() -> {
+                            String finalText = passwordHiddenField.getText();
+                            if (!passwordVisibleField.getText().equals(finalText)) passwordVisibleField.setText(finalText);
+                        });
+                    } else {
+                        passwordComposing = composing;
+                    }
+                });
+
+                passwordHiddenField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+                    if (!isNowFocused) passwordComposing = false;
+                });
+            }
+
+            if (passwordVisibleField != null) {
+                passwordVisibleField.addEventHandler(InputMethodEvent.INPUT_METHOD_TEXT_CHANGED, (InputMethodEvent e) -> {
+                    boolean composing = (e.getComposed() != null && !e.getComposed().isEmpty());
+
+                    if (passwordComposing && !composing) {
+                        passwordComposing = false;
+                        Platform.runLater(() -> {
+                            String finalText = passwordVisibleField.getText();
+                            if (!passwordHiddenField.getText().equals(finalText)) passwordHiddenField.setText(finalText);
+                        });
+                    } else {
+                        passwordComposing = composing;
+                    }
+                });
+
+                passwordVisibleField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+                    if (!isNowFocused) passwordComposing = false;
+                });
+            }
+        } catch (Exception ignored) {}
     }
 
     @FXML
@@ -234,7 +328,7 @@ public class LoginController {
     }
 
     private void checkPasswordStrength(String password) {
-        if (password.isEmpty()) {
+        if (password == null || password.isEmpty()) {
             passwordStrengthLabel.setVisible(false);
             passwordStrengthLabel.setManaged(false);
             passwordHintLabel.setVisible(false);
@@ -269,19 +363,26 @@ public class LoginController {
     private int calculatePasswordStrength(String password) {
         int strength = 0;
 
-        if (password.length() >= 8) strength++;
-        if (password.length() >= 12) strength++;
-        if (password.matches(".*[a-z].*")) strength++;
-        if (password.matches(".*[A-Z].*")) strength++;
-        if (password.matches(".*\\d.*")) strength++;
-        if (password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) strength++;
+        // Use Unicode-aware checks and code-point length (counts supplementary characters correctly)
+        int codePointLength = (password == null) ? 0 : password.codePointCount(0, password.length());
+
+        if (codePointLength >= 8) strength++;
+        if (codePointLength >= 12) strength++;
+
+        // Unicode lower-case letters
+        if (password.matches(".*\\p{Ll}.*")) strength++;
+        // Unicode upper-case letters
+        if (password.matches(".*\\p{Lu}.*")) strength++;
+        // Numbers (Unicode digits)
+        if (password.matches(".*\\p{Nd}.*")) strength++;
+        // Special characters: any character that is not a Unicode letter or number
+        if (password.matches(".*[^\\p{L}\\p{N}].*")) strength++;
 
         return strength;
     }
 
     @FXML
-    private void handleForgotPassword() {
-        // Implement forgot password logic
+    private void handleChangePassword() {
         System.out.println("Forgot password clicked");
     }
 
@@ -336,10 +437,6 @@ public class LoginController {
 
     private void handleLoginFailure(String userMessage, String serverDebugMessage) {
         logger.error(userMessage);
-        if (serverDebugMessage != null) {
-            logger.error("Server/System detail: {}", serverDebugMessage);
-        }
-
         showError(userMessage);
 
         if (errorLabel != null) {

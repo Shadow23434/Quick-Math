@@ -15,10 +15,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * HTTP handler that exposes auth-related endpoints.
+ * POST /api/auth/login
+ * POST /api/auth/register
+ * POST /api/auth/logout
+ */
 public class AuthHandler implements HttpHandler {
     private final AuthService authService;
     private final Pattern userPattern = Pattern.compile("\"username\"\\s*:\\s*\"([^\"]+)\"");
     private final Pattern passPattern = Pattern.compile("\"password\"\\s*:\\s*\"([^\"]+)\"");
+    private final Pattern displayPattern = Pattern.compile("\"displayName\"\\s*:\\s*\"([^\"]+)\"");
+    private final Pattern genderPattern = Pattern.compile("\"gender\"\\s*:\\s*\"([^\"]+)\"");
+    private final Pattern countryPattern = Pattern.compile("\"countryCode\"\\s*:\\s*\"([^\"]+)\"");
 
     public AuthHandler(AuthService authService) {
         this.authService = authService;
@@ -26,13 +35,47 @@ public class AuthHandler implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-        if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-            String json = "{\"ok\":false,\"status\":405,\"error\":\"Method not allowed\"}";
-            sendJson(exchange, 405, json);
+        String method = exchange.getRequestMethod();
+        String fullPath = exchange.getRequestURI().getPath();
+        // Expecting contexts like /api/auth/login, /api/auth/register, /api/auth/logout
+        if (fullPath.endsWith("/login")) {
+            if (!"POST".equalsIgnoreCase(method)) {
+                String json = "{\"ok\":false,\"status\":405,\"error\":\"Method not allowed\"}";
+                sendJson(exchange, 405, json);
+                return;
+            }
+            String body = readRequestBody(exchange.getRequestBody());
+            handleLogin(exchange, body);
             return;
         }
+        else if (fullPath.endsWith("/register")) {
+            if (!"POST".equalsIgnoreCase(method)) {
+                String json = "{\"ok\":false,\"status\":405,\"error\":\"Method not allowed\"}";
+                sendJson(exchange, 405, json);
+                return;
+            }
+            String body = readRequestBody(exchange.getRequestBody());
+            handleRegister(exchange, body);
+            return;
+        }
+        else if (fullPath.endsWith("/logout")) {
+            if (!"POST".equalsIgnoreCase(method)) {
+                String json = "{\"ok\":false,\"status\":405,\"error\":\"Method not allowed\"}";
+                sendJson(exchange, 405, json);
+                return;
+            }
+            String body = readRequestBody(exchange.getRequestBody());
+            handleLogout(exchange, body);
+            return;
+        }
+        else {
+            String json = "{\"ok\":false,\"status\":404,\"error\":\"Not found\"}";
+            sendJson(exchange, 404, json);
+            return;
+        }
+    }
 
-        String body = readRequestBody(exchange.getRequestBody());
+    private void handleLogin(HttpExchange exchange, String body) throws IOException {
         String username = extract(body, userPattern);
         String password = extract(body, passPattern);
 
@@ -69,6 +112,67 @@ public class AuthHandler implements HttpHandler {
         } else {
             String json = "{\"ok\":false,\"status\":401,\"error\":\"" + escapeJson(result.error) + "\"}";
             sendJson(exchange, 401, json);
+        }
+    }
+
+    private void handleRegister(HttpExchange exchange, String body) throws IOException {
+        String username = extract(body, userPattern);
+        String password = extract(body, passPattern);
+        String displayName = extract(body, displayPattern);
+        String gender = extract(body, genderPattern);
+        String countryCode = extract(body, countryPattern);
+
+        if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
+            String json = "{\"ok\":false,\"error\":\"Missing registration fields\",\"status\":400}";
+            sendJson(exchange, 400, json);
+            return;
+        }
+
+        AuthResult result = authService.register(username, password, displayName, gender, countryCode);
+        if (result.success) {
+            Player p = result.player;
+            StringBuilder sb = new StringBuilder();
+            sb.append("{\"ok\":true,\"status\":200,\"token\":\"").append(escapeJson(result.token)).append('\"');
+            if (p != null) {
+                sb.append(",\"player\":{");
+                sb.append("\"id\":\"").append(escapeJson(p.getId())).append("\"");
+                sb.append(",\"username\":\"").append(escapeJson(p.getUsername())).append("\"");
+                sb.append(",\"displayName\":\"").append(escapeJson(p.getDisplayName())).append("\"");
+                sb.append(",\"avatarUrl\":\"").append(escapeJson(p.getAvatarUrl())).append("\"");
+                sb.append(",\"countryCode\":\"").append(escapeJson(p.getCountryCode())).append("\"");
+                sb.append(",\"gender\":\"").append(escapeJson(p.getGender())).append("\"");
+                sb.append(",\"status\":\"").append(escapeJson(p.getStatus())).append("\"");
+                if (p.getLastActiveAt() != null) {
+                    sb.append(",\"lastActiveAt\":\"").append(escapeJson(p.getLastActiveAt().toString())).append("\"");
+                }
+                if (p.getCreatedAt() != null) {
+                    sb.append(",\"createdAt\":\"").append(escapeJson(p.getCreatedAt().toString())).append("\"");
+                }
+                sb.append("}");
+            }
+            sb.append("}");
+            sendJson(exchange, 200, sb.toString());
+        } else {
+            String json = "{\"ok\":false,\"status\":400,\"error\":\"" + escapeJson(result.error) + "\"}";
+            sendJson(exchange, 400, json);
+        }
+    }
+
+    private void handleLogout(HttpExchange exchange, String body) throws IOException {
+        String username = extract(body, userPattern);
+        if (username == null || username.isEmpty()) {
+            String json = "{\"ok\":false,\"error\":\"Missing username\",\"status\":400}";
+            sendJson(exchange, 400, json);
+            return;
+        }
+
+        boolean ok = authService.logout(username);
+        if (ok) {
+            String json = "{\"ok\":true,\"status\":200}";
+            sendJson(exchange, 200, json);
+        } else {
+            String json = "{\"ok\":false,\"status\":500,\"error\":\"Logout failed\"}";
+            sendJson(exchange, 500, json);
         }
     }
 

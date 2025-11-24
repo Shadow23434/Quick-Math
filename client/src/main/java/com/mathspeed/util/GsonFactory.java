@@ -5,6 +5,7 @@ import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 /**
  * Utility factory that registers Gson adapters for java.time types.
@@ -23,6 +24,7 @@ public final class GsonFactory {
     // Adapter for LocalDateTime -> ISO_LOCAL_DATE_TIME (e.g. "2025-11-21T20:47:55")
     private static class LocalDateTimeAdapter implements JsonSerializer<LocalDateTime>, JsonDeserializer<LocalDateTime> {
         private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+        private static final DateTimeFormatter FORMATTER_NO_SECONDS = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
 
         @Override
         public JsonElement serialize(LocalDateTime src, Type typeOfSrc, JsonSerializationContext context) {
@@ -38,7 +40,16 @@ public final class GsonFactory {
             if (s == null || s.isEmpty()) {
                 return null;
             }
-            return LocalDateTime.parse(s, FORMATTER);
+            try {
+                return LocalDateTime.parse(s, FORMATTER);
+            } catch (DateTimeParseException ex) {
+                // Try fallback without seconds (e.g. "2025-11-23T04:57")
+                try {
+                    return LocalDateTime.parse(s, FORMATTER_NO_SECONDS);
+                } catch (DateTimeParseException ex2) {
+                    throw new JsonParseException("Failed to parse LocalDateTime: " + s, ex2);
+                }
+            }
         }
     }
 
@@ -64,4 +75,3 @@ public final class GsonFactory {
         }
     }
 }
-

@@ -2,19 +2,19 @@ CREATE DATABASE IF NOT EXISTS quickmath CHARACTER SET utf8mb4 COLLATE=utf8mb4_un
 USE quickmath;
 
 CREATE TABLE `players` (
-  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `username` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `display_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'unknown',
-  `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `gender` enum('male','female','other') COLLATE utf8mb4_unicode_ci DEFAULT 'male',
-  `avatar_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT 'https://tse1.mm.bing.net/th/id/OIP.pLa0MvBoBWBLYBwKtdbLhQAAAA?rs=1&pid=ImgDetMain&o=7&rm=3',
-  `country_code` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT 'vn',
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `status` enum('online','in_game','offline') COLLATE utf8mb4_unicode_ci DEFAULT 'offline',
-  `last_active_at` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `username` (`username`),
-  KEY `ix_status` (`status`)
+   `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+   `username` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+   `display_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'unknown',
+   `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+   `gender` enum('male','female','other') COLLATE utf8mb4_unicode_ci DEFAULT 'male',
+   `avatar_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT 'https://tse1.mm.bing.net/th/id/OIP.pLa0MvBoBWBLYBwKtdbLhQAAAA?rs=1&pid=ImgDetMain&o=7&rm=3',
+   `country_code` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT 'vn',
+   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   `status` enum('online','in_game','offline') COLLATE utf8mb4_unicode_ci DEFAULT 'offline',
+   `last_active_at` datetime DEFAULT NULL,
+   PRIMARY KEY (`id`),
+   UNIQUE KEY `username` (`username`),
+   KEY `ix_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -40,4 +40,15 @@ CREATE TABLE IF NOT EXISTS game_history (
     CONSTRAINT fk_gp_player FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     INDEX ix_gp_match (match_id),
     INDEX ix_gp_player (player_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS quizzes (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    question_number INT NOT NULL,
+    player_id CHAR(36) NOT NULL,
+    level ENUM('easy','medium','hard') DEFAULT 'easy',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_quiz_player FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    INDEX ix_quiz_player (player_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

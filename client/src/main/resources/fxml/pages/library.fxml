@@ -16,6 +16,7 @@
     <!-- Main Content Scrolls Below Header -->
     <ScrollPane fitToWidth="true"
                 hbarPolicy="NEVER"
+                vbarPolicy="ALWAYS"
                 styleClass="dashboard-scroll-pane"
                 VBox.vgrow="ALWAYS">
         <VBox spacing="20" prefWidth="320" style="-fx-padding: 0 0 20 0;" alignment="TOP_CENTER">

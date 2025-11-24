@@ -1,9 +1,14 @@
 package com.mathspeed.bootstrap;
 
+import com.mathspeed.adapter.network.library.LibraryHandler;
+import com.mathspeed.application.library.LibraryService;
+import com.mathspeed.domain.port.GameHistoryRepository;
 import com.mathspeed.domain.port.GameRepository;
 import com.mathspeed.domain.port.PlayerRepository;
+import com.mathspeed.domain.port.QuizzRepository;
 import com.mathspeed.infrastructure.persistence.GameDAOImpl;
 import com.mathspeed.infrastructure.persistence.PlayerDAOImpl;
+import com.mathspeed.infrastructure.persistence.QuizDAOImpl;
 import com.mathspeed.adapter.network.ClientRegistry;
 import com.mathspeed.application.game.ChallengeManager;
 import com.mathspeed.application.game.GameSessionManager;
@@ -13,6 +18,10 @@ import com.mathspeed.adapter.network.HttpServer;
 import com.mathspeed.adapter.network.auth.AuthHandler;
 import com.mathspeed.adapter.network.HealthHandler;
 import com.mathspeed.application.auth.AuthService;
+import com.mathspeed.application.friend.FriendService;
+import com.mathspeed.adapter.network.friend.FriendHandler;
+import com.mathspeed.adapter.network.stat.StatsHandler;
+import com.mathspeed.infrastructure.persistence.GameHistoryDAOImpl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -26,7 +35,10 @@ public class Main {
         logger.info("Server setup complete!");
 
         PlayerRepository playerRepository = new PlayerDAOImpl();
+        QuizzRepository quizRepository = new QuizDAOImpl();
         GameRepository gameRepository = new GameDAOImpl();
+        GameHistoryRepository gameHistoryRepository = new GameHistoryDAOImpl();
+
         ClientRegistry clientRegistry = new ClientRegistry(playerRepository);
         GameSessionManager sessionManager = new GameSessionManager(clientRegistry, gameRepository);
         Matchmaker matchmaker = new Matchmaker(clientRegistry, sessionManager);
@@ -36,10 +48,14 @@ public class Main {
         // shared HTTP server for multiple features
         HttpServer httpServer = new HttpServer(HTTP_PORT);
         AuthService authService = new AuthService(playerRepository);
+        FriendService friendService = new FriendService(playerRepository);
+        LibraryService libraryService = new LibraryService(quizRepository);
         try {
-            // register contexts/handlers
-            httpServer.createContext("/api/auth", new AuthHandler(authService));
             httpServer.createContext("/api/health", new HealthHandler());
+            httpServer.createContext("/api/auth", new AuthHandler(authService));
+            httpServer.createContext("/api/friends/", new FriendHandler(friendService));
+            httpServer.createContext("/api/library", new LibraryHandler(authService, libraryService));
+            httpServer.createContext("/api/stats", new StatsHandler(authService, quizRepository, gameHistoryRepository));
             httpServer.start();
         } catch (Exception e) {
             System.err.println("Failed to start shared HTTP server: " + e.getMessage());
