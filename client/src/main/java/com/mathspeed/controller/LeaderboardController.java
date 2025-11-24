@@ -1,34 +1,26 @@
 package com.mathspeed.controller;
 
-import com.mathspeed.util.ReloadManager;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.control.*;
+import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.List;
+import java.util.Map;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class LeaderboardController {
-    private static final Logger logger = LoggerFactory.getLogger(LeaderboardController.class);
 
-    @FXML private Label userGreetingLabel;
-    @FXML private Label userEmailLabel;
-    @FXML private Button reloadButton;
-
-    // Time Period Buttons
-    @FXML private Button todayBtn;
-    @FXML private Button weekBtn;
-    @FXML private Button monthBtn;
-    @FXML private Button allTimeBtn;
-
-    // Top 3 Podium
     @FXML private Label first_name;
     @FXML private Label first_score;
     @FXML private Label second_name;
@@ -36,183 +28,123 @@ public class LeaderboardController {
     @FXML private Label third_name;
     @FXML private Label third_score;
 
-    // Leaderboard List
+    @FXML private ImageView firstAvatar;
+    @FXML private ImageView secondAvatar;
+    @FXML private ImageView thirdAvatar;
+
     @FXML private VBox leaderboardContainer;
 
-    // User Rank
     @FXML private ImageView userAvatar;
     @FXML private Label userRankLabel;
     @FXML private Label userNameLabel;
     @FXML private Label userScoreLabel;
 
-    private String username;
-    private String currentPeriod = "today";
+    private String currentUserId; // lưu ID người dùng đang login
 
-    // Keep an in-memory list of entries so we can filter by country
-    private java.util.List<LeaderboardEntry> allEntries = new java.util.ArrayList<>();
+    private final String API_URL = "http://localhost:8080/api/leaderboard?limit=100";
+    private final ObjectMapper mapper = new ObjectMapper();
 
     @FXML
-    public void initialize() {
-        setupReloadShortcut();
+    private void initialize() {
         loadLeaderboardData();
-        populateSampleData();
+    }
+    public void setCurrentUser(String userId) {
+        this.currentUserId = userId;
     }
 
-    private void setupReloadShortcut() {
-        if (reloadButton != null && reloadButton.getScene() != null) {
-            reloadButton.getScene().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-                if (event.getCode() == KeyCode.F5) {
-                    handleReload();
-                    event.consume();
-                }
-            });
-        }
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-        String greeting = "Hi, " + username;
-        String email = "@" + username.toLowerCase();
-
-        if (userGreetingLabel != null) {
-            userGreetingLabel.setText(greeting);
-            Tooltip greetingTooltip = new Tooltip(greeting);
-            Tooltip.install(userGreetingLabel, greetingTooltip);
-        }
-        if (userEmailLabel != null) {
-            userEmailLabel.setText(email);
-            Tooltip emailTooltip = new Tooltip(email);
-            Tooltip.install(userEmailLabel, emailTooltip);
-        }
-        if (userNameLabel != null) {
-            userNameLabel.setText(username);
-        }
-    }
 
     private void loadLeaderboardData() {
-//        logger.info("Loading leaderboard data for period: " + currentPeriod);
+        new Thread(() -> {
+            try {
+                URL url = new URL(API_URL);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("Accept", "application/json");
+
+                InputStreamReader reader = new InputStreamReader(conn.getInputStream());
+                Map<String, Object> response = mapper.readValue(reader, Map.class);
+                reader.close();
+
+                if (Boolean.TRUE.equals(response.get("ok"))) {
+                    List<Map<String, Object>> leaderboard = (List<Map<String, Object>>) response.get("leaderboard");
+                    Platform.runLater(() -> renderLeaderboard(leaderboard));
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
-    private void populateSampleData() {
-        if (leaderboardContainer == null) return;
-
+    private void renderLeaderboard(List<Map<String, Object>> leaderboard) {
         leaderboardContainer.getChildren().clear();
-        allEntries.clear();
 
-        // sample data: rank, name, score, countryCode
-        String[][] sampleData = {
-            {"4", "Emma Wilson", "1,890", "US"},
-            {"5", "Michael Chen", "1,755", "CN"},
-            {"6", "Sophia Lee", "1,620", "GB"},
-            {"7", "James Brown", "1,540", "US"},
-            {"8", "Olivia Davis", "1,430", "CA"},
-            {"9", "William Taylor", "1,320", "AU"},
-            {"10", "Isabella Garcia", "1,210", "BR"}
-        };
+        for (int i = 0; i < leaderboard.size(); i++) {
+            Map<String, Object> p = leaderboard.get(i);
 
-        for (String[] data : sampleData) {
-            LeaderboardEntry e = new LeaderboardEntry(data[0], data[1], data[2], data[3]);
-            allEntries.add(e);
+            String userId = (String) p.get("id");
+            String displayName = (String) p.get("displayName");
+            String avatarUrl = (String) p.get("avatarUrl");
+            int wins = ((Number) p.get("wins")).intValue();
+
+            // Top 3 podium
+            if (i == 0) {
+                first_name.setText(displayName);
+                first_score.setText(wins + " pts");
+                if (avatarUrl != null) firstAvatar.setImage(new Image(avatarUrl, true));
+            } else if (i == 1) {
+                second_name.setText(displayName);
+                second_score.setText(wins + " pts");
+                if (avatarUrl != null) secondAvatar.setImage(new Image(avatarUrl, true));
+            } else if (i == 2) {
+                third_name.setText(displayName);
+                third_score.setText(wins + " pts");
+                if (avatarUrl != null) thirdAvatar.setImage(new Image(avatarUrl, true));
+            } else {
+                // Những người còn lại đánh số rank
+                leaderboardContainer.getChildren().add(createLeaderboardItem(i + 1, displayName, avatarUrl, wins));
+            }
+
+            // Hiển thị your rank
+            if (currentUserId != null && currentUserId.equals(userId)) {
+                userNameLabel.setText(displayName);
+                userScoreLabel.setText(wins + " pts");
+                userRankLabel.setText("#" + (i + 1));
+                if (avatarUrl != null) userAvatar.setImage(new Image(avatarUrl, true));
+            }
         }
-
-        renderEntries(allEntries);
     }
 
-    private void renderEntries(java.util.List<LeaderboardEntry> entries) {
-        leaderboardContainer.getChildren().clear();
-        for (LeaderboardEntry e : entries) {
-            leaderboardContainer.getChildren().add(createLeaderboardItem(e));
-        }
-    }
 
-    private HBox createLeaderboardItem(LeaderboardEntry entry) {
+
+
+    private HBox createLeaderboardItem(int rank, String name, String avatarUrl, int score) {
         HBox item = new HBox(10);
         item.setAlignment(Pos.CENTER_LEFT);
+        item.setPadding(new Insets(10));
         item.getStyleClass().add("leaderboard-item");
-        item.setPadding(new Insets(12, 15, 12, 15));
 
-        Label rankLabel = new Label(entry.getRank());
-        rankLabel.getStyleClass().add("rank-number");
+        Label rankLabel = new Label("#" + rank);
         rankLabel.setMinWidth(30);
 
         ImageView avatar = new ImageView();
         avatar.setFitWidth(40);
         avatar.setFitHeight(40);
         avatar.setPreserveRatio(true);
-        int randomImg = 10 + Integer.parseInt(entry.getRank());
-        avatar.setImage(new Image("https://i.pravatar.cc/150?img=" + randomImg));
-        javafx.scene.shape.Circle clip = new javafx.scene.shape.Circle(20, 20, 20);
-        avatar.setClip(clip);
-
-        // Flag ImageView
-        ImageView flagView = new ImageView();
-        flagView.setFitWidth(30);
-        flagView.setFitHeight(22);
-        flagView.setPreserveRatio(true);
-        String countryCode = entry.getCountryCode();
-        if (countryCode != null && countryCode.length() == 2) {
-            String codeLower = countryCode.toLowerCase();
-            String flagUrl = "https://flagcdn.com/56x42/" + codeLower + ".png"; // 56px width
-            try {
-                Image flagImg = new Image(flagUrl, true);
-                if (!flagImg.isError()) {
-                    flagView.setImage(flagImg);
-                } else {
-                    // fallback to bundled default
-                    java.io.InputStream is = getClass().getResourceAsStream("/images/t1.png");
-                    if (is != null) flagView.setImage(new Image(is));
-                }
-            } catch (Exception ex) {
-                java.io.InputStream is = getClass().getResourceAsStream("/images/t1.png");
-                if (is != null) flagView.setImage(new Image(is));
-            }
-        } else {
-            java.io.InputStream is = getClass().getResourceAsStream("/images/t1.png");
-            if (is != null) flagView.setImage(new Image(is));
-        }
-
-        VBox nameBox = new VBox(2);
-        Label nameLabel = new Label(entry.getName());
-        nameLabel.getStyleClass().add("leaderboard-name");
-        Label scoreLabel = new Label(entry.getScore() + " pts");
-        scoreLabel.getStyleClass().add("leaderboard-score");
-        Label countryLabel = new Label(entry.getCountryCode());
-        countryLabel.getStyleClass().add("leaderboard-country");
-        nameBox.getChildren().addAll(nameLabel, scoreLabel, countryLabel);
+        if (avatarUrl != null) avatar.setImage(new Image(avatarUrl, true));
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
 
-        item.getChildren().addAll(rankLabel, avatar, flagView, nameBox, spacer);
+        Label nameLabel = new Label(name);
+        nameLabel.getStyleClass().add("leaderboard-name");
 
-        item.setOnMouseEntered(e -> item.setStyle("-fx-background-color: #f5f5f5; -fx-background-radius: 10;"));
-        item.setOnMouseExited(e -> item.setStyle("-fx-background-color: transparent;"));
+        Label scoreLabel = new Label(score + " pts");
+        scoreLabel.getStyleClass().add("leaderboard-score");
 
+        VBox infoBox = new VBox(2, nameLabel, scoreLabel);
+
+        item.getChildren().addAll(rankLabel, avatar, infoBox, spacer);
         return item;
-    }
-
-    @FXML
-    private void handleReload() {
-        ReloadManager.reloadCurrentScene();
-    }
-
-    // Simple entry model for the leaderboard
-    private static class LeaderboardEntry {
-        private final String rank;
-        private final String name;
-        private final String score;
-        private final String countryCode;
-
-        public LeaderboardEntry(String rank, String name, String score, String countryCode) {
-            this.rank = rank;
-            this.name = name;
-            this.score = score;
-            this.countryCode = countryCode;
-        }
-
-        public String getRank() { return rank; }
-        public String getName() { return name; }
-        public String getScore() { return score; }
-        public String getCountryCode() { return countryCode; }
     }
 }
