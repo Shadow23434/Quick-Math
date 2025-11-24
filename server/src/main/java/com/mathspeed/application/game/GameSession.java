@@ -305,12 +305,14 @@ public class GameSession {
             aInfo.put("id", safeGetPlayerId(playerA));
             aInfo.put("username", safeGetUsername(playerA));
             aInfo.put("display_name", safeGetDisplayName(playerA));
+            aInfo.put("avatar_url", safeGetAvatarUrl(playerA));
             playersInfo.add(aInfo);
 
             Map<String, Object> bInfo = new LinkedHashMap<>();
             bInfo.put("id", safeGetPlayerId(playerB));
             bInfo.put("username", safeGetUsername(playerB));
             bInfo.put("display_name", safeGetDisplayName(playerB));
+            aInfo.put("avatar_url", safeGetAvatarUrl(playerB));
             playersInfo.add(bInfo);
 
             msg.put("players", playersInfo);
@@ -332,6 +334,19 @@ public class GameSession {
             }
             // fallback to username
             return safeGetUsername(p);
+        } catch (Exception e) {
+            return (p != null) ? p.getUsername() : null;
+        }
+    }
+
+    private String safeGetAvatarUrl(ClientHandler p) {
+        try {
+            if (p == null) return null;
+            if (p.getPlayer() != null) {
+                String dn = p.getPlayer().getAvatarUrl();
+                if (dn != null && !dn.isEmpty()) return dn;
+            }
+            return null;
         } catch (Exception e) {
             return (p != null) ? p.getUsername() : null;
         }

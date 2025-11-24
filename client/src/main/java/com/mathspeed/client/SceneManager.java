@@ -25,7 +25,7 @@ public class SceneManager {
     @Setter
     private Stage primaryStage;
     private Player currentPlayer;
-    public enum Screen { DASHBOARD, LIBRARY, FRIENDS, PROFILE, LEADERBOARD, LOGIN, REGISTER, SPLASH, GAMEPLAY }
+    public enum Screen { DASHBOARD, LIBRARY, FRIENDS, PROFILE, LEADERBOARD, LOGIN, REGISTER, SPLASH, GAMEPLAY,POLICY }
     @Getter
     private Screen currentScreen;
     private EnumMap<Screen, Parent> viewCache = new EnumMap<>(Screen.class);

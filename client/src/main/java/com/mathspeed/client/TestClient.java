@@ -83,6 +83,9 @@ public class TestClient extends Application {
                                         if (jo.has("display_name")) {
                                             try { localPlayer.setDisplayName(jo.get("display_name").getAsString()); } catch (Exception ignored) {}
                                         }
+                                        if (jo.has("avatar_url")) {
+                                            try { localPlayer.setAvatarUrl(jo.get("avatar_url").getAsString()); } catch (Exception ignored) {}
+                                        }
                                         if (localPlayer.getDisplayName() == null || localPlayer.getDisplayName().isEmpty()) localPlayer.setDisplayName(localPlayer.getUsername());
 
                                         System.out.println("Parsed LOGIN_SUCCESS: id=" + localPlayer.getId() + " username=" + localPlayer.getUsername() + " display_name=" + localPlayer.getDisplayName());
@@ -91,6 +94,7 @@ public class TestClient extends Application {
                                         if (gameController != null) {
                                             try {
                                                 gameController.setPlayerUsername(localPlayer.getUsername());
+                                                gameController.setPlayerAvatarUrl(localPlayer.getAvatarUrl());
                                                 // try to set the private playerDisplayName and call updatePlayerNames() via reflection
                                                 try {
                                                     Field fld = gameController.getClass().getDeclaredField("playerDisplayName");
@@ -200,7 +204,7 @@ public class TestClient extends Application {
     private void switchToGameplay() throws Exception {
         System.out.println("Switching to gameplay UI...");
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/pages/gameplay.fxml"));
-        Scene s = new Scene(loader.load(), 800, 620);
+        Scene s = new Scene(loader.load(), 800, 650);
         primaryStage.setScene(s);
         primaryStage.show();
         gameController = loader.getController();

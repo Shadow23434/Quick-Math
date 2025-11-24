@@ -155,7 +155,10 @@ public class Player {
         return "{"
                 + "\"id\":" + id + ","
                 + "\"username\":\"" + username + "\","
-                + "\"display_name\":" + displayName
+                + "\"display_name\":" + displayName + "\","
+                + "\"avatar_url\":\"" + avatarUrl + "\","
+                + "\"gender\":\"" + gender + "\","
+                + "\"country_code\":\"" + countryCode
                 + "}";
     }
 }

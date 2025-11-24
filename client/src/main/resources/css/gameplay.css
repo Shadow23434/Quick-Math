@@ -11,6 +11,10 @@
     -fx-border-width: 0 0 1 0;
 }
 
+.avatar-image {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 4, 0.2, 0, 2);
+}
+
 .score-container {
     -fx-spacing: 5;
 }
