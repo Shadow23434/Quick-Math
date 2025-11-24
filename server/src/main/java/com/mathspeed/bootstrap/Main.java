@@ -1,5 +1,8 @@
 package com.mathspeed.bootstrap;
 
+import com.mathspeed.adapter.network.*;
+import com.mathspeed.domain.port.*;
+import com.mathspeed.infrastructure.persistence.*;
 import com.mathspeed.adapter.network.library.LibraryHandler;
 import com.mathspeed.application.library.LibraryService;
 import com.mathspeed.domain.port.GameHistoryRepository;
@@ -56,6 +59,10 @@ public class Main {
             httpServer.createContext("/api/friends/", new FriendHandler(friendService));
             httpServer.createContext("/api/library", new LibraryHandler(authService, libraryService));
             httpServer.createContext("/api/stats", new StatsHandler(authService, quizRepository, gameHistoryRepository));
+
+             LeaderboardRepository leaderboardRepository = new LeaderboardDAOImpl();
+            httpServer.createContext("/api/leaderboard", new LeaderboardHandler(leaderboardRepository));
+            
             httpServer.start();
         } catch (Exception e) {
             System.err.println("Failed to start shared HTTP server: " + e.getMessage());
