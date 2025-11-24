@@ -107,6 +107,11 @@ public class AuthService {
         }
     }
 
+    public Player getPlayerById(String id) throws Exception {
+        if (id == null || id.isEmpty()) return null;
+        return playerRepository.getPlayerById(id);
+    }
+
     public static class AuthResult {
         public final boolean success;
         public final String token;

@@ -1,9 +1,13 @@
 package com.mathspeed.bootstrap;
 
+import com.mathspeed.adapter.network.library.LibraryHandler;
+import com.mathspeed.application.library.LibraryService;
 import com.mathspeed.domain.port.GameRepository;
 import com.mathspeed.domain.port.PlayerRepository;
+import com.mathspeed.domain.port.QuizzRepository;
 import com.mathspeed.infrastructure.persistence.GameDAOImpl;
 import com.mathspeed.infrastructure.persistence.PlayerDAOImpl;
+import com.mathspeed.infrastructure.persistence.QuizDAOImpl;
 import com.mathspeed.adapter.network.ClientRegistry;
 import com.mathspeed.application.game.ChallengeManager;
 import com.mathspeed.application.game.GameSessionManager;
@@ -28,7 +32,9 @@ public class Main {
         logger.info("Server setup complete!");
 
         PlayerRepository playerRepository = new PlayerDAOImpl();
+        QuizzRepository quizRepository = new QuizDAOImpl();
         GameRepository gameRepository = new GameDAOImpl();
+
         ClientRegistry clientRegistry = new ClientRegistry(playerRepository);
         GameSessionManager sessionManager = new GameSessionManager(clientRegistry, gameRepository);
         Matchmaker matchmaker = new Matchmaker(clientRegistry, sessionManager);
@@ -39,10 +45,12 @@ public class Main {
         HttpServer httpServer = new HttpServer(HTTP_PORT);
         AuthService authService = new AuthService(playerRepository);
         FriendService friendService = new FriendService(playerRepository);
+        LibraryService libraryService = new LibraryService(quizRepository);
         try {
             httpServer.createContext("/api/health", new HealthHandler());
             httpServer.createContext("/api/auth", new AuthHandler(authService));
             httpServer.createContext("/api/friends/", new FriendHandler(friendService));
+            httpServer.createContext("/api/library", new LibraryHandler(authService, libraryService));
             httpServer.start();
         } catch (Exception e) {
             System.err.println("Failed to start shared HTTP server: " + e.getMessage());

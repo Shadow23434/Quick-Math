@@ -1,5 +1,6 @@
 package com.mathspeed.controller;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -12,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import com.mathspeed.model.Player;
 import com.mathspeed.service.FriendService;
 import com.mathspeed.client.SessionManager;
+import com.mathspeed.common.ErrorComponents;
 
 public class FriendsController {
     private static final Logger logger = LoggerFactory.getLogger(FriendsController.class);
@@ -22,6 +24,7 @@ public class FriendsController {
     @FXML private Button requestsBtn;
     @FXML private TextField searchField;
     @FXML private FlowPane friendsContainer;
+    private VBox emptyPlaceholderNode = null;
     private String currentFilter = "all";
     private final FriendService friendService = new FriendService();
     private Player currentPlayer;
@@ -107,10 +110,9 @@ public class FriendsController {
             javafx.application.Platform.runLater(() -> {
                 friendsContainer.getChildren().clear();
                 if (list == null || list.isEmpty()) {
-                    Label empty = new Label("No friends yet");
-                    empty.getStyleClass().add("muted-label");
-                    friendsContainer.getChildren().add(empty);
+                    showEmptyPlaceholder("No friends yet");
                 } else {
+                    hideEmptyPlaceholder();
                     for (Player f : list) {
                         addFriendCard(f);
                     }
@@ -133,13 +135,13 @@ public class FriendsController {
         if (loadingIndicator != null) loadingIndicator.setVisible(true);
 
         friendService.getOnlineFriends(currentPlayer.getId()).thenAccept(list -> {
-            javafx.application.Platform.runLater(() -> {
+            Platform.runLater(() -> {
                 friendsContainer.getChildren().clear();
                 if (list == null || list.isEmpty()) {
-                    Label empty = new Label("No online friends");
-                    empty.getStyleClass().add("muted-label");
-                    friendsContainer.getChildren().add(empty);
+                    System.out.println("No online friends found");
+                    showEmptyPlaceholder("No online friends");
                 } else {
+                    hideEmptyPlaceholder();
                     for (Player f : list) {
                         addFriendCard(f);
                     }
@@ -197,7 +199,20 @@ public class FriendsController {
 
             ImageView avatarImg;
             if (avatarUrl == null || avatarUrl.isBlank()) {
-                avatarImg = new ImageView(new Image(getClass().getResourceAsStream("/images/logo.png")));
+                // Load default packaged image safely (avoid passing null InputStream to Image)
+                java.io.InputStream in = getClass().getResourceAsStream("/images/logo.png");
+                if (in != null) {
+                    avatarImg = new ImageView(new Image(in));
+                } else {
+                    // Fallback to resource URL if stream isn't available
+                    java.net.URL res = getClass().getResource("/images/logo.png");
+                    if (res != null) {
+                        avatarImg = new ImageView(new Image(res.toExternalForm(), true));
+                    } else {
+                        // As a last resort, create an empty ImageView (UI will show nothing)
+                        avatarImg = new ImageView();
+                    }
+                }
             } else {
                 avatarImg = new ImageView(new Image(avatarUrl, true));
             }
@@ -292,6 +307,28 @@ public class FriendsController {
         }
     }
 
+    private void showEmptyPlaceholder(String message) {
+        if (friendsContainer == null) return;
+        friendsContainer.getChildren().clear();
+
+        VBox placeholder = ErrorComponents.createEmptyPlaceholder("/images/absolute_math.png");
+        emptyPlaceholderNode = placeholder;
+        friendsContainer.setVisible(true);
+        friendsContainer.setManaged(true);
+        friendsContainer.getChildren().setAll(placeholder);
+    }
+
+    private void hideEmptyPlaceholder() {
+        if (friendsContainer == null) return;
+        if (emptyPlaceholderNode != null) {
+            friendsContainer.getChildren().remove(emptyPlaceholderNode);
+        }
+        emptyPlaceholderNode = null;
+        friendsContainer.setAlignment(Pos.CENTER);
+        friendsContainer.setVisible(true);
+        friendsContainer.setManaged(true);
+    }
+
     private void handleChallengeFriend(String friendName) {
         logger.info("Challenge friend: {}", friendName);
     }
@@ -333,10 +370,9 @@ public class FriendsController {
             javafx.application.Platform.runLater(() -> {
                 friendsContainer.getChildren().clear();
                 if (list == null || list.isEmpty()) {
-                    Label empty = new Label("No friends yet");
-                    empty.getStyleClass().add("muted-label");
-                    friendsContainer.getChildren().add(empty);
+                    showEmptyPlaceholder("No friends yet");
                 } else {
+                    hideEmptyPlaceholder();
                     for (Player f : list) {
                         addFriendCard(f);
                     }
@@ -355,14 +391,6 @@ public class FriendsController {
     }
 
     private void showAlert(String title, String message) {
-        try {
-            Alert a = new Alert(Alert.AlertType.ERROR);
-            a.setTitle(title);
-            a.setHeaderText(null);
-            a.setContentText(message != null ? message : "Unknown error");
-            a.showAndWait();
-        } catch (Exception e) {
-            logger.error("Failed to show alert: {} - {}", title, message, e);
-        }
+        ErrorComponents.showErrorAlert(title, message);
     }
 }

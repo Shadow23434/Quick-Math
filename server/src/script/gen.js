@@ -22,7 +22,7 @@ function hashPasswordSync(password) {
 }
 
 const OUT = path.resolve(__dirname, 'demo_data.sql');
-const PLAYER_COUNT = 10;
+const PLAYER_COUNT = 20;
 const MATCH_COUNT = 5;
 const DEFAULT_AVATAR = 'https://tse1.mm.bing.net/th/id/OIP.pLa0MvBoBWBLYBwKtdbLhQAAAA?rs=1&pid=ImgDetMain&o=7&rm=3';
 
@@ -189,6 +189,35 @@ for (let i = 1; i <= PLAYER_COUNT; i++) {
     players.push({ id, username, display_name: fullName, password_hash, gender, avatar_url, country_code, created_at, status, last_active_at });
 }
 
+// Build quizzes : create 0..3 quizzes per player, ensure player_id references an existing player
+const QUIZ_MAX_PER_PLAYER = 2;
+const QUIZ_PROBABILITY = 0.5; // chance a player has at least one quiz
+const quizLevels = ['easy', 'medium', 'hard'];
+
+function randTimestampBetween(earlierSqlDate, later = new Date()) {
+    const start = new Date(earlierSqlDate);
+    const end = new Date(later);
+    if (isNaN(start.getTime())) return nowSql(new Date());
+    if (start.getTime() >= end.getTime()) return nowSql(start);
+    const t = randInt(start.getTime(), end.getTime());
+    return nowSql(new Date(t));
+}
+
+const quizzes = [];
+for (const p of players) {
+    if (Math.random() > QUIZ_PROBABILITY) continue;
+    const count = randInt(1, QUIZ_MAX_PER_PLAYER);
+    for (let i = 1; i <= count; i++) {
+        const id = uuid();
+        const title = `${p.display_name} Quiz ${i}`;
+        const question_number = randInt(5, 20);
+        const level = randomFrom(quizLevels);
+        // created_at between player's created_at and now (keeps logical ordering)
+        const created_at = randTimestampBetween(p.created_at);
+        quizzes.push({ id, title, question_number, player_id: p.id, level, created_at });
+    }
+}
+
 // Build matches: force all matches to be "finished" with logical start/end times
 const matches = [];
 for (let m = 0; m < MATCH_COUNT; m++) {
@@ -280,6 +309,11 @@ for (const p of players) {
     const lastActive = p.last_active_at ? `'${esc(p.last_active_at)}'` : 'NULL';
     const statusVal = esc(p.status || 'offline');
     sql += `INSERT INTO players (id, username, display_name, password_hash, gender, avatar_url, country_code, created_at, status, last_active_at) VALUES ('${esc(p.id)}', '${esc(p.username)}', '${esc(p.display_name)}', '${esc(p.password_hash)}', '${esc(p.gender)}', '${esc(p.avatar_url)}', '${esc(p.country_code)}', '${esc(p.created_at)}', '${statusVal}', ${lastActive});\n`;
+}
+// Quizzes
+sql += "\n-- Quizzes\n";
+for (const q of quizzes) {
+    sql += `INSERT INTO quizzes (id, title, question_number, player_id, level, created_at) VALUES ('${sqlEscape(q.id)}','${sqlEscape(q.title)}',${q.question_number},'${sqlEscape(q.player_id)}','${sqlEscape(q.level)}','${sqlEscape(q.created_at)}');\n`;
 }
 sql += "\n-- Matches\n";
 for (const m of matches) {

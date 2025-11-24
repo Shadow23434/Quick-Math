@@ -7,7 +7,6 @@ import com.mathspeed.util.UuidUtil;
 @Entity
 @Table(name = "players")
 public class Player {
-
     @Id
     @Column(name = "id", length = 36, nullable = false, updatable = false)
     private String id;

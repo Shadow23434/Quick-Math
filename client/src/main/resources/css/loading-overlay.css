@@ -12,3 +12,27 @@
     -fx-pref-height: 100%;
 }
 
+    /* ProgressIndicator spinner style class */
+.progress-indicator.loading-spinner, .loading-spinner {
+    /* Determinate color */
+    -fx-progress-color: #725bf5;
+    -fx-pref-width: 48px;
+    -fx-pref-height: 48px;
+}
+
+/* Target the indeterminate circular spinner parts (arcs/ring) used by many JavaFX skins */
+.loading-overlay .progress-indicator.loading-spinner .spinner .arc,
+.loading-overlay .progress-indicator.loading-spinner .spinner .ring,
+.loading-overlay .loading-spinner .spinner .arc,
+.loading-overlay .loading-spinner .spinner .ring,
+.progress-indicator.loading-spinner .spinner .arc,
+.progress-indicator.loading-spinner .spinner .ring {
+    -fx-stroke: #725bf5;
+    -fx-fill: transparent;
+}
+
+/* Fallback: ensure spinner background isn't overriding the stroke */
+.progress-indicator.loading-spinner .spinner,
+.loading-spinner .spinner {
+    -fx-background-color: transparent;
+}

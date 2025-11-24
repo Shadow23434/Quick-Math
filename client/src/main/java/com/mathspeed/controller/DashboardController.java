@@ -4,6 +4,7 @@ import com.mathspeed.client.SessionManager;
 import com.mathspeed.common.HorizontalCarousel;
 import com.mathspeed.model.Player;
 import com.mathspeed.service.FriendService;
+import com.mathspeed.service.LibraryService;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.StackPane;
@@ -36,30 +37,69 @@ public class DashboardController {
         quizCarousel = new HorizontalCarousel();
         quizCarousel.setSpacing(15);
 
-        quizCarousel.addQuizCard(
-            "quiz-card-yellow",
-            getClass().getResource("/images/map.png").toExternalForm(),
-            6,
-            "Walk Around the World with Geography Quiz",
-            "Dewayne Jaden",
-            "https://i.pravatar.cc/150?img=13"
-        );
-        quizCarousel.addQuizCard(
-            "quiz-card-cyan",
-            getClass().getResource("/images/image.png").toExternalForm(),
-            8,
-            "How smart are you? Prove your Knowledge",
-            "Katie Madeline",
-            "https://i.pravatar.cc/150?img=16"
-        );
-        quizCarousel.addQuizCard(
-            "quiz-card-purple",
-            getClass().getResource("/images/ruby.png").toExternalForm(),
-            10,
-            "Brain Teaser Challenge for Geniuses",
-            "John Doe",
-            "https://i.pravatar.cc/150?img=15"
-        );
+        LibraryService libraryService = new LibraryService();
+        libraryService.getAllQuizzes()
+                .exceptionally(t -> {
+                    logger.error("Failed to load quizzes for dashboard carousel", t);
+                    return java.util.Collections.emptyList();
+                })
+                .thenAccept(list -> javafx.application.Platform.runLater(() -> {
+                    if (list == null || list.isEmpty()) {
+                        try {
+                            quizCarousel.addQuizCard("quiz-card-yellow", getClass().getResource("/images/map.png").toExternalForm(), 6,
+                                    "Walk Around the World with Geography Quiz", "Dewayne Jaden", "https://i.pravatar.cc/150?img=13");
+                            quizCarousel.addQuizCard("quiz-card-cyan", getClass().getResource("/images/image.png").toExternalForm(), 8,
+                                    "How smart are you? Prove your Knowledge", "Katie Madeline", "https://i.pravatar.cc/150?img=16");
+                        } catch (Exception e) {
+                            logger.warn("Failed to add default quiz cards to carousel", e);
+                        }
+                        return;
+                    }
+
+                    for (com.mathspeed.model.Quiz q : list) {
+                        String level = q.getLevel();
+                        String theme;
+                        if (level != null) {
+                            switch (level.toLowerCase()) {
+                                case "easy" -> theme = "quiz-card-cyan";
+                                case "medium" -> theme = "quiz-card-yellow";
+                                case "hard" -> theme = "quiz-card-purple";
+                                default -> theme = "quiz-card-cyan";
+                            }
+                        } else {
+                            theme = "quiz-card-cyan";
+                        }
+
+                        String imagePath;
+                        try {
+                            switch (level == null ? "" : level.toLowerCase()) {
+                                case "easy" -> imagePath = getClass().getResource("/images/image.png").toExternalForm();
+                                case "medium" -> imagePath = getClass().getResource("/images/map.png").toExternalForm();
+                                case "hard" -> imagePath = getClass().getResource("/images/ruby.png").toExternalForm();
+                                default -> imagePath = getClass().getResource("/images/map.png").toExternalForm();
+                            }
+                        } catch (Exception e) {
+                            imagePath = getClass().getResource("/images/map.png").toExternalForm();
+                        }
+
+                        int questionCount = q.getQuestionNumber();
+                        String title = q.getTitle() == null ? "Untitled Quiz" : q.getTitle();
+                        String authorName = "Unknown";
+                        String authorAvatar = getClass().getResource("/images/logo.png").toExternalForm();
+                        if (q.getPlayer() != null) {
+                            if (q.getPlayer().getDisplayName() != null && !q.getPlayer().getDisplayName().isBlank()) {
+                                authorName = q.getPlayer().getDisplayName();
+                            } else if (q.getPlayer().getUsername() != null) {
+                                authorName = q.getPlayer().getUsername();
+                            }
+                            if (q.getPlayer().getAvatarUrl() != null && !q.getPlayer().getAvatarUrl().isBlank()) {
+                                authorAvatar = q.getPlayer().getAvatarUrl();
+                            }
+                        }
+
+                        quizCarousel.addQuizCard(theme, imagePath, questionCount, title, authorName, authorAvatar);
+                    }
+                }));
 
         quizCarouselPane.getChildren().add(quizCarousel);
 

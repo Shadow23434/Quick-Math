@@ -170,7 +170,13 @@ public class SceneManager {
     }
 
     public void initShell(Stage stage, Player currentPlayer, Runnable onFullyReady) {
-        this.primaryStage = stage;
+        Stage usedStage = (stage != null) ? stage : this.primaryStage;
+        if (usedStage == null) {
+            logger.error("initShell called without a Stage; cannot initialize shell");
+            return;
+        }
+        this.primaryStage = usedStage;
+
         if (shellActive) {
             navigate(Screen.DASHBOARD);
             if (onFullyReady != null) onFullyReady.run();
@@ -208,16 +214,16 @@ public class SceneManager {
             Scene scene = new Scene(root, WindowConfig.DEFAULT_WIDTH, WindowConfig.DEFAULT_HEIGHT);
             scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/theme.css", SceneManager.class));
             scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/dashboard.css", SceneManager.class));
-            stage.setTitle("Math Speed Game");
-            stage.setScene(scene);
+            usedStage.setTitle("Math Speed Game");
+            usedStage.setScene(scene);
             // Allow shell to be resizable
-            stage.setResizable(true);
-            stage.setMinWidth(WindowConfig.MIN_WIDTH);
-            stage.setMinHeight(WindowConfig.MIN_HEIGHT);
+            usedStage.setResizable(true);
+            usedStage.setMinWidth(WindowConfig.MIN_WIDTH);
+            usedStage.setMinHeight(WindowConfig.MIN_HEIGHT);
 
             // Toggle maximize behavior to apply a fixed desktop size (DESKTOP_WIDTH x DESKTOP_HEIGHT)
             // and allow restoring previous bounds when toggled again.
-            stage.maximizedProperty().addListener((obs, wasMax, isNowMax) -> {
+            usedStage.maximizedProperty().addListener((obs, wasMax, isNowMax) -> {
                 if (isNowMax) {
                     Rectangle2D vb = javafx.stage.Screen.getPrimary().getVisualBounds();
                     double targetW = WindowConfig.DESKTOP_WIDTH;
@@ -231,26 +237,26 @@ public class SceneManager {
                     if (!usingDesktopSize) {
                         // Save current bounds for restore
                         try {
-                            prevX = stage.getX(); prevY = stage.getY();
-                            prevWidth = stage.getWidth(); prevHeight = stage.getHeight();
+                            prevX = usedStage.getX(); prevY = usedStage.getY();
+                            prevWidth = usedStage.getWidth(); prevHeight = usedStage.getHeight();
                             hasPrevBounds = true;
                         } catch (Exception ignored) { hasPrevBounds = false; }
 
                         // Apply desktop size centered on visual bounds
-                        stage.setMaximized(false);
-                        stage.setWidth(targetW);
-                        stage.setHeight(targetH);
-                        stage.setX(targetX);
-                        stage.setY(targetY);
+                        usedStage.setMaximized(false);
+                        usedStage.setWidth(targetW);
+                        usedStage.setHeight(targetH);
+                        usedStage.setX(targetX);
+                        usedStage.setY(targetY);
                         usingDesktopSize = true;
                     } else {
                         // Restore previous bounds if available
                         if (hasPrevBounds) {
-                            stage.setMaximized(false);
-                            stage.setWidth(prevWidth);
-                            stage.setHeight(prevHeight);
-                            stage.setX(prevX);
-                            stage.setY(prevY);
+                            usedStage.setMaximized(false);
+                            usedStage.setWidth(prevWidth);
+                            usedStage.setHeight(prevHeight);
+                            usedStage.setX(prevX);
+                            usedStage.setY(prevY);
                         }
                         usingDesktopSize = false;
                     }
@@ -261,13 +267,13 @@ public class SceneManager {
                 shellController.getFirstScreenReady().whenComplete((v, ex) -> {
                     Platform.runLater(() -> {
                         if (ex == null) {
-                            if (!stage.isMaximized()) stage.sizeToScene();
-                            stage.show();
+                            if (!usedStage.isMaximized()) usedStage.sizeToScene();
+                            usedStage.show();
                              if (onFullyReady != null) onFullyReady.run();
                         } else {
                             logger.error("Shell failed to become ready", ex);
-                            if (!stage.isMaximized()) stage.sizeToScene();
-                            stage.show();
+                            if (!usedStage.isMaximized()) usedStage.sizeToScene();
+                            usedStage.show();
                         }
                     });
                 });

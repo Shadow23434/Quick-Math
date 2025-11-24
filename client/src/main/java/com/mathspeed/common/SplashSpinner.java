@@ -39,4 +39,12 @@ public class SplashSpinner extends Region {
         gc.setLineCap(javafx.scene.shape.StrokeLineCap.ROUND);
         gc.strokeArc(strokeWidth, strokeWidth, size - 2 * strokeWidth, size - 2 * strokeWidth, angle, 270, javafx.scene.shape.ArcType.OPEN);
     }
+
+    // Stop the animation timeline; call when spinner is no longer needed
+    public void stop() {
+        try {
+            timeline.stop();
+        } catch (Exception ignored) {
+        }
+    }
 }

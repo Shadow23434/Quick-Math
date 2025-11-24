@@ -31,3 +31,8 @@
 .progress-indicator:indeterminate .spinner {
     -fx-background-color: transparent;
 }
+
+/* Ensure the loading overlay spinner uses the app accent color */
+.progress-indicator.loading-spinner, .loading-spinner {
+    -fx-progress-color: #725bf5; /* match requested color */
+}

@@ -36,7 +36,7 @@
                         </padding>
                         <left>
                             <VBox alignment="CENTER" spacing="10">
-                                <Label text="My Quiz" styleClass="stat-label"/>
+                                <Label text="Total Quizzes" styleClass="stat-label"/>
                                 <HBox alignment="CENTER_LEFT" spacing="10">
                                     <StackPane styleClass="stat-icon-bg">
                                         <FontIcon iconLiteral="fas-clipboard-list" styleClass="stat-icon"/>
@@ -117,8 +117,6 @@
 
                     <!-- Quiz Carousel - Centered in viewport -->
                     <StackPane fx:id="quizCarouselPane"
-                               prefHeight="200"
-                               alignment="CENTER"
                                style="-fx-background-color: transparent;"/>
                 </VBox>
 

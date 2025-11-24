@@ -9,6 +9,7 @@ public interface PlayerRepository {
     boolean checkPassword(String plain, String hashed) throws Exception;
     Player findPlayer(String username, String password) throws Exception;
     void updateStatus(String username, String status) throws Exception;
+    Player getPlayerById(String id) throws Exception;
     boolean existsByUsername(String username) throws Exception;
     boolean existsById(String id) throws Exception;
     List<Player> searchPlayers(String keyword, String excludePlayerId) throws Exception;

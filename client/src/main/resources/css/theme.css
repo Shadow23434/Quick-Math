@@ -462,3 +462,72 @@
     -fx-fill: -primary-color;
     -fx-text-fill: -primary-color;
 }
+
+/* Level badge for quiz cards */
+.level-badge {
+    -fx-font-family: "Roboto Medium";
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 4 8 4 8;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-alignment: center;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 4, 0, 0, 1);
+    -fx-min-width: 52px;
+    -fx-translate-y: 0; /* ensure it's positioned by StackPane margins */
+}
+
+.level-easy {
+    /* cyan-ish */
+    -fx-background-color: #19c2de;
+    -fx-text-fill: white;
+    -fx-border-color: rgba(255,255,255,0.12);
+}
+
+.level-medium {
+    /* yellow/orange for medium */
+    -fx-background-color: #ffb400;
+    -fx-text-fill: white;
+    -fx-border-color: rgba(255,255,255,0.12);
+}
+
+.level-hard {
+    /* purple */
+    -fx-background-color: #7a62ff;
+    -fx-text-fill: white;
+    -fx-border-color: rgba(255,255,255,0.12);
+}
+
+/* Small adjustment so level badge text doesn't wrap */
+.level-badge .label {
+    -fx-wrap-text: false;
+}
+
+/* Faded placeholder styles for loading state */
+.loading-overlay {
+    -fx-padding: 12 0;
+}
+
+.quiz-card-faded {
+    -fx-background-color: rgba(0,0,0,0.04);
+    -fx-background-radius: 8;
+    -fx-padding: 10;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 8, 0, 0, 2);
+    -fx-cursor: default;
+}
+
+.quiz-card-icon-faded {
+    -fx-background-color: rgba(0,0,0,0.08);
+    -fx-background-radius: 8;
+}
+
+.avatar-faded {
+    -fx-background-color: rgba(0,0,0,0.08);
+    -fx-background-radius: 12;
+}
+
+.line-faded {
+    -fx-background-color: rgba(0,0,0,0.10);
+    -fx-background-radius: 4;
+}

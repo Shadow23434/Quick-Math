@@ -277,7 +277,6 @@ public class HorizontalCarousel extends StackPane {
         authorLabel.getStyleClass().add("author-name");
         authorBox.getChildren().addAll(avatarPane, authorLabel);
         quizInfo.getChildren().addAll(quizTitle, authorBox);
-
         quizCard.getChildren().addAll(cardStack, quizInfo);
         container.getChildren().add(quizCard);
         Platform.runLater(() -> {
@@ -286,37 +285,6 @@ public class HorizontalCarousel extends StackPane {
         });
     }
 
-    public void addFriendsCard(String name, String avatarUrl) {
-        VBox card = new VBox(8);
-        card.setAlignment(Pos.CENTER);
-        card.getStyleClass().add("friend-card");
-
-        // Avatar
-        StackPane avatarPane = new StackPane();
-        avatarPane.getStyleClass().add("friend-avatar");
-        ImageView avatarImg = new ImageView(new javafx.scene.image.Image(avatarUrl));
-        avatarImg.setFitWidth(56);
-        avatarImg.setFitHeight(56);
-        avatarImg.getStyleClass().add("avatar-image");
-        javafx.scene.shape.Circle avatarClip = new javafx.scene.shape.Circle(28, 28, 28);
-        avatarImg.setClip(avatarClip);
-        avatarPane.getChildren().add(avatarImg);
-
-        // Name
-        Label nameLabel = new Label(name);
-        nameLabel.getStyleClass().add("friend-name");
-
-        // Challenge button
-        Button challengeBtn = new Button("Challenge");
-        challengeBtn.getStyleClass().add("primary-button");
-        challengeBtn.setMaxWidth(90);
-
-        card.getChildren().addAll(avatarPane, nameLabel, challengeBtn);
-        container.getChildren().add(card);
-        Platform.runLater(this::updateNavButtonVisibility);
-    }
-
-    // New overload to accept Player and render status + label + disable logic
     public void addFriendsCard(Player player) {
         String name = player.getDisplayName() != null && !player.getDisplayName().isBlank() ? player.getDisplayName() : player.getUsername();
         String avatarUrl = player.getAvatarUrl() != null ? player.getAvatarUrl() : "";

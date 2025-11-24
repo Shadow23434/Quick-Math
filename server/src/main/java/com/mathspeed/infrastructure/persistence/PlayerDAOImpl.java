@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public class PlayerDAOImpl extends BaseDAO implements PlayerRepository {
-
     public PlayerDAOImpl() {
         super();
     }
@@ -112,6 +111,48 @@ public class PlayerDAOImpl extends BaseDAO implements PlayerRepository {
             stmt.setString(1, status);
             stmt.setString(2, username);
             stmt.executeUpdate();
+        }
+    }
+
+    @Override
+    public Player getPlayerById(String id) throws SQLException {
+        if (id == null) return null;
+        id = id.trim();
+        if (id.isEmpty()) return null;
+
+        String sql = "SELECT * FROM players WHERE id = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, id);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Player player = new Player();
+                    player.setId(rs.getString("id"));
+                    player.setUsername(rs.getString("username"));
+                    player.setDisplayName(rs.getString("display_name"));
+                    player.setPasswordHash(rs.getString("password_hash"));
+                    player.setGender(rs.getString("gender"));
+                    player.setAvatarUrl(rs.getString("avatar_url"));
+                    player.setStatus(rs.getString("status"));
+
+                    String country = rs.getString("country_code");
+                    if (country != null) player.setCountryCode(country);
+
+                    Timestamp lastActiveTs = rs.getTimestamp("last_active_at");
+                    if (lastActiveTs != null) {
+                        player.setLastActiveAt(lastActiveTs.toLocalDateTime());
+                    }
+
+                    Timestamp ts = rs.getTimestamp("created_at");
+                    if (ts != null) {
+                        player.setCreatedAt(ts.toLocalDateTime());
+                    }
+                    return player;
+                }
+                return null;
+            }
         }
     }
 

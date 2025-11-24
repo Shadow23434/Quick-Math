@@ -9,9 +9,9 @@
     <children>
         <Region style="-fx-background-color: rgba(0,0,0,0.55);"/>
         <VBox alignment="CENTER" spacing="10" maxWidth="400" maxHeight="200">
-            <ProgressIndicator prefWidth="48" prefHeight="48" />
+            <!-- Use a CSS class so color is set from stylesheet -->
+            <ProgressIndicator styleClass="loading-spinner" prefWidth="48" prefHeight="48" />
             <Label fx:id="loadingMessage" text="Loading..." styleClass="loading-message" />
         </VBox>
     </children>
 </StackPane>
-
