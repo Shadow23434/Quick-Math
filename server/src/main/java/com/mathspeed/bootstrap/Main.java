@@ -2,6 +2,7 @@ package com.mathspeed.bootstrap;
 
 import com.mathspeed.adapter.network.library.LibraryHandler;
 import com.mathspeed.application.library.LibraryService;
+import com.mathspeed.domain.port.GameHistoryRepository;
 import com.mathspeed.domain.port.GameRepository;
 import com.mathspeed.domain.port.PlayerRepository;
 import com.mathspeed.domain.port.QuizzRepository;
@@ -19,6 +20,8 @@ import com.mathspeed.adapter.network.HealthHandler;
 import com.mathspeed.application.auth.AuthService;
 import com.mathspeed.application.friend.FriendService;
 import com.mathspeed.adapter.network.friend.FriendHandler;
+import com.mathspeed.adapter.network.stat.StatsHandler;
+import com.mathspeed.infrastructure.persistence.GameHistoryDAOImpl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -34,6 +37,7 @@ public class Main {
         PlayerRepository playerRepository = new PlayerDAOImpl();
         QuizzRepository quizRepository = new QuizDAOImpl();
         GameRepository gameRepository = new GameDAOImpl();
+        GameHistoryRepository gameHistoryRepository = new GameHistoryDAOImpl();
 
         ClientRegistry clientRegistry = new ClientRegistry(playerRepository);
         GameSessionManager sessionManager = new GameSessionManager(clientRegistry, gameRepository);
@@ -51,6 +55,7 @@ public class Main {
             httpServer.createContext("/api/auth", new AuthHandler(authService));
             httpServer.createContext("/api/friends/", new FriendHandler(friendService));
             httpServer.createContext("/api/library", new LibraryHandler(authService, libraryService));
+            httpServer.createContext("/api/stats", new StatsHandler(authService, quizRepository, gameHistoryRepository));
             httpServer.start();
         } catch (Exception e) {
             System.err.println("Failed to start shared HTTP server: " + e.getMessage());

@@ -35,6 +35,25 @@ public class PlayerDAOImpl extends BaseDAO implements PlayerRepository {
     }
 
     @Override
+    public boolean changePassword(String username, String newPassword) throws Exception {
+        if (username == null || username.trim().isEmpty() || newPassword == null || newPassword.isEmpty()) {
+            return false;
+        }
+
+        String sql = "UPDATE players SET password_hash = ?, last_active_at = ? WHERE username = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, newPassword);
+            stmt.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now()));
+            stmt.setString(3, username.trim());
+
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+        }
+    }
+
+    @Override
     public boolean insertPlayer(Player player) throws SQLException {
         String sql = "INSERT INTO players (id, username, display_name, password_hash, gender, avatar_url, country_code, created_at, status, last_active_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
@@ -277,6 +296,20 @@ public class PlayerDAOImpl extends BaseDAO implements PlayerRepository {
 
         return players;
     }
+
+    @Override
+    public int getTotalPlayers() throws Exception {
+        String sql = "SELECT COUNT(*) AS total FROM players";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt("total");
+            }
+            return 0;
+        }
+    }
+
 
     @Override
     public List<Player> searchPlayers(String keyword, String excludePlayerId) throws Exception {

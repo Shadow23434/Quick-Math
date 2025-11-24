@@ -32,7 +32,7 @@ public class LoginController {
     @FXML private Label passwordHintLabel;
     @FXML private CheckBox rememberMeCheckBox;
     @FXML private Label checkIconLabel;
-    @FXML private Hyperlink forgotPasswordLink;
+    @FXML private Hyperlink changePasswordLink;
     @FXML private Label errorLabel;
     @FXML private Button loginButton;
     @FXML private Hyperlink registerButton;
@@ -382,8 +382,7 @@ public class LoginController {
     }
 
     @FXML
-    private void handleForgotPassword() {
-        // Implement forgot password logic
+    private void handleChangePassword() {
         System.out.println("Forgot password clicked");
     }
 

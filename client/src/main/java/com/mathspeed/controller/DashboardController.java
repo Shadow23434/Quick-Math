@@ -5,6 +5,8 @@ import com.mathspeed.common.HorizontalCarousel;
 import com.mathspeed.model.Player;
 import com.mathspeed.service.FriendService;
 import com.mathspeed.service.LibraryService;
+import com.mathspeed.service.StatService;
+import com.mathspeed.model.Stats;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.StackPane;
@@ -24,13 +26,39 @@ public class DashboardController {
     private HorizontalCarousel friendsCarousel;
     private Player currentPlayer;
 
+    @FXML private Label totalQuizzesLabel;
+    @FXML private Label gamesPlayedLabel;
+    @FXML private Label winsLabel;
+
+    private StatService statService;
+
     @FXML
     public void initialize() {
         currentPlayer = SessionManager.getInstance().getCurrentPlayer();
+        this.statService = new StatService();
         javafx.application.Platform.runLater(() -> {
             initializeQuizCarousel();
             initializeFriendsCarousel();
         });
+
+        // Load stats (do not block UI thread)
+        if (currentPlayer != null && currentPlayer.getId() != null) {
+            statService.getStats(currentPlayer.getId())
+                    .thenAccept(stats -> javafx.application.Platform.runLater(() -> updateStatsFrom(stats)))
+                    .exceptionally(ex -> {
+                        logger.error("Failed to load stats for dashboard: {}", ex.getMessage());
+                        javafx.application.Platform.runLater(() -> updateStatsFrom(null));
+                        return null;
+                    });
+        } else {
+            updateStatsFrom(null);
+        }
+    }
+
+    private void updateStatsFrom(Stats stats) {
+        if (totalQuizzesLabel != null) totalQuizzesLabel.setText(stats != null && stats.getTotalQuizzes() != null ? String.valueOf(stats.getTotalQuizzes()) : "0");
+        if (gamesPlayedLabel != null) gamesPlayedLabel.setText(stats != null && stats.getGamesPlayed() != null ? String.valueOf(stats.getGamesPlayed()) : "0");
+        if (winsLabel != null) winsLabel.setText(stats != null && stats.getWins() != null ? String.valueOf(stats.getWins()) : "0");
     }
 
     private void initializeQuizCarousel() {
@@ -47,9 +75,9 @@ public class DashboardController {
                     if (list == null || list.isEmpty()) {
                         try {
                             quizCarousel.addQuizCard("quiz-card-yellow", getClass().getResource("/images/map.png").toExternalForm(), 6,
-                                    "Walk Around the World with Geography Quiz", "Dewayne Jaden", "https://i.pravatar.cc/150?img=13");
+                                    "Walk Around the World with Geography Quiz", "Dewayne Jaden", "https://i.pravatar.cc/150?img=13", "medium");
                             quizCarousel.addQuizCard("quiz-card-cyan", getClass().getResource("/images/image.png").toExternalForm(), 8,
-                                    "How smart are you? Prove your Knowledge", "Katie Madeline", "https://i.pravatar.cc/150?img=16");
+                                    "How smart are you? Prove your Knowledge", "Katie Madeline", "https://i.pravatar.cc/150?img=16", "easy");
                         } catch (Exception e) {
                             logger.warn("Failed to add default quiz cards to carousel", e);
                         }
@@ -97,7 +125,7 @@ public class DashboardController {
                             }
                         }
 
-                        quizCarousel.addQuizCard(theme, imagePath, questionCount, title, authorName, authorAvatar);
+                        quizCarousel.addQuizCard(theme, imagePath, questionCount, title, authorName, authorAvatar, level);
                     }
                 }));
 

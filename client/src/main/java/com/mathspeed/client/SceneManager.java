@@ -23,7 +23,7 @@ public class SceneManager {
     @Setter
     private Stage primaryStage;
     private Player currentPlayer;
-    public enum Screen { DASHBOARD, LIBRARY, FRIENDS, PROFILE, LEADERBOARD, LOGIN, REGISTER, SPLASH }
+    public enum Screen { DASHBOARD, LIBRARY, FRIENDS, PROFILE, POLICY, LEADERBOARD, LOGIN, REGISTER, SPLASH }
     @Getter
     private Screen currentScreen;
     private EnumMap<Screen, Parent> viewCache = new EnumMap<>(Screen.class);
@@ -394,7 +394,7 @@ public class SceneManager {
 
     private String getCSSPathForScreen(Screen screen) {
         return switch (screen) {
-            case DASHBOARD, LIBRARY, FRIENDS, PROFILE, LEADERBOARD -> "src/main/resources/css/dashboard.css";
+            case DASHBOARD, LIBRARY, FRIENDS, PROFILE, LEADERBOARD, POLICY -> "src/main/resources/css/dashboard.css";
             case LOGIN -> "src/main/resources/css/login.css";
             case REGISTER -> "src/main/resources/css/register.css";
             case SPLASH -> "src/main/resources/css/splash.css";
@@ -407,6 +407,7 @@ public class SceneManager {
             case LIBRARY -> "src/main/resources/fxml/pages/library.fxml";
             case FRIENDS -> "src/main/resources/fxml/pages/friends.fxml";
             case PROFILE -> "src/main/resources/fxml/pages/profile.fxml";
+            case POLICY -> "src/main/resources/fxml/pages/policy.fxml";
             case LEADERBOARD -> "src/main/resources/fxml/pages/leaderboard.fxml";
             case LOGIN -> "src/main/resources/fxml/pages/login.fxml";
             case REGISTER -> "src/main/resources/fxml/pages/register.fxml";

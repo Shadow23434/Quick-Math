@@ -29,15 +29,6 @@
                         <FontIcon iconLiteral="fas-bell" styleClass="header-icon"/>
                     </graphic>
                 </Button>
-
-                <Button fx:id="reloadButton"
-                        text="🔄"
-                        onAction="#handleReload"
-                        styleClass="icon-button">
-                    <tooltip>
-                        <Tooltip text="Reload (F5)"/>
-                    </tooltip>
-                </Button>
             </HBox>
         </right>
     </BorderPane>

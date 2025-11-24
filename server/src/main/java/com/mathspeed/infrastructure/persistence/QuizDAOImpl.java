@@ -11,6 +11,21 @@ public class QuizDAOImpl extends BaseDAO implements QuizzRepository {
     public QuizDAOImpl() {super();}
 
     @Override
+    public int getQuizCount() {
+        String sql = "SELECT COUNT(*) AS total FROM quizzes";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt("total");
+            }
+            return 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error fetching quiz count", e);
+        }
+    }
+
+    @Override
     public List<Quiz> getAllQuizzes() {
         String sql = "SELECT * FROM quizzes ORDER BY created_at DESC";
         List<Quiz> quizzes = new ArrayList<>();

@@ -285,6 +285,91 @@ public class HorizontalCarousel extends StackPane {
         });
     }
 
+    // New overload that supports a level badge (e.g., Easy/Medium/Hard)
+    public void addQuizCard(String themeClass, String imagePath, int questionCount, String title, String authorName, String authorAvatarUrl, String level) {
+        VBox quizCard = new VBox();
+        quizCard.getStyleClass().addAll("quiz-card", themeClass);
+        quizCard.setSpacing(0);
+        quizCard.setMinWidth(280);
+        quizCard.setPrefWidth(280);
+        quizCard.setMaxWidth(280);
+
+        // Card Background with Icon
+        VBox iconBox = new VBox();
+        iconBox.setAlignment(Pos.CENTER);
+        ImageView quizIcon = new ImageView(new Image(imagePath));
+        quizIcon.setFitWidth(120);
+        quizIcon.setFitHeight(120);
+        quizIcon.getStyleClass().add("quiz-card-icon");
+        iconBox.getChildren().add(quizIcon);
+        StackPane.setAlignment(iconBox, Pos.CENTER);
+
+        // Question Count Badge
+        HBox badge = new HBox(5);
+        badge.setAlignment(Pos.CENTER);
+        badge.getStyleClass().add("question-badge");
+        FontIcon badgeIcon = new FontIcon("fas-file-alt");
+        badgeIcon.getStyleClass().add("badge-icon");
+        Label badgeText = new Label(String.valueOf(questionCount));
+        badgeText.getStyleClass().add("badge-text");
+        badge.getChildren().addAll(badgeIcon, badgeText);
+        StackPane.setAlignment(badge, Pos.BOTTOM_RIGHT);
+        StackPane.setMargin(badge, new Insets(0, 10, 10, 0));
+
+        // Card StackPane
+        StackPane cardStack = new StackPane();
+        cardStack.getChildren().addAll(iconBox, badge);
+
+        // Level badge (e.g., Easy/Medium/Hard) - display top-left
+        if (level != null && !level.isBlank()) {
+            String lvl = level.substring(0, 1).toUpperCase() + level.substring(1).toLowerCase();
+            Label levelLabel = new Label(lvl);
+            levelLabel.getStyleClass().add("level-badge");
+            switch (level.toLowerCase()) {
+                case "easy" -> levelLabel.getStyleClass().add("level-easy");
+                case "medium" -> levelLabel.getStyleClass().add("level-medium");
+                case "hard" -> levelLabel.getStyleClass().add("level-hard");
+                default -> levelLabel.getStyleClass().add("level-medium");
+            }
+            cardStack.getChildren().add(levelLabel);
+            StackPane.setAlignment(levelLabel, Pos.TOP_LEFT);
+            StackPane.setMargin(levelLabel, new Insets(8, 0, 0, 8));
+        }
+
+        // Quiz Info
+        VBox quizInfo = new VBox(8);
+        quizInfo.getStyleClass().add("quiz-info");
+        Label quizTitle = new Label(title);
+        quizTitle.getStyleClass().add("quiz-title");
+        quizTitle.setWrapText(true);
+        HBox authorBox = new HBox(8);
+        authorBox.setAlignment(Pos.CENTER_LEFT);
+        StackPane avatarPane = new StackPane();
+        avatarPane.getStyleClass().add("author-avatar");
+        ImageView avatarImg;
+        try {
+            avatarImg = new ImageView(new Image(authorAvatarUrl));
+        } catch (Exception e) {
+            avatarImg = new ImageView();
+        }
+        avatarImg.setFitWidth(24);
+        avatarImg.setFitHeight(24);
+        avatarImg.getStyleClass().add("avatar-image");
+        Circle avatarClip = new Circle(12, 12, 12);
+        avatarImg.setClip(avatarClip);
+        avatarPane.getChildren().add(avatarImg);
+        Label authorLabel = new Label(authorName);
+        authorLabel.getStyleClass().add("author-name");
+        authorBox.getChildren().addAll(avatarPane, authorLabel);
+        quizInfo.getChildren().addAll(quizTitle, authorBox);
+        quizCard.getChildren().addAll(cardStack, quizInfo);
+        container.getChildren().add(quizCard);
+        Platform.runLater(() -> {
+            updateScrollAmount();
+            updateNavButtonVisibility();
+        });
+    }
+
     public void addFriendsCard(Player player) {
         String name = player.getDisplayName() != null && !player.getDisplayName().isBlank() ? player.getDisplayName() : player.getUsername();
         String avatarUrl = player.getAvatarUrl() != null ? player.getAvatarUrl() : "";

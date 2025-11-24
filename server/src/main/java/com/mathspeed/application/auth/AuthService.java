@@ -112,6 +112,25 @@ public class AuthService {
         return playerRepository.getPlayerById(id);
     }
 
+    public boolean exitstsById(String id) {
+        if (id == null || id.isEmpty()) return false;
+        try {
+            return playerRepository.existsById(id);
+        } catch (Exception e) {
+            System.err.println("existsById check failed for id " + id + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+    public int getTotalPlayers() {
+        try {
+            return playerRepository.getTotalPlayers();
+        } catch (Exception e) {
+            System.err.println("getTotalPlayers failed: " + e.getMessage());
+            return 0;
+        }
+    }
+
     public static class AuthResult {
         public final boolean success;
         public final String token;

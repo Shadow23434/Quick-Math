@@ -3,8 +3,9 @@ package com.mathspeed.controller;
 import com.mathspeed.client.SceneManager;
 import com.mathspeed.client.SessionManager;
 import com.mathspeed.model.Player;
+import com.mathspeed.model.Stats;
 import com.mathspeed.service.AuthService;
-import com.mathspeed.util.ReloadManager;
+import com.mathspeed.service.StatService;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -22,14 +23,15 @@ public class ProfileController {
     private static final Logger logger = LoggerFactory.getLogger(ProfileController.class);
     @FXML private Button reloadButton;
 
+    private SceneManager sceneManager;
     private Player currentPlayer;
+    private StatService statService;
 
     // Profile Info
     @FXML private ImageView profileImageView;
     @FXML private Label profileDisplayNameLabel;
     @FXML private Label profileUserNameLabel;
     @FXML private Label profileJoinedLabel;
-    // New: country flag and gender
     @FXML private ImageView countryFlagView;
     @FXML private Label genderLabel;
     @FXML private org.kordamp.ikonli.javafx.FontIcon genderIcon;
@@ -53,11 +55,14 @@ public class ProfileController {
 
     @FXML
     public void initialize() {
+        sceneManager = SceneManager.getInstance();
         setupReloadShortcut();
         javafx.application.Platform.runLater(() -> setActiveScreen("profile"));
         currentPlayer = SessionManager.getInstance().getCurrentPlayer();
+        this.statService = new StatService();
         if (currentPlayer != null) {
             setCurrentPlayerInfo();
+            loadStats();
         } else {
             logger.warn("No current player found in session");
         }
@@ -149,6 +154,37 @@ public class ProfileController {
         }
     }
 
+    private void loadStats() {
+        if (currentPlayer == null || currentPlayer.getId() == null) {
+            logger.debug("No player id available to load stats");
+            updateStatsLabels(null);
+            return;
+        }
+
+        statService.getStats(currentPlayer.getId())
+                .thenAccept(stats -> Platform.runLater(() -> updateStatsLabels(stats)))
+                .exceptionally(ex -> {
+                    logger.error("Failed to load stats for player {}: {}", currentPlayer.getId(), ex.getMessage());
+                    Platform.runLater(() -> updateStatsLabels(null));
+                    return null;
+                });
+    }
+
+    private void updateStatsLabels(Stats stats) {
+        if (totalQuizzesLabel != null) {
+            totalQuizzesLabel.setText(stats != null && stats.getTotalQuizzes() != null ? String.valueOf(stats.getTotalQuizzes()) : "0");
+        }
+        if (gamesPlayedLabel != null) {
+            gamesPlayedLabel.setText(stats != null && stats.getGamesPlayed() != null ? String.valueOf(stats.getGamesPlayed()) : "0");
+        }
+        if (winsLabel != null) {
+            winsLabel.setText(stats != null && stats.getWins() != null ? String.valueOf(stats.getWins()) : "0");
+        }
+        if (friendsCountLabel != null) {
+            friendsCountLabel.setText(stats != null && stats.getFriends() != null ? String.valueOf(stats.getFriends()) : "0");
+        }
+    }
+
     private void setupReloadShortcut() {
         if (reloadButton != null && reloadButton.getScene() != null) {
             reloadButton.getScene().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
@@ -203,7 +239,13 @@ public class ProfileController {
 
     @FXML
     private void handlePrivacySettings() {
-        logger.info("Privacy settings clicked");
+        // Navigate to the Policy/Privacy page
+        if (sceneManager == null) sceneManager = SceneManager.getInstance();
+        try {
+            sceneManager.navigate(SceneManager.Screen.POLICY);
+        } catch (Exception ex) {
+            logger.error("Failed to navigate to Policy screen", ex);
+        }
     }
 
     @FXML
@@ -222,7 +264,7 @@ public class ProfileController {
                         // Always clear local session
                         com.mathspeed.client.SessionManager.getInstance().endSession();
                         if (resp != null && resp.isSuccess()) {
-                            SceneManager.getInstance().switchToLogin();
+                            sceneManager.switchToLogin();
                         } else {
                             // Backend reported failure - show message but still navigate to login
                             String serverMsg = (resp != null) ? resp.getMessage() : "Unknown error";
@@ -231,7 +273,7 @@ public class ProfileController {
                             err.setHeaderText("Server logout failed");
                             err.setContentText(serverMsg);
                             err.showAndWait();
-                            SceneManager.getInstance().switchToLogin();
+                            sceneManager.switchToLogin();
                         }
                     });
                 }).exceptionally(ex -> {
@@ -242,7 +284,7 @@ public class ProfileController {
                         err.setHeaderText("Network error during logout");
                         err.setContentText(ex.getMessage());
                         err.showAndWait();
-                        SceneManager.getInstance().switchToLogin();
+                        sceneManager.switchToLogin();
                     });
                     return null;
                 });
@@ -252,13 +294,12 @@ public class ProfileController {
 
     @FXML
     private void handleReload() {
-        ReloadManager.reloadCurrentScene();
+        loadStats();
     }
 
     @FXML
     private void handleNotifications() {
-        com.mathspeed.client.SceneManager sceneManager = com.mathspeed.client.SceneManager.getInstance();
-        sceneManager.navigate(com.mathspeed.client.SceneManager.Screen.FRIENDS);
+        sceneManager.navigate(SceneManager.Screen.FRIENDS);
         javafx.application.Platform.runLater(() -> {
             Object controller = sceneManager.getController(com.mathspeed.client.SceneManager.Screen.FRIENDS);
             if (controller instanceof FriendsController fc) {
