@@ -49,14 +49,14 @@
             </VBox.margin>
 
             <VBox alignment="CENTER" spacing="1" styleClass="round-container">
-                <Label text="Round" styleClass="info-label"/>
+                <Label text="Vòng" styleClass="info-label"/>
                 <Label fx:id="roundLabel" text="1" styleClass="round-text"/>
             </VBox>
 
             <Separator orientation="VERTICAL" styleClass="info-separator"/>
 
             <VBox alignment="CENTER" spacing="1" styleClass="level-container">
-                <Label text="Level" styleClass="info-label"/>
+                <Label text="Mức" styleClass="info-label"/>
                 <Label fx:id="levelLabel" text="1" styleClass="level-text"/>
             </VBox>
         </HBox>
@@ -66,7 +66,7 @@
             <VBox.margin>
                 <Insets top="3" right="10" left="10" bottom="3"/>
             </VBox.margin>
-            <Label text="Target" styleClass="target-label"/>
+            <Label text="Mục tiêu" styleClass="target-label"/>
             <Label fx:id="targetLabel" text="42" styleClass="target-number"/>
         </VBox>
 

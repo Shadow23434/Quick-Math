@@ -17,14 +17,14 @@
 
 .player-label {
     -fx-font-family: "Poppins Medium";
-    -fx-font-size: 12;
+    -fx-font-size: 20;
     -fx-text-fill: #6c757d;
     -fx-letter-spacing: 0.5;
 }
 
 .opponent-label {
     -fx-font-family: "Poppins Medium";
-    -fx-font-size: 12;
+    -fx-font-size: 18;
     -fx-text-fill: #6c757d;
     -fx-letter-spacing: 0.5;
 }
@@ -72,7 +72,7 @@
 /* Target Section */
 .target-label {
     -fx-font-family: "Poppins Medium";
-    -fx-font-size: 13;
+    -fx-font-size: 18;
     -fx-text-fill: #6c757d;
     -fx-letter-spacing: 0.5;
 }
@@ -118,7 +118,7 @@
 
 .action-button {
     -fx-font-family: "Poppins SemiBold";
-    -fx-font-size: 14;
+    -fx-font-size: 18;
     -fx-padding: 12 20;
     -fx-text-fill: #ffffff;
     -fx-border-radius: 8;
@@ -143,16 +143,19 @@
 .submit-button {
     -fx-background-color: #16a34a; /* green-600 */
     -fx-text-fill: #ffffff;
+    -fx-font-size: 18;
 }
 
 .submit-button:hover {
     -fx-background-color: #15803d; /* green-700 */
 }
 
+
 /* Exit / Purple Vibrant */
 .exit-button {
     -fx-background-color: #8b5cf6; /* violet-500 */
     -fx-text-fill: #ffffff;
+    -fx-font-size: 18;
 }
 
 .exit-button:hover {
@@ -162,7 +165,7 @@
 /* Section Labels */
 .section-label {
     -fx-font-family: "Poppins Medium";
-    -fx-font-size: 12;
+    -fx-font-size: 18;
     -fx-text-fill: #6c757d;
     -fx-letter-spacing: 0.5;
 }
@@ -175,7 +178,7 @@
 
 .operator-button {
     -fx-font-family: "Poppins SemiBold";
-    -fx-font-size: 18;
+    -fx-font-size: 20;
     -fx-padding: 12 18;
     -fx-min-width: 50;
     -fx-min-height: 50;
@@ -205,7 +208,7 @@
 /* Backspace / Cyan Bright */
 .backspace-button {
     -fx-font-family: "Poppins SemiBold";
-    -fx-font-size: 18;
+    -fx-font-size: 20;
     -fx-padding: 12 18;
     -fx-min-width: 50;
     -fx-min-height: 50;
