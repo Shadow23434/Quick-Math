@@ -1,31 +1,26 @@
 package com.mathspeed.client;
 
-import java.io.*;
-import java.net.*;
-import java.util.Scanner;
-import java.util.function.Consumer;
-import java.lang.reflect.Method;
-
 import com.mathspeed.controller.GameplayController;
+import com.mathspeed.model.*;
+import com.mathspeed.network.NetworkGameplay;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.mathspeed.util.GsonJavaTime;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-/**
- * Enhanced test client with JavaFX integration for gameplay testing
- *
- * Changes in this version:
- * - No longer calls missing GameplayController methods (initializeWithCustomClient / handleExternalMessage).
- * - When switching to gameplay UI, the TestGameplayClientWrapper is created and assigned to the controller via
- *   controller.setGameClient(...).
- * - Incoming server messages are forwarded to the controller by invoking either
- *   handleExternalMessage(String) or handleServerMessage(String) (if present) via reflection. The call is scheduled
- *   on the JavaFX Application Thread using Platform.runLater.
- * - When MATCH_START_INFO arrives, the reader thread schedules the UI switch and then waits briefly for the
- *   controller to be ready; once ready, the MATCH_START_INFO payload is forwarded to the controller via reflection.
- */
+import java.io.*;
+import java.lang.reflect.Method;
+import java.net.ConnectException;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.Scanner;
+
 public class TestClient extends Application {
     private static final String SERVER_HOST = "localhost";
     private static final int SERVER_PORT = 8888;
@@ -33,344 +28,253 @@ public class TestClient extends Application {
     private static Socket socket;
     private static BufferedReader in;
     private static PrintWriter out;
-    private static Stage primaryStage;
     private static GameplayController gameController;
+    private static Stage primaryStage;
+    private final Gson gson = GsonJavaTime.create();
 
     public static void main(String[] args) {
         launch(args);
     }
 
     @Override
-    public void start(Stage stage) throws Exception {
+    public void start(Stage stage) {
         primaryStage = stage;
         primaryStage.setTitle("Math Speed Test Client");
         primaryStage.setOnCloseRequest(e -> cleanup());
-
-        // Show console first
-        showConsoleMode();
+        // Start console and socket in background
+        new Thread(this::runConsoleAndSocket, "TestClient-Main").start();
     }
 
-    private void showConsoleMode() {
-        System.out.println("===========================================");
-        System.out.println("   Math Speed Server - Test Client");
-        System.out.println("===========================================\n");
-
+    private void runConsoleAndSocket() {
+        System.out.println("TestClient: connecting to " + SERVER_HOST + ":" + SERVER_PORT);
         try {
             socket = new Socket(SERVER_HOST, SERVER_PORT);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
+            System.out.println("Connected to server.");
 
-            System.out.println("✅ Connected to server at " + SERVER_HOST + ":" + SERVER_PORT);
-            System.out.println("Connection: " + socket.getLocalSocketAddress() + " -> " + socket.getRemoteSocketAddress());
-
-            // Thread để đọc responses từ server
-            Thread readerThread = new Thread(() -> {
+            // reader thread
+            Thread reader = new Thread(() -> {
                 try {
-                    String response;
-                    while ((response = in.readLine()) != null) {
-                        System.out.println("\n<<< SERVER: " + response);
-
-                        final String finalResponse = response;
-
-                        // If gameplay UI is already active, deliver message to controller via reflection
+                    String line;
+                    while ((line = in.readLine()) != null) {
+                        final String l = line;
+                        System.out.println("\n<<< SERVER: " + l);
+                        // deliver to controller if UI active
                         if (gameController != null) {
-                            deliverToController(finalResponse);
-                        }
-
-                        // Check for MATCH_START_INFO to switch to gameplay if not already switched
-                        if (response.contains("\"type\":\"MATCH_START_INFO\"")) {
-                            // Schedule UI switch on JavaFX thread
-                            Platform.runLater(() -> {
-                                try {
-                                    switchToGameplay();
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                            });
-
-                            // Wait briefly for the gameplay UI/controller to initialize, then forward the original payload.
-                            boolean delivered = false;
-                            try {
-                                int attempts = 0;
-                                int maxAttempts = 40; // wait up to ~2 seconds (40 * 50ms)
-                                while (attempts++ < maxAttempts && gameController == null) {
+                            deliverToController(l);
+                        } else {
+                            // auto switch to gameplay UI when MATCH_START_INFO appears
+                            if (l.contains("\"type\":\"MATCH_START_INFO\"") || l.contains("\"type\": \"MATCH_START_INFO\"")) {
+                                Platform.runLater(() -> {
+                                    try {
+                                        switchToGameplay();
+                                    } catch (Exception ex) {
+                                        ex.printStackTrace();
+                                    }
+                                });
+                                // give UI some time then deliver
+                                int tries = 0;
+                                while (gameController == null && tries++ < 40) {
                                     Thread.sleep(50);
                                 }
-                                if (gameController != null) {
-                                    // deliver payload to controller on FX thread
-                                    final String payloadToDeliver = finalResponse;
-                                    deliverToController(payloadToDeliver);
-                                    delivered = true;
-                                }
-                            } catch (InterruptedException ie) {
-                                Thread.currentThread().interrupt();
-                            }
-                            if (!delivered) {
-                                System.err.println("Warning: could not deliver initial MATCH_START_INFO to GameplayController (controller not ready).");
+                                if (gameController != null) deliverToController(l);
                             }
                         }
-
                         System.out.print(">>> ");
                         System.out.flush();
                     }
-                } catch (IOException e) {
-                    if (!socket.isClosed()) {
-                        System.out.println("\n⚠️  Connection closed by server.");
-                    }
-                }
-            });
-            readerThread.setDaemon(true);
-            readerThread.start();
-
-            // Main thread gửi commands
-            printHelp();
-
-            // Console input thread
-            Thread consoleThread = new Thread(() -> {
-                try (Scanner scanner = new Scanner(System.in)) {
-                    String command;
-                    while (true) {
-                        System.out.print(">>> ");
-                        command = scanner.nextLine().trim();
-
-                        if (command.isEmpty()) {
-                            continue;
-                        }
-
-                        if (command.equalsIgnoreCase("quit") || command.equalsIgnoreCase("exit")) {
-                            System.out.println("👋 Disconnecting...");
-                            cleanup();
-                            Platform.exit();
-                            break;
-                        }
-
-                        if (command.equalsIgnoreCase("help")) {
-                            printHelp();
-                            continue;
-                        }
-
-                        if (command.equalsIgnoreCase("clear")) {
-                            clearScreen();
-                            continue;
-                        }
-
-                        // Gửi command tới server
-                        out.println(command);
-
-                        // Small delay để đợi response
-                        Thread.sleep(100);
-                    }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    System.out.println("Reader thread ended: " + e.getMessage());
                 }
-            });
-            consoleThread.setDaemon(true);
-            consoleThread.start();
+            }, "TestClient-Reader");
+            reader.setDaemon(true);
+            reader.start();
 
+            // console input loop
+            try (Scanner scanner = new Scanner(System.in)) {
+                while (true) {
+                    System.out.print(">>> ");
+                    String cmd = scanner.nextLine();
+                    if (cmd == null) break;
+                    cmd = cmd.trim();
+                    if (cmd.equalsIgnoreCase("quit") || cmd.equalsIgnoreCase("exit")) {
+                        cleanup();
+                        Platform.exit();
+                        break;
+                    }
+                    if (cmd.isEmpty()) continue;
+                    // send raw to server
+                    out.println(cmd);
+                    Thread.sleep(50);
+                }
+            }
         } catch (UnknownHostException e) {
-            System.err.println("❌ Unknown host: " + SERVER_HOST);
+            System.err.println("Unknown host");
         } catch (ConnectException e) {
-            System.err.println("❌ Connection refused to " + SERVER_HOST + ":" + SERVER_PORT);
-        } catch (IOException e) {
-            System.err.println("❌ I/O error: " + e.getMessage());
+            System.err.println("Connection refused - make sure server is running on port " + SERVER_PORT);
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
         }
     }
 
     private void switchToGameplay() throws Exception {
-        System.out.println("\n🎮 Switching to gameplay interface...");
-
-        // Load gameplay.fxml
+        System.out.println("Switching to gameplay UI...");
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/pages/gameplay.fxml"));
-        Scene gameplayScene = new Scene(loader.load(), 800, 620);
-        gameplayScene.getStylesheets().add(getClass().getResource("/css/gameplay.css").toExternalForm());
-
-        // Get controller and setup connection
+        Scene s = new Scene(loader.load(), 800, 620);
+        primaryStage.setScene(s);
+        primaryStage.show();
         gameController = loader.getController();
         gameController.setPlayerUsername("TestPlayer");
 
-        // Create a compatible GameplayClient wrapper
-        TestGameplayClientWrapper testClient = new TestGameplayClientWrapper();
+        // create a wrapper client that uses this TestClient socket/out
+        TestGameplayClientWrapper wrapper = new TestGameplayClientWrapper();
+        // give wrapper to controller
+        gameController.setGameClient(wrapper);
 
-        // Provide the wrapper to controller so controller can use it for outgoing messages
-        try {
-            gameController.setGameClient(testClient); // set the client reference on controller
-        } catch (Exception ex) {
-            System.err.println("Warning: controller.setGameClient failed: " + ex.getMessage());
-        }
-
-        primaryStage.setScene(gameplayScene);
-        primaryStage.show();
-        primaryStage.toFront();
-    }
-
-    private static void printHelp() {
-        System.out.println("\n📝 Available Commands:");
-        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        System.out.println("  Test Game Flow:");
-        System.out.println("    REGISTER test pass123           - Register test account");
-        System.out.println("    LOGIN test pass123              - Login");
-        System.out.println("    JOIN_QUEUE                       - Join queue (auto-match)");
-        System.out.println("    CHALLENGE test 5                 - Self-challenge for testing");
-        System.out.println();
-        System.out.println("  Connection & Info:");
-        System.out.println("    PING                            - Test connection");
-        System.out.println("    TIME_PING <timestamp>           - Test time sync");
-        System.out.println("    help                            - Show this help");
-        System.out.println("    clear                           - Clear screen");
-        System.out.println("    quit / exit                     - Disconnect");
-        System.out.println();
-        System.out.println("  Authentication:");
-        System.out.println("    REGISTER <user> <pass> [gender] - Register (gender: male/female/other)");
-        System.out.println("    LOGIN <user> <pass>             - Login to account");
-        System.out.println();
-        System.out.println("  Matchmaking:");
-        System.out.println("    JOIN_QUEUE                      - Join matchmaking queue");
-        System.out.println("    LEAVE_QUEUE                     - Leave queue");
-        System.out.println();
-        System.out.println("  Challenge:");
-        System.out.println("    CHALLENGE <target> [rounds]     - Challenge player (default: 10 rounds)");
-        System.out.println("    ACCEPT <challenger>             - Accept challenge");
-        System.out.println("    DECLINE <challenger>            - Decline challenge");
-        System.out.println();
-        System.out.println("  In-Game:");
-        System.out.println("    READY                           - Mark ready for game start");
-        System.out.println("    ANSWER <expression>             - Submit answer (e.g., ANSWER 1+2*3)");
-        System.out.println("    FORFEIT                         - Forfeit current game");
-        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        System.out.println();
-        System.out.println("💡 Quick Test Flow:");
-        System.out.println("   1. REGISTER test pass123");
-        System.out.println("   2. LOGIN test pass123");
-        System.out.println("   3. CHALLENGE test 3");
-        System.out.println("   4. Wait for MATCH_START_INFO -> Auto switch to gameplay");
-        System.out.println("   5. Game UI will auto-sync time and start countdown");
-        System.out.println();
-    }
-
-    private static void clearScreen() {
-        try {
-            if (System.getProperty("os.name").contains("Windows")) {
-                new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
-            } else {
-                System.out.print("\033[H\033[2J");
-                System.out.flush();
-            }
-        } catch (Exception e) {
-            for (int i = 0; i < 50; i++) {
-                System.out.println();
-            }
-        }
-    }
-
-    private static void cleanup() {
-        try {
-            if (out != null) out.close();
-            if (in != null) in.close();
-            if (socket != null) socket.close();
-        } catch (IOException e) {
-            // ignore
-        }
-        System.out.println("✅ Disconnected from server.");
+        System.out.println("Gameplay UI ready and wrapper client installed.");
     }
 
     /**
-     * Deliver incoming server message to controller using reflection to call
-     * either handleExternalMessage(String) or handleServerMessage(String).
+     * Deliver an incoming raw server message into the GameplayController.
+     * This will parse JSON messages and invoke the appropriate handler method on the controller
+     * (using reflection if methods are non-public). All invocations happen on the JavaFX thread.
      */
-    private static void deliverToController(String message) {
-        if (gameController == null) return;
+    private void deliverToController(String message) {
+        if (gameController == null || message == null) return;
         Platform.runLater(() -> {
             try {
-                Method m = null;
-                try {
-                    m = gameController.getClass().getMethod("handleExternalMessage", String.class);
-                } catch (NoSuchMethodException ignored) {
-                    // try private method name used in some implementations
-                    try {
-                        m = gameController.getClass().getDeclaredMethod("handleServerMessage", String.class);
-                        m.setAccessible(true);
-                    } catch (NoSuchMethodException ignored2) {
-                        m = null;
+                System.out.println("Delivering to controller: " + message);
+
+                // JSON message?
+                String trimmed = message.trim();
+                if (trimmed.startsWith("{")) {
+                    JsonElement je = JsonParser.parseString(trimmed);
+                    if (je != null && je.isJsonObject()) {
+                        JsonObject jo = je.getAsJsonObject();
+                        String type = jo.has("type") ? jo.get("type").getAsString() : "";
+
+                        switch (type.toUpperCase()) {
+                            case "MATCH_START_INFO": {
+                                MatchStartInfo msi = gson.fromJson(trimmed, MatchStartInfo.class);
+                                invokeControllerMethod("handleMatchStart", new Class[]{MatchStartInfo.class}, new Object[]{msi});
+                                break;
+                            }
+                            case "NEW_ROUND": {
+                                NewRound nr = gson.fromJson(trimmed, NewRound.class);
+                                invokeControllerMethod("handleNewRoundWithCountdown", new Class[]{NewRound.class}, new Object[]{nr});
+                                break;
+                            }
+                            case "ANSWER_RESULT": {
+                                AnswerResult ar = gson.fromJson(trimmed, AnswerResult.class);
+                                invokeControllerMethod("handleAnswerResult", new Class[]{AnswerResult.class}, new Object[]{ar});
+                                break;
+                            }
+                            case "ROUND_RESULT": {
+                                RoundResult rr = gson.fromJson(trimmed, RoundResult.class);
+                                invokeControllerMethod("handleRoundResult", new Class[]{RoundResult.class}, new Object[]{rr});
+                                break;
+                            }
+                            case "GAME_END":
+                            case "GAME_OVER": {
+                                RoundResult fr = gson.fromJson(trimmed, RoundResult.class);
+                                invokeControllerMethod("handleGameEnd", new Class[]{RoundResult.class}, new Object[]{fr});
+                                invokeControllerMethod("showMatchResult", new Class[]{String.class}, new Object[]{trimmed});
+                                break;
+                            }
+                            default: {
+                                // Unknown JSON type -> show as feedback
+                                invokeControllerMethod("showTemporaryFeedback", new Class[]{String.class,int.class,String.class}, new Object[]{trimmed,3,""});
+                                break;
+                            }
+                        }
+                        return;
                     }
                 }
-                if (m != null) {
-                    m.invoke(gameController, message);
+
+                // non-JSON messages (pipe-delimited)
+                if (trimmed.startsWith("INFO|")) {
+                    String info = trimmed.substring(Math.min(trimmed.length(), 5));
+                    invokeControllerMethod("showTemporaryFeedback", new Class[]{String.class,int.class,String.class}, new Object[]{info,3,""});
+                } else if (trimmed.startsWith("ERROR|")) {
+                    String err = trimmed.substring(Math.min(trimmed.length(), 6));
+                    invokeControllerMethod("showTemporaryFeedback", new Class[]{String.class,int.class,String.class}, new Object[]{"Lỗi: " + err,5,""});
+                } else if (trimmed.equals("FORFEIT_ACK")) {
+                    invokeControllerMethod("showTemporaryFeedback", new Class[]{String.class,int.class,String.class}, new Object[]{"Đã thoát trận đấu",3,""});
                 } else {
-                    // last resort: try to find any public method named "handleMessage" (unlikely)
-                    try {
-                        Method m2 = gameController.getClass().getMethod("handleMessage", String.class);
-                        m2.invoke(gameController, message);
-                    } catch (NoSuchMethodException ex) {
-                        System.err.println("No suitable message handler found on GameplayController.");
-                    }
+                    invokeControllerMethod("showTemporaryFeedback", new Class[]{String.class,int.class,String.class}, new Object[]{trimmed,2,""});
                 }
-            } catch (Exception ex) {
-                System.err.println("Failed to deliver message to controller: " + ex.getMessage());
+            } catch (Throwable ex) {
+                System.err.println("deliverToController error:");
                 ex.printStackTrace();
             }
         });
     }
 
     /**
-     * Wrapper class that extends GameplayClient for compatibility
-     *
-     * This wrapper uses the TestClient socket/out to send messages to the server and
-     * provides basic overrides expected by the controller.
+     * Reflection helper: try to find method (public or declared), set accessible if necessary and invoke.
      */
-    private class TestGameplayClientWrapper extends GameplayClient {
+    private void invokeControllerMethod(String name, Class<?>[] paramTypes, Object[] args) {
+        try {
+            Method m;
+            try {
+                m = gameController.getClass().getMethod(name, paramTypes);
+            } catch (NoSuchMethodException e) {
+                m = gameController.getClass().getDeclaredMethod(name, paramTypes);
+                m.setAccessible(true);
+            }
+            m.invoke(gameController, args);
+        } catch (NoSuchMethodException nsme) {
+            // method not found on controller - just log
+            System.out.println("Controller does not implement " + name);
+        } catch (Exception e) {
+            System.err.println("invokeControllerMethod error for " + name + ": " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
+    private void cleanup() {
+        try { if (out != null) out.close(); } catch (Exception ignored) {}
+        try { if (in != null) in.close(); } catch (Exception ignored) {}
+        try { if (socket != null) socket.close(); } catch (Exception ignored) {}
+        System.out.println("Disconnected.");
+    }
+
+    /**
+     * Wrapper that uses TestClient's socket/out for send operations.
+     * It does NOT open its own socket; connect() is a no-op.
+     */
+    private class TestGameplayClientWrapper extends NetworkGameplay {
         public TestGameplayClientWrapper() {
-            // We don't provide a typed onMatchStart handler here; reader thread will deliver that payload.
-            super("localhost", 8888, message -> {
-                // This onMessage consumer is not used because TestClient reader thread receives raw lines
-                // and forwards them to the controller directly. We still print for debugging.
-                System.out.println("TestClient wrapper received: " + message);
+            super("localhost", 8888, msg -> {
+                // raw consumer - not used as we forward server lines to controller directly
+                System.out.println("Wrapper onMessage: " + msg);
             });
         }
 
         @Override
+        public void connect() { System.out.println("Wrapper connect(): using existing TestClient socket"); }
+
+        @Override
         public boolean isConnected() {
-            return socket != null && socket.isConnected() && !socket.isClosed();
+            try {
+                return socket != null && socket.isConnected() && !socket.isClosed();
+            } catch (Exception ex) { return false; }
         }
 
         @Override
-        public void sendRaw(String message) {
+        public synchronized void sendRaw(String message) {
             if (out != null) {
                 out.println(message);
                 System.out.println(">>> GAME: " + message);
             } else {
-                System.err.println("❌ Cannot send: No connection");
+                System.err.println("Wrapper sendRaw: no connection");
             }
-        }
-
-        @Override
-        public void sendSubmitAnswer(String expression) {
-            sendRaw("ANSWER " + expression);
         }
 
         @Override
         public void disconnect() {
             cleanup();
-        }
-
-        @Override
-        public void connect() throws IOException {
-            // Already connected via TestClient socket
-            System.out.println("✅ Using existing TestClient connection for gameplay");
-        }
-
-        // Add custom methods for game functionality (not @Override)
-        public void sendTimeSync() {
-            long timestamp = System.currentTimeMillis();
-            sendRaw("TIME_PING " + timestamp);
-        }
-
-        public void sendReady() {
-            sendRaw("READY");
-        }
-
-        public void sendForfeit() {
-            sendRaw("FORFEIT");
         }
     }
 }

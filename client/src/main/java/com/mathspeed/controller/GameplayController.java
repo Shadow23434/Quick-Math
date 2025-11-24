@@ -1,47 +1,42 @@
 package com.mathspeed.controller;
 
 import com.mathspeed.model.*;
+import com.mathspeed.network.NetworkGameplay;
+import com.mathspeed.util.ExpressionEvaluator;
+import com.google.gson.Gson;
+import com.google.gson.annotations.SerializedName;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import javafx.animation.KeyFrame;
+import javafx.animation.PauseTransition;
+import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.animation.PauseTransition;
-import javafx.animation.Timeline;
-import javafx.animation.KeyFrame;
-import javafx.util.Duration;
-import javafx.application.Platform;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import com.mathspeed.util.ExpressionEvaluator;
-import com.mathspeed.client.GameplayClient;
-import com.google.gson.Gson;
-import com.google.gson.annotations.SerializedName;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import javafx.util.Duration;
 
 import java.io.IOException;
 import java.net.URL;
-import java.time.Instant;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * GameplayController
+ * GameplayController (updated)
  *
- * Responsibilities:
- * - Populate player/opponent names from MATCH_START_INFO
- * - Show initial 5s countdown before round 1 (only once)
- * - Show 3s countdown before subsequent rounds
- * - Run per-round decreasing timer updating timerLabel
- * - Handle expression input (numbers/operators/brackets/backspace/clear/submit)
- *
- * Note: keep existing UI elements and behavior intact; only extend functionality.
+ * - Binds overlay size to scene so overlay phủ lên toàn màn hình.
+ * - Uses server timestamps (server_round_start / server_round_end) and offsetMs
+ *   to compute exact remaining seconds so client doesn't end a round earlier than server.
+ * - Starts periodic time sync when GameplayClient injected.
  */
 public class GameplayController {
 
@@ -60,13 +55,11 @@ public class GameplayController {
     @FXML private Button exitButton;
     @FXML private Button backspaceButton;
 
-    // Countdown overlay components (used for both initial and inter-round countdowns)
     @FXML private StackPane countdownOverlay;
     @FXML private VBox countdownContainer;
     @FXML private Label countdownLabel;
     @FXML private Label countdownMessageLabel;
 
-    // Optional round transition overlay (may be null)
     @FXML private StackPane roundTransitionOverlay;
     @FXML private VBox roundTransitionContainer;
     @FXML private Label roundTransitionTitle;
@@ -87,33 +80,25 @@ public class GameplayController {
     private int timeRemaining;
     private int currentRound;
     private int currentLevel;
-    private GameplayClient gameClient;
+    private NetworkGameplay gameClient;
     private Timeline timer;
     private Timeline countdownTimer;
+    private PauseTransition preRoundStartPause;
     private Timeline roundTransitionTimer;
     private Gson gson;
     private String playerUsername; // must be set externally to identify local player
 
-    // Track whether the initial (5s) countdown has already been shown
     private volatile boolean initialCountdownShown = false;
 
-    // Time sync fields
+    // Time sync
     private final AtomicLong offsetMs = new AtomicLong(0L);
     private final AtomicLong estimatedRttMs = new AtomicLong(150L);
     private final ConcurrentMap<Long, CompletableFuture<Long>> pendingPingReplies = new ConcurrentHashMap<>();
-
     private final ScheduledExecutorService syncExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "TimeSync");
         t.setDaemon(true);
         return t;
     });
-
-    private final ScheduledExecutorService schedulingExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
-        Thread t = new Thread(r, "GameScheduling");
-        t.setDaemon(true);
-        return t;
-    });
-
     private ScheduledFuture<?> periodicResyncFuture;
     private volatile long baseSystemMs = System.currentTimeMillis();
     private volatile long baseNano = System.nanoTime();
@@ -129,123 +114,115 @@ public class GameplayController {
         currentLevel = 1;
         gson = new Gson();
 
+        // Ensure overlay covers whole scene by binding to scene when available
         if (countdownOverlay != null) {
             countdownOverlay.setVisible(false);
-            countdownOverlay.setManaged(true);
-            countdownOverlay.toFront();
-        }
-        if (roundTransitionOverlay != null) {
-            roundTransitionOverlay.setVisible(false);
-            roundTransitionOverlay.setManaged(true);
+            countdownOverlay.setManaged(false);
+            countdownOverlay.sceneProperty().addListener((obs, oldS, newS) -> {
+                if (newS != null) {
+                    countdownOverlay.prefWidthProperty().bind(newS.widthProperty());
+                    countdownOverlay.prefHeightProperty().bind(newS.heightProperty());
+                    // ensure container centered
+                    if (countdownContainer != null) StackPane.setAlignment(countdownContainer, javafx.geometry.Pos.CENTER);
+                } else {
+                    try {
+                        countdownOverlay.prefWidthProperty().unbind();
+                        countdownOverlay.prefHeightProperty().unbind();
+                    } catch (Exception ignored) {}
+                }
+            });
         }
 
+        if (roundTransitionOverlay != null) {
+            roundTransitionOverlay.setVisible(false);
+            roundTransitionOverlay.setManaged(false);
+            roundTransitionOverlay.sceneProperty().addListener((obs, oldS, newS) -> {
+                if (newS != null) {
+                    roundTransitionOverlay.prefWidthProperty().bind(newS.widthProperty());
+                    roundTransitionOverlay.prefHeightProperty().bind(newS.heightProperty());
+                    if (roundTransitionContainer != null) StackPane.setAlignment(roundTransitionContainer, javafx.geometry.Pos.CENTER);
+                } else {
+                    try {
+                        roundTransitionOverlay.prefWidthProperty().unbind();
+                        roundTransitionOverlay.prefHeightProperty().unbind();
+                    } catch (Exception ignored) {}
+                }
+            });
+        }
+
+        System.out.println("GameplayController.initialize instance=" + System.identityHashCode(this) + " playerUsername=" + playerUsername);
         updatePlayerNames();
         updateDisplay();
     }
 
     /**
-     * Initialize the GameplayClient and register handlers.
-     * Call setPlayerUsername(...) before using this.
+     * Inject GameplayClient and register typed handlers.
      */
-    private void initializeGameClient() {
-        gameClient = new GameplayClient("localhost", 8888,
-                this::handleServerMessage,
-                this::handleMatchStart); // typed handler
+    public void setGameClient(NetworkGameplay client) {
+        this.gameClient = client;
+        if (client == null) return;
 
-        try {
-            gameClient.connect();
-            showTemporaryFeedback("Đã kết nối server thành công", 3, "Chờ bắt đầu game...");
-            startPeriodicTimeSync();
-        } catch (IOException e) {
-            showFeedback("Không thể kết nối server: " + e.getMessage());
-        }
-    }
+        // register typed handlers
+        client.setMatchStartHandler(info -> Platform.runLater(() -> handleMatchStart(info)));
 
-    /**
-     * Unified handler for MATCH_START_INFO messages.
-     * Resets state, updates names and triggers initial countdown (only once).
-     */
-    private void handleMatchStart(MatchStartInfo info) {
-        if (info == null) return;
+        client.setNewRoundHandler(nr -> Platform.runLater(() -> {
+            // prefer using server timestamps if present to compute exact start/end
+            handleNewRoundWithCountdown(nr);
+        }));
 
-        // reset match state
-        playerScore = 0;
-        opponentScore = 0;
-        currentRound = 0;
-        currentLevel = 1;
-        hasSubmitted = false;
-        hasExited = false;
-        if (expressionBuilder != null) expressionBuilder.setLength(0);
-        updateDisplay();
+        client.setAnswerResultHandler(ar -> Platform.runLater(() -> handleAnswerResult(ar)));
 
-        // determine opponent display name
-        String opponentDisplay = "Opponent";
-        if (info.players != null) {
-            for (Player p : info.players) {
-                if (p == null) continue;
-                String username = p.getUsername() != null ? p.getUsername() : "";
-                String display = p.getDisplayName() != null ? p.getDisplayName() : "";
-                if (playerUsername != null && !playerUsername.isEmpty() && username.equalsIgnoreCase(playerUsername)) {
-                    // local — leave as "You"
-                } else {
-                    opponentDisplay = display;
-                }
+        client.setRoundResultHandler(rr -> Platform.runLater(() -> handleRoundResult(rr)));
+
+        client.setGameEndHandler(rr -> Platform.runLater(() -> {
+            handleGameEnd(rr);
+            showMatchResult(gson.toJson(rr));
+        }));
+
+        client.setTimePongHandler(tp -> {
+            if (tp != null && tp.client_send != null && tp.server_time != null) {
+                CompletableFuture<Long> f = pendingPingReplies.remove(tp.client_send);
+                if (f != null) f.complete(tp.server_time);
             }
-        }
-
-        final String finalOpp = opponentDisplay;
-        int countdownSec = info.countdown_ms > 0 ? (int) (info.countdown_ms / 1000L) : 5;
-
-        // update UI and start countdown (only once)
-        if (initialCountdownShown) {
-            Platform.runLater(() -> {
-                opponentDisplayName = finalOpp;
-                playerDisplayName = "You";
-                updatePlayerNames();
-                if (countdownLabel != null) countdownLabel.setText(String.valueOf(countdownSec));
-                if (gameStatusLabel != null) gameStatusLabel.setText("Chơi với " + finalOpp);
-            });
-            return;
-        }
-
-        initialCountdownShown = true;
-
-        Platform.runLater(() -> {
-            opponentDisplayName = finalOpp;
-            playerDisplayName = "You";
-            updatePlayerNames();
-
-            if (countdownLabel != null) countdownLabel.setText(String.valueOf(countdownSec));
-            if (countdownMessageLabel != null) countdownMessageLabel.setText("Trận đấu sắp bắt đầu!");
-            if (gameStatusLabel != null) gameStatusLabel.setText("Chuẩn bị trận đấu...");
-
-            startMatchCountdown(countdownSec);
         });
+
+        client.setServerNowHandler(sn -> {
+            if (sn != null && sn.server_time != null) {
+                long clientNow = System.currentTimeMillis();
+                long sampleOffset = sn.server_time - clientNow;
+                offsetMs.set((long) Math.round(0.6 * sampleOffset + 0.4 * offsetMs.get()));
+                baseSystemMs = System.currentTimeMillis();
+                baseNano = System.nanoTime();
+            }
+        });
+
+        client.setPlayerListUpdateHandler(raw -> {
+            System.out.println("Player list update: " + raw);
+        });
+
+        System.out.println("setGameClient called on controller=" + System.identityHashCode(this) + " client=" + client);
+        // perform an immediate small time sync to get good offset before rounds start
+        startPeriodicTimeSync();
     }
 
-    private void updatePlayerNames() {
-        if (playerNameLabel != null) playerNameLabel.setText(playerDisplayName);
-        if (opponentNameLabel != null) opponentNameLabel.setText(opponentDisplayName);
-    }
+    // ---------------- Time sync helpers ----------------
 
-    // ---------------- Time sync ----------------
+    private long currentServerTimeMs() {
+        return System.currentTimeMillis() + offsetMs.get();
+    }
 
     public void startPeriodicTimeSync() {
+        // run an immediate sync on background thread then schedule periodic
         syncExecutor.execute(() -> {
-            try {
-                performTimeSync(6, 1200);
-            } catch (Exception ex) {
-                System.err.println("Initial time sync failed: " + ex.getMessage());
-            }
+            try { performTimeSync(4, 700); } catch (Exception ex) { System.err.println("Initial time sync failed: " + ex.getMessage()); }
         });
 
+        if (periodicResyncFuture != null && !periodicResyncFuture.isCancelled()) {
+            periodicResyncFuture.cancel(true);
+        }
         periodicResyncFuture = syncExecutor.scheduleAtFixedRate(() -> {
-            try {
-                performTimeSync(2, 800);
-            } catch (Exception ex) {
-                // ignore periodic sync failures
-            }
-        }, 30, 30, TimeUnit.SECONDS);
+            try { performTimeSync(2, 700); } catch (Exception ignored) {}
+        }, 20, 20, TimeUnit.SECONDS);
     }
 
     private void performTimeSync(int samples, int perSampleTimeoutMs) throws InterruptedException {
@@ -259,14 +236,13 @@ public class GameplayController {
 
             try {
                 if (gameClient != null && gameClient.isConnected()) {
-                    gameClient.sendRaw("TIME_PING " + t0);
+                    gameClient.sendTimePing(t0);
                 } else {
                     pendingPingReplies.remove(t0);
                     break;
                 }
             } catch (Exception ex) {
                 pendingPingReplies.remove(t0);
-                System.err.println("performTimeSync: failed to send TIME_PING: " + ex.getMessage());
                 break;
             }
 
@@ -281,12 +257,8 @@ public class GameplayController {
                     bestRtt = rtt;
                     bestOffset = sampleOffset;
                 }
-            } catch (TimeoutException te) {
+            } catch (TimeoutException | ExecutionException te) {
                 pendingPingReplies.remove(t0);
-                System.err.println("performTimeSync: TIME_PING timeout for sample " + i);
-            } catch (ExecutionException ee) {
-                pendingPingReplies.remove(t0);
-                System.err.println("performTimeSync: TIME_PING execution error: " + ee.getMessage());
             } finally {
                 Thread.sleep(40);
             }
@@ -299,42 +271,252 @@ public class GameplayController {
             estimatedRttMs.set(Math.max(0L, bestRtt));
             baseSystemMs = System.currentTimeMillis();
             baseNano = System.nanoTime();
-
-            Platform.runLater(() -> showTemporaryFeedback("Đồng bộ thời gian hoàn tất (offset=" + offsetMs.get() + "ms)", 2, ""));
-
-            System.out.println("performTimeSync: offset=" + offsetMs.get() + " rtt=" + estimatedRttMs.get());
-        } else {
-            System.err.println("performTimeSync: no successful time samples");
+            System.out.println("Time sync done: offset=" + offsetMs.get() + " rtt=" + estimatedRttMs.get());
+            Platform.runLater(() -> showTemporaryFeedback("Đồng bộ thời gian hoàn tất", 1, ""));
         }
     }
 
-    // ---------------- Countdown & Round flow ----------------
+    // ---------------- Match start & round flow ----------------
+
+    private void handleMatchStart(MatchStartInfo info) {
+        if (info == null) return;
+
+        // reset state
+        playerScore = 0;
+        opponentScore = 0;
+        currentRound = 0;
+        currentLevel = 1;
+        hasSubmitted = false;
+        hasExited = false;
+        if (expressionBuilder != null) expressionBuilder.setLength(0);
+        updateDisplay();
+
+        // determine opponent display name
+        String opponent = "Opponent";
+        if (info.players != null) {
+            for (Player p : info.players) {
+                if (p == null) continue;
+                String u = p.getUsername() != null ? p.getUsername() : "";
+                String d = p.getDisplayName() != null ? p.getDisplayName() : u;
+                if (playerUsername != null && playerUsername.equalsIgnoreCase(u)) {
+                    // local
+                } else {
+                    opponent = d;
+                }
+            }
+        }
+        opponentDisplayName = opponent;
+        playerDisplayName = "You";
+
+        // compute countdown based on server start time if provided
+        int countdownSec = 5;
+        if (info.countdown_ms > 0) countdownSec = (int) Math.ceil(info.countdown_ms / 1000.0);
+
+        // If server provided a precise start_time/server_time, compute time until start
+        long nowServer = currentServerTimeMs();
+        if (info.start_time > 0) {
+            long msUntilStart = info.start_time - nowServer;
+            if (msUntilStart > 0) {
+                countdownSec = (int) Math.max(1, Math.ceil(msUntilStart / 1000.0));
+            } else {
+                countdownSec = 0;
+            }
+        } else if (info.server_time > 0 && info.countdown_ms > 0) {
+            long approxStart = info.server_time + info.countdown_ms;
+            long msUntilStart = approxStart - nowServer;
+            if (msUntilStart > 0) countdownSec = (int) Math.max(1, Math.ceil(msUntilStart / 1000.0));
+            else countdownSec = 0;
+        }
+
+        final int cs = countdownSec;
+        Platform.runLater(() -> {
+            updatePlayerNames();
+            if (cs > 0) {
+                if (countdownLabel != null) countdownLabel.setText(String.valueOf(cs));
+                if (countdownMessageLabel != null) countdownMessageLabel.setText("Trận đấu sắp bắt đầu!");
+                startMatchCountdown(cs);
+            } else {
+                // start immediately: server likely already started rounds; wait for NEW_ROUND
+                showTemporaryFeedback("Trận đấu bắt đầu!", 1, "");
+            }
+        });
+
+        initialCountdownShown = true;
+    }
+
+    private void handleNewRoundWithCountdown(NewRound round) {
+        if (round == null) return;
+
+        System.out.println("handleNewRound/Result called on controller=" + System.identityHashCode(this) + " playerUsername=" + playerUsername);
+
+        // cancel any existing scheduled pre-round pause
+        try {
+            if (preRoundStartPause != null) {
+                preRoundStartPause.stop();
+                preRoundStartPause = null;
+            }
+        } catch (Exception ignored) {}
+
+        long nowServer = currentServerTimeMs();
+
+        long serverRoundStart = round.getServer_round_start(); // 0 if not provided
+        long serverRoundEnd = round.getServer_round_end();     // 0 if not provided
+
+        // debug log
+        System.out.println("NEW_ROUND: round=" + round.getRound() + " target=" + round.getTarget()
+                + " serverRoundStart=" + serverRoundStart + " serverRoundEnd=" + serverRoundEnd
+                + " nowServer=" + nowServer);
+
+        // CASE A: serverRoundStart in the future -> show overlay until that exact server time
+        if (serverRoundStart > nowServer) {
+            long msUntilStart = serverRoundStart - nowServer;
+            int secsToShow = (int) Math.max(1, Math.ceil(msUntilStart / 1000.0));
+
+            // start visual countdown (per-second) but schedule precise start at msUntilStart
+            Platform.runLater(() -> {
+                if (countdownLabel != null) countdownLabel.setText(String.valueOf(secsToShow));
+                if (countdownMessageLabel != null) countdownMessageLabel.setText("Bắt đầu vòng " + round.getRound() + " trong...");
+                // show a per-second overlay (this will be stopped by preRoundStartPause when time arrives)
+                startRoundCountdown(round, secsToShow);
+            });
+
+            // schedule the exact beginRound at msUntilStart using PauseTransition on FX thread
+            preRoundStartPause = new PauseTransition(Duration.millis(msUntilStart));
+            preRoundStartPause.setOnFinished(ev -> {
+                // ensure overlay stopped and then start round using server_round_end to compute rem time
+                stopCountdown();
+                // compute remaining seconds from server_round_end if present
+                if (serverRoundEnd > 0) {
+                    long remMs = serverRoundEnd - currentServerTimeMs();
+                    round.setTime((int) Math.max(0, Math.ceil(remMs / 1000.0)));
+                }
+                beginRound(round);
+                preRoundStartPause = null;
+            });
+            preRoundStartPause.play();
+            return;
+        }
+
+        // CASE B: serverRoundStart is not in future. If serverRoundEnd is in future -> start immediately
+        if (serverRoundEnd > nowServer) {
+            long remMs = serverRoundEnd - nowServer;
+            int remSec = (int) Math.max(0, Math.ceil(remMs / 1000.0));
+            round.setTime(remSec);
+            Platform.runLater(() -> beginRound(round));
+            return;
+        }
+
+        // CASE C: no server timestamps or already expired - fallback to previous behavior
+        int preCountdown = (round.getRound() == 1 && initialCountdownShown) ? 0 : ((round.getRound() == 1) ? 5 : 3);
+        if (preCountdown <= 0) {
+            Platform.runLater(() -> beginRound(round));
+        } else {
+            Platform.runLater(() -> {
+                if (countdownLabel != null) countdownLabel.setText(String.valueOf(preCountdown));
+                if (countdownMessageLabel != null) countdownMessageLabel.setText("Bắt đầu vòng " + round.getRound() + " trong...");
+                startRoundCountdown(round, preCountdown);
+            });
+        }
+    }
 
     private void startMatchCountdown(int seconds) {
-        if (seconds <= 0) seconds = 3;
-        System.out.println("Starting countdown overlay for " + seconds + "s");
+        if (seconds <= 0) {
+            enableButtonsSafely();
+            return;
+        }
+        showCountdownOverlay(seconds, "Trận đấu sắp bắt đầu!", () -> {
+            enableButtonsSafely();
+            showTemporaryFeedback("Trận đấu bắt đầu!", 1, "");
+        });
+    }
+
+    private void startRoundCountdown(NewRound round, int seconds) {
+        if (seconds <= 0) {
+            beginRound(round);
+            return;
+        }
+        showCountdownOverlay(seconds, "Bắt đầu vòng " + round.getRound() + " trong...", () -> beginRound(round));
+    }
+
+    private void showCountdownOverlay(int seconds, String message, Runnable onFinished) {
+        // debug
+        System.out.println("showCountdownOverlay called: seconds=" + seconds + " message=" + message
+                + " overlayNull=" + (countdownOverlay == null)
+                + " containerNull=" + (countdownContainer == null)
+                + " labelNull=" + (countdownLabel == null)
+                + " msgLabelNull=" + (countdownMessageLabel == null));
 
         if (countdownOverlay == null || countdownLabel == null || countdownMessageLabel == null) {
-            System.err.println("Countdown UI not available; skipping overlay");
-            PauseTransition fallback = new PauseTransition(Duration.seconds(seconds));
-            fallback.setOnFinished(e -> enableButtonsSafely());
+            System.out.println("Countdown UI nodes missing -> fallback PauseTransition");
+            PauseTransition fallback = new PauseTransition(Duration.seconds(Math.max(0, seconds)));
+            fallback.setOnFinished(e -> { if (onFinished != null) onFinished.run(); });
             fallback.play();
             return;
         }
 
-        countdownOverlay.setVisible(true);
-        countdownOverlay.setManaged(true);
-        countdownOverlay.toFront();
+        // attach binding now if scene already present, otherwise install listener to bind when scene set
+        if (countdownOverlay.getScene() != null) {
+            try {
+                countdownOverlay.prefWidthProperty().bind(countdownOverlay.getScene().widthProperty());
+                countdownOverlay.prefHeightProperty().bind(countdownOverlay.getScene().heightProperty());
+            } catch (Exception ex) { System.out.println("bind immediate failed: " + ex.getMessage()); }
+        } else {
+            // ensure binding when scene becomes available
+            countdownOverlay.sceneProperty().addListener((obs, oldS, newS) -> {
+                if (newS != null) {
+                    try {
+                        countdownOverlay.prefWidthProperty().bind(newS.widthProperty());
+                        countdownOverlay.prefHeightProperty().bind(newS.heightProperty());
+                    } catch (Exception ignored) {}
+                }
+            });
+        }
 
-        countdownMessageLabel.setText("Trận đấu sắp bắt đầu!");
-        countdownLabel.setText(String.valueOf(seconds));
+        // print sizes for diagnosis
+        Platform.runLater(() -> {
+            double ovW = countdownOverlay.getWidth();
+            double ovH = countdownOverlay.getHeight();
+            double scW = countdownOverlay.getScene() != null ? countdownOverlay.getScene().getWidth() : -1;
+            double scH = countdownOverlay.getScene() != null ? countdownOverlay.getScene().getHeight() : -1;
+            double contW = countdownContainer != null ? countdownContainer.getWidth() : -1;
+            double contH = countdownContainer != null ? countdownContainer.getHeight() : -1;
+            System.out.println("Overlay sizes: overlay(" + ovW + "x" + ovH + ") scene(" + scW + "x" + scH + ") container(" + contW + "x" + contH + ")");
+        });
+
+        // Make overlay definitely visible and on top. Also add a temporary background so it's unmistakable.
+        countdownOverlay.setManaged(true);
+        countdownOverlay.setVisible(true);
+        countdownOverlay.toFront();
+        countdownOverlay.setMouseTransparent(false);
+        // Temporary visual override to ensure we can see it despite CSS; remove after debugging if desired
+        countdownOverlay.setStyle("-fx-background-color: rgba(0,0,0,0.45);");
+
+        // Force label styles for visibility
+        try {
+            countdownLabel.setStyle("-fx-font-size: 48px; -fx-text-fill: white; -fx-font-weight: bold;");
+            countdownMessageLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16px;");
+        } catch (Exception ignored) {}
+
+        countdownMessageLabel.setText(message);
+        countdownLabel.setText(String.valueOf(Math.max(0, seconds)));
         disableButtonsSafely();
 
-        final int[] left = {seconds};
+        final int[] left = { Math.max(0, seconds) };
         if (countdownTimer != null) {
-            countdownTimer.stop();
+            try { countdownTimer.stop(); } catch (Exception ignored) {}
             countdownTimer = null;
         }
+
+        if (left[0] <= 0) {
+            PauseTransition shortPause = new PauseTransition(Duration.seconds(0.2));
+            shortPause.setOnFinished(e -> {
+                stopCountdown();
+                if (onFinished != null) onFinished.run();
+            });
+            shortPause.play();
+            return;
+        }
+
         countdownTimer = new Timeline(new KeyFrame(Duration.seconds(1), ev -> {
             left[0]--;
             if (left[0] > 0) {
@@ -345,19 +527,21 @@ public class GameplayController {
                 PauseTransition hide = new PauseTransition(Duration.seconds(1));
                 hide.setOnFinished(e2 -> {
                     stopCountdown();
-                    enableButtonsSafely();
-                    showTemporaryFeedback("Trận đấu bắt đầu!", 2, "");
+                    // remove temporary debug background/style so final UI returns to CSS styling
+                    try { countdownOverlay.setStyle(null); } catch (Exception ignored) {}
+                    try { countdownLabel.setStyle(null); countdownMessageLabel.setStyle(null); } catch (Exception ignored) {}
+                    if (onFinished != null) onFinished.run();
                 });
                 hide.play();
             }
         }));
-        countdownTimer.setCycleCount(seconds);
+        countdownTimer.setCycleCount(Timeline.INDEFINITE);
         countdownTimer.play();
     }
 
     private void stopCountdown() {
         if (countdownTimer != null) {
-            countdownTimer.stop();
+            try { countdownTimer.stop(); } catch (Exception ignored) {}
             countdownTimer = null;
         }
         if (countdownOverlay != null) {
@@ -366,152 +550,33 @@ public class GameplayController {
         }
     }
 
-    /**
-     * Handles server raw messages (generic dispatch).
-     * This method is also used by TestClient via reflection.
-     */
-    public void handleServerMessage(String message) {
-        System.out.println("Server message: " + message);
-
-        if (message == null) return;
-        String trimmed = message.trim();
-        if (trimmed.isEmpty()) return;
-
-        try {
-            if (trimmed.startsWith("{") && (trimmed.contains("\"type\":\"time_pong\"") || trimmed.contains("\"type\":\"TIME_PONG\""))) {
-                TimePong pong = gson.fromJson(trimmed, TimePong.class);
-                // If a time_pong contains client_send that matches pending, complete it
-                if (pong != null && pong.client_send != null && pong.server_time != null) {
-                    CompletableFuture<Long> f = pendingPingReplies.remove(pong.client_send);
-                    if (f != null) f.complete(pong.server_time);
-                }
-                return;
-            }
-            if (trimmed.startsWith("{") && trimmed.contains("\"type\":\"server_now\"")) {
-                ServerNow now = gson.fromJson(trimmed, ServerNow.class);
-                if (now != null && now.server_time != null) {
-                    long clientNow = System.currentTimeMillis();
-                    long sampleOffset = now.server_time - clientNow;
-                    offsetMs.set((long) Math.round(0.6 * sampleOffset + 0.4 * offsetMs.get()));
-                    baseSystemMs = System.currentTimeMillis();
-                    baseNano = System.nanoTime();
-                }
-            }
-        } catch (Exception ex) {
-            // ignore parsing errors for time messages
-        }
-
-        Platform.runLater(() -> {
-            try {
-                if (trimmed.startsWith("{")) {
-                    JsonElement je = JsonParser.parseString(trimmed);
-                    JsonObject jo = je.getAsJsonObject();
-                    String type = jo.has("type") ? jo.get("type").getAsString() : "";
-
-                    if ("MATCH_START_INFO".equalsIgnoreCase(type)) {
-                        MatchStartInfo info = gson.fromJson(trimmed, MatchStartInfo.class);
-                        // ensure match start is handled (typed handler also calls handleMatchStart)
-                        handleMatchStart(info);
-                    } else if ("NEW_ROUND".equalsIgnoreCase(type)) {
-                        NewRound round = gson.fromJson(trimmed, NewRound.class);
-                        handleNewRoundWithCountdown(round);
-                    } else if ("ANSWER_RESULT".equalsIgnoreCase(type)) {
-                        AnswerResult result = gson.fromJson(trimmed, AnswerResult.class);
-                        handleAnswerResult(result);
-                    } else if ("ROUND_RESULT".equalsIgnoreCase(type)) {
-                        RoundResult result = gson.fromJson(trimmed, RoundResult.class);
-                        handleRoundResult(result);
-                    } else if ("GAME_END".equalsIgnoreCase(type) || "GAME_OVER".equalsIgnoreCase(type)) {
-                        RoundResult finalResult = gson.fromJson(trimmed, RoundResult.class);
-                        handleGameEnd(finalResult);
-                        showMatchResult(trimmed);
-                    }
-                } else if (trimmed.startsWith("INFO|")) {
-                    showTemporaryFeedback(trimmed.substring(5), 3, "");
-                } else if (trimmed.startsWith("ERROR|")) {
-                    showTemporaryFeedback("Lỗi: " + trimmed.substring(6), 5, "");
-                } else if (trimmed.equals("FORFEIT_ACK")) {
-                    showTemporaryFeedback("Đã thoát trận đấu", 3, "");
-                } else {
-                    showTemporaryFeedback(trimmed, 2, "");
-                }
-            } catch (Exception e) {
-                System.err.println("Error handling message: " + e.getMessage());
-            }
-        });
-    }
-
-    private void handleNewRoundWithCountdown(NewRound round) {
-        if (round == null) return;
-
-        // If this is round 1 and initial countdown already shown, start immediately
-        if (round.round == 1 && initialCountdownShown) {
-            beginRound(round);
-            return;
-        }
-
-        int countdownSec = (round.round == 1) ? 5 : 3;
-        if (countdownOverlay != null && countdownLabel != null && countdownMessageLabel != null) {
-            Platform.runLater(() -> {
-                countdownMessageLabel.setText("Bắt đầu vòng " + round.round + " trong...");
-                startRoundCountdown(round, countdownSec);
-            });
-        } else {
-            beginRound(round);
-        }
-    }
-
-    private void startRoundCountdown(NewRound round, int seconds) {
-        if (seconds <= 0) seconds = 3;
-        countdownOverlay.setVisible(true);
-        countdownOverlay.setManaged(true);
-        countdownOverlay.toFront();
-        disableButtonsSafely();
-
-        countdownLabel.setText(String.valueOf(seconds));
-        final int[] left = {seconds};
-
-        if (countdownTimer != null) {
-            countdownTimer.stop();
-            countdownTimer = null;
-        }
-        countdownTimer = new Timeline(new KeyFrame(Duration.seconds(1), ev -> {
-            left[0]--;
-            if (left[0] > 0) {
-                countdownLabel.setText(String.valueOf(left[0]));
-            } else {
-                countdownLabel.setText("BẮT ĐẦU!");
-                countdownMessageLabel.setText("Chúc may mắn!");
-                PauseTransition hide = new PauseTransition(Duration.seconds(1));
-                hide.setOnFinished(e2 -> {
-                    stopCountdown();
-                    beginRound(round);
-                });
-                hide.play();
-            }
-        }));
-        countdownTimer.setCycleCount(seconds);
-        countdownTimer.play();
-    }
-
     private void beginRound(NewRound round) {
         if (round == null) return;
 
-        currentRound = round.round;
-        currentLevel = round.difficulty;
-        targetNumber = round.target;
+        currentRound = round.getRound();
+        currentLevel = round.getDifficulty();
+        targetNumber = round.getTarget();
         hasSubmitted = false;
         if (expressionBuilder != null) expressionBuilder.setLength(0);
 
-        timeRemaining = round.time;
+        // If server provided a server_round_end, compute remaining time using currentServerTimeMs
+        int seconds = round.getTime();
+        long nowServer = currentServerTimeMs();
+        if (round.getServer_round_end() != 0) {
+            long remMs = round.getServer_round_end() - nowServer;
+            if (remMs < 0) remMs = 0;
+            seconds = (int) Math.max(0, Math.ceil(remMs / 1000.0));
+        }
+
+        timeRemaining = Math.max(0, seconds);
         enableButtonsSafely();
-        startTimer(round.time);
+        startTimer(timeRemaining);
         updateDisplay();
 
-        System.out.println("Round " + round.round + " started locally (target=" + round.target + ", time=" + round.time + "s)");
+        System.out.println("Round " + round.getRound() + " started locally (target=" + round.getTarget() + ", time=" + timeRemaining + "s)");
     }
 
-    // ---------------- Input handling (numbers / operators / brackets / backspace / clear / submit) ----------------
+    // ---------------- Input handlers ----------------
 
     @FXML
     private void handleNumberInput(javafx.event.ActionEvent event) {
@@ -634,7 +699,7 @@ public class GameplayController {
             if (gameClient != null && gameClient.isConnected()) {
                 try {
                     gameClient.sendSubmitAnswer(normalized);
-                } catch (Throwable ignored) {
+                } catch (Exception e) {
                     gameClient.sendRaw("ANSWER " + normalized);
                 }
                 hasSubmitted = true;
@@ -650,55 +715,34 @@ public class GameplayController {
 
     @FXML
     private void handleExit(javafx.event.ActionEvent event) {
-        // guard to avoid double processing
         if (hasExited) return;
         hasExited = true;
-
-        // stop local timers and overlays
         stopTimer();
         stopCountdown();
         stopRoundTransition();
-
-        // tell server we forfeit / exit the match
         if (gameClient != null && gameClient.isConnected()) {
-            try {
-                // prefer a formal API if available
-                try {
-                    gameClient.sendRaw("FORFEIT");
-                } catch (UnsupportedOperationException ignored) {
-                    // fallback if sendRaw is not present for custom wrappers
-                }
-            } catch (Exception ex) {
-                System.err.println("Failed to send FORFEIT: " + ex.getMessage());
-            }
+            try { gameClient.sendForfeit(); } catch (Exception ignored) {}
         }
-
-        // update UI
         showTemporaryFeedback("Đang thoát trận đấu...", 2, "");
         disableButtonsSafely();
-
-        // optionally close the window containing this controller:
-        try {
-            javafx.scene.Node src = (javafx.scene.Node) event.getSource();
-            if (src != null && src.getScene() != null && src.getScene().getWindow() instanceof Stage) {
-                Stage st = (Stage) src.getScene().getWindow();
-                // don't close if it's the main app stage you want to keep — adjust as needed
-                // st.close();
-            }
-        } catch (Exception ignored) {}
     }
 
     private boolean isOperator(char c) {
         return c == '+' || c == '-' || c == '*' || c == '/' || c == '×' || c == '÷';
     }
 
-    // ---------------- Round timer ----------------
+    // ---------------- Timer ----------------
 
     private void startTimer(int seconds) {
         stopTimer();
-        if (seconds <= 0) seconds = 30;
+        if (seconds <= 0) seconds = 0;
         timeRemaining = seconds;
         updateDisplay();
+
+        if (seconds <= 0) {
+            handleTimeOut();
+            return;
+        }
 
         timer = new Timeline(new KeyFrame(Duration.seconds(1), ev -> {
             timeRemaining--;
@@ -723,7 +767,7 @@ public class GameplayController {
     private void handleTimeOut() {
         hasSubmitted = true;
         if (gameStatusLabel != null) {
-            gameStatusLabel.setText("⏰ HẾT GIỜ!");
+            gameStatusLabel.setText("HẾT GIỜ!");
             gameStatusLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
         }
 
@@ -736,21 +780,19 @@ public class GameplayController {
         resetStyle.play();
 
         if (gameClient != null && gameClient.isConnected()) {
-            try {
-                gameClient.sendRaw("TIMEOUT_NOTIFICATION Round:" + currentRound);
-            } catch (Exception ignored) {}
+            try { gameClient.sendRaw("TIMEOUT_NOTIFICATION Round:" + currentRound); } catch (Exception ignored) {}
         }
         System.out.println("Time out for round " + currentRound);
     }
 
-    // ---------------- Result handlers (stubs - integrate existing logic) ----------------
+    // ---------------- Results ----------------
 
     private void handleAnswerResult(AnswerResult result) {
-        // Integrate your existing logic here (update scores, show messages)
         if (result == null) return;
         if (result.accepted) {
             if (result.correct) {
                 showTemporaryFeedback("Đúng rồi! +" + result.score_gained + " điểm", 2, "");
+                // server should indicate which player; we assume local if accepted
                 playerScore += result.score_gained;
             } else {
                 showTemporaryFeedback("Sai! Kết quả: " + result.result, 2, "");
@@ -762,20 +804,24 @@ public class GameplayController {
     }
 
     private void handleRoundResult(RoundResult result) {
-        // update local state from round result
         if (result == null) return;
         stopTimer();
-        if (result.players != null) {
-            for (RoundResult.PlayerResult pr : result.players) {
-                if (pr.username != null && pr.username.equalsIgnoreCase(playerUsername)) {
-                    playerScore = pr.total_score;
-                } else {
-                    opponentScore = pr.total_score;
+
+        try {
+            if (result.players != null) {
+                for (RoundResult.PlayerResult pr : result.players) {
+                    if (pr.username != null && pr.username.equalsIgnoreCase(playerUsername)) {
+                        playerScore = pr.total_score;
+                    } else {
+                        opponentScore = pr.total_score;
+                    }
                 }
             }
+        } catch (Exception ex) {
+            System.err.println("handleRoundResult mapping error: " + ex.getMessage());
         }
-        String msg = "Vòng " + result.round_number + " kết thúc";
-        showTemporaryFeedback(msg, 2, "Chờ vòng tiếp theo...");
+
+        showTemporaryFeedback("Vòng " + result.round_number + " kết thúc", 2, "Chờ vòng tiếp theo...");
         updateDisplay();
     }
 
@@ -783,13 +829,12 @@ public class GameplayController {
         stopTimer();
         stopCountdown();
         stopRoundTransition();
-        String message = "Game kết thúc!";
-        showTemporaryFeedback(message, 4, "");
+        showTemporaryFeedback("Game kết thúc!", 4, "");
         updateDisplay();
+        // showMatchResult called by caller that passed the final JSON
     }
 
     private void showMatchResult(String rawJson) {
-        // Load match_result.fxml and show modal (existing logic)
         Platform.runLater(() -> {
             try {
                 URL fxmlUrl = getClass().getResource("/fxml/pages/matchresult.fxml");
@@ -826,8 +871,6 @@ public class GameplayController {
         if (roundTransitionOverlay != null) roundTransitionOverlay.setVisible(false);
     }
 
-    private void startRoundAfterTransition(NewRound round) { beginRound(round); }
-
     private void enableButtonsSafely() {
         if (!hasSubmitted && !hasExited && timeRemaining > 0) {
             if (submitButton != null) submitButton.setDisable(false);
@@ -844,6 +887,11 @@ public class GameplayController {
         if (exitButton != null) exitButton.setDisable(true);
     }
 
+    private void updatePlayerNames() {
+        if (playerNameLabel != null) playerNameLabel.setText(playerDisplayName);
+        if (opponentNameLabel != null) opponentNameLabel.setText(opponentDisplayName);
+    }
+
     private void updateDisplay() {
         if (playerScoreLabel != null) playerScoreLabel.setText(String.valueOf(playerScore));
         if (opponentScoreLabel != null) opponentScoreLabel.setText(String.valueOf(opponentScore));
@@ -854,7 +902,7 @@ public class GameplayController {
         if (playerNameLabel != null) playerNameLabel.setText(playerDisplayName);
 
         if (timerLabel != null) {
-            if (timeRemaining <= 0) {
+            if (timeRemaining < 1) {
                 timerLabel.setText("HẾT GIỜ!");
                 timerLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
             } else {
@@ -871,7 +919,6 @@ public class GameplayController {
     }
 
     public void setPlayerUsername(String username) { this.playerUsername = username; }
-    public void setGameClient(GameplayClient client) { this.gameClient = client; }
 
     public void cleanup() {
         stopTimer();
@@ -881,13 +928,11 @@ public class GameplayController {
             if (periodicResyncFuture != null) periodicResyncFuture.cancel(true);
         } catch (Exception ignored) {}
         try { syncExecutor.shutdownNow(); } catch (Exception ignored) {}
-        try { schedulingExecutor.shutdownNow(); } catch (Exception ignored) {}
         if (gameClient != null) {
             try { gameClient.disconnect(); } catch (Exception ignored) {}
         }
     }
 
-    // TimePong and ServerNow helper classes
     private static class TimePong {
         @SerializedName("type") public String type;
         @SerializedName("client_send") public Long client_send;
@@ -898,33 +943,13 @@ public class GameplayController {
         @SerializedName("server_time") public Long server_time;
     }
 
-    public void showFeedback(String message) {
-        Platform.runLater(() -> {
-            if (gameStatusLabel != null) {
-                gameStatusLabel.setText(message);
-            }
-        });
-        System.out.println("Feedback: " + message);
-    }
-
-
-
-    /**
-     * Show a temporary message on the UI for `seconds` then restore defaultText.
-     * Public so other classes (tests, wrappers) can call it.
-     */
     public void showTemporaryFeedback(String message, int seconds, String defaultText) {
         Platform.runLater(() -> {
-            if (gameStatusLabel != null) {
-                gameStatusLabel.setText(message);
-            }
-            // schedule restore after `seconds`
+            if (gameStatusLabel != null) gameStatusLabel.setText(message);
             if (seconds > 0) {
                 PauseTransition pause = new PauseTransition(Duration.seconds(seconds));
                 pause.setOnFinished(e -> {
-                    if (gameStatusLabel != null) {
-                        gameStatusLabel.setText(defaultText != null ? defaultText : "");
-                    }
+                    if (gameStatusLabel != null) gameStatusLabel.setText(defaultText != null ? defaultText : "");
                 });
                 pause.play();
             }

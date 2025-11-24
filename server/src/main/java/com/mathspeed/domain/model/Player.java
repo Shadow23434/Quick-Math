@@ -151,6 +151,14 @@ public class Player {
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
+
+    public String toJson(){
+        return "{"
+                + "\"id\":" + id + ","
+                + "\"username\":\"" + username + "\","
+                + "\"display_name\":" + displayName
+                + "}";
+    }
 }
 
 

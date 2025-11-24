@@ -10,7 +10,7 @@
            prefWidth="480"
            prefHeight="720">
 
-    <VBox spacing="12" alignment="TOP_CENTER" styleClass="result-view" prefWidth="420">
+    <VBox spacing="12" alignment="TOP_CENTER" stylesheets="@../../css/matchresult.css" styleClass="result-view" prefWidth="420">
         <padding>
             <Insets top="18" right="18" left="18" bottom="18"/>
         </padding>

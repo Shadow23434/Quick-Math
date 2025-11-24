@@ -1,6 +1,8 @@
 package com.mathspeed.client;
 
+import com.mathspeed.controller.GameplayController;
 import com.mathspeed.model.Player;
+import com.mathspeed.network.NetworkGameplay;
 import com.mathspeed.util.WindowConfig;
 import com.mathspeed.util.ReloadManager;
 import com.mathspeed.util.ResourceLoader;
@@ -23,7 +25,7 @@ public class SceneManager {
     @Setter
     private Stage primaryStage;
     private Player currentPlayer;
-    public enum Screen { DASHBOARD, LIBRARY, FRIENDS, PROFILE, LEADERBOARD, LOGIN, REGISTER, SPLASH }
+    public enum Screen { DASHBOARD, LIBRARY, FRIENDS, PROFILE, LEADERBOARD, LOGIN, REGISTER, SPLASH, GAMEPLAY }
     @Getter
     private Screen currentScreen;
     private EnumMap<Screen, Parent> viewCache = new EnumMap<>(Screen.class);
@@ -392,6 +394,7 @@ public class SceneManager {
             case LOGIN -> "src/main/resources/css/login.css";
             case REGISTER -> "src/main/resources/css/register.css";
             case SPLASH -> "src/main/resources/css/splash.css";
+            case GAMEPLAY -> "src/main/resources/css/gameplay.css";
         };
     }
 
@@ -405,6 +408,7 @@ public class SceneManager {
             case LOGIN -> "src/main/resources/fxml/pages/login.fxml";
             case REGISTER -> "src/main/resources/fxml/pages/register.fxml";
             case SPLASH -> "src/main/resources/fxml/pages/splash.fxml";
+            case GAMEPLAY -> "src/main/resources/fxml/pages/gameplay.fxml";
         };
     }
 
@@ -419,6 +423,86 @@ public class SceneManager {
             currentScreen = null;
         } catch (Exception e) {
             logger.warn("Error during logout reset", e);
+        }
+    }
+
+
+    //Gameplay Screen Specific Methods
+    public static void showGame(Stage stage, Player currentPlayer) {
+        showGame(stage, currentPlayer, null);
+    }
+
+    public static void showGame(Stage stage, Player currentPlayer, NetworkGameplay client) {
+        getInstance().setPrimaryStage(stage);
+        try {
+            SceneManager inst = getInstance();
+            inst.usingDesktopSize = false;
+            if (stage.isMaximized()) {
+                try { stage.setMaximized(false); } catch (Exception ignored) {}
+                stage.setWidth(WindowConfig.DEFAULT_WIDTH);
+                stage.setHeight(WindowConfig.DEFAULT_HEIGHT);
+                Rectangle2D vb = javafx.stage.Screen.getPrimary().getVisualBounds();
+                stage.setX(vb.getMinX() + (vb.getWidth() - WindowConfig.DEFAULT_WIDTH) / 2.0);
+                stage.setY(vb.getMinY() + (vb.getHeight() - WindowConfig.DEFAULT_HEIGHT) / 2.0);
+            }
+        } catch (Exception e) {
+            logger.debug("Failed to enforce sizing for gameplay", e);
+        }
+
+        // Ensure reload will call the variant that accepts a client
+        ReloadManager.setCurrentSceneReloader(s -> showGame(s, currentPlayer, client));
+        try {
+            String fxmlPath = getInstance().getFxmlPathForScreen(Screen.GAMEPLAY);
+            Parent root;
+            File file = new File(fxmlPath);
+            FXMLLoader loader;
+            if (file.exists()) {
+                loader = new FXMLLoader(file.toURI().toURL());
+            } else {
+                String resourcePath = fxmlPath.replace("src/main/resources", "");
+                loader = new FXMLLoader(SceneManager.class.getResource(resourcePath));
+            }
+            root = loader.load();
+            Object controller = loader.getController();
+
+// DEBUG: log controller identity and player being shown
+            System.out.println("showGame: loaded controller instance=" + System.identityHashCode(controller)
+                    + " for player=" + (currentPlayer == null ? "null" : currentPlayer.getUsername()));
+
+// Do NOT cache controller/view for gameplay if you need independent windows.
+// getInstance().controllerCache.put(Screen.GAMEPLAY, controller);
+// getInstance().viewCache.put(Screen.GAMEPLAY, root);
+
+            Scene scene = new Scene(root, WindowConfig.DEFAULT_WIDTH, WindowConfig.DEFAULT_HEIGHT);
+            scene.getStylesheets().add(ResourceLoader.loadCSS("src/main/resources/css/theme.css", SceneManager.class));
+            String gameplayCssPath = getInstance().getCSSPathForScreen(Screen.GAMEPLAY);
+            try {
+                String css = ResourceLoader.loadCSS(gameplayCssPath, SceneManager.class);
+                if (css != null) scene.getStylesheets().add(css);
+            } catch (Exception ignored) {}
+
+            stage.setTitle("Math Speed Game - Gameplay");
+            stage.setScene(scene);
+            stage.setResizable(false);
+            if (!stage.isMaximized()) stage.sizeToScene();
+
+            if (controller instanceof GameplayController) {
+                GameplayController gc = (GameplayController) controller;
+                if (currentPlayer != null) {
+                    try { gc.setPlayerUsername(currentPlayer.getUsername()); } catch (Exception ignored) {}
+                }
+                if (client != null) {
+                    try { gc.setGameClient(client); } catch (Exception ex) {
+                        logger.warn("Failed to inject NetworkGameplay into GameplayController", ex);
+                    }
+                }
+            }
+
+            stage.show();
+            getInstance().currentScreen = Screen.GAMEPLAY;
+        } catch (Exception e) {
+            logger.error("Failed to show gameplay screen", e);
+            e.printStackTrace();
         }
     }
 }

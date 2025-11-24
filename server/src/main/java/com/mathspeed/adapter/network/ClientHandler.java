@@ -203,7 +203,7 @@ public class ClientHandler implements Runnable {
         try { PlayerRepository.updateStatus(username, "online"); } catch (Exception e) { System.err.println("Failed to update last login for user: " + username + " - " + e.getClass().getSimpleName() + ": " + e.getMessage()); e.printStackTrace(); }
 
         clientRegistry.broadcastOnlinePlayers();
-        sendType(MessageType.LOGIN_SUCCESS, null);
+        sendType(MessageType.LOGIN_SUCCESS, player.toJson());
     }
 
     private void handleJoinQueue() {
@@ -494,4 +494,5 @@ public class ClientHandler implements Runnable {
         try { if (in != null) in.close(); } catch (IOException ignored) {}
         try { if (!socket.isClosed()) socket.close(); } catch (IOException ignored) {}
     }
+
 }
