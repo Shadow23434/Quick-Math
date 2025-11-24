@@ -15,6 +15,7 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import java.io.*;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.ConnectException;
 import java.net.Socket;
@@ -31,6 +32,9 @@ public class TestClient extends Application {
     private static GameplayController gameController;
     private static Stage primaryStage;
     private final Gson gson = GsonJavaTime.create();
+
+    // local identity set from server LOGIN_SUCCESS message
+    private Player localPlayer = new Player();
 
     public static void main(String[] args) {
         launch(args);
@@ -60,6 +64,65 @@ public class TestClient extends Application {
                     while ((line = in.readLine()) != null) {
                         final String l = line;
                         System.out.println("\n<<< SERVER: " + l);
+
+                        // Handle LOGIN_SUCCESS|{...} specially: extract id/username/display_name and set local identity
+                        if (l.startsWith("LOGIN_SUCCESS|") || l.startsWith("LOGIN_SUCCESS |")) {
+                            int idx = l.indexOf('|');
+                            if (idx >= 0 && idx + 1 < l.length()) {
+                                String jsonPart = l.substring(idx + 1).trim();
+                                try {
+                                    JsonElement je = JsonParser.parseString(jsonPart);
+                                    if (je != null && je.isJsonObject()) {
+                                        JsonObject jo = je.getAsJsonObject();
+                                        if (jo.has("id")) {
+                                            try { localPlayer.setId(jo.get("id").getAsString()); } catch (Exception ignored) {}
+                                        }
+                                        if (jo.has("username")) {
+                                            try { localPlayer.setUsername(jo.get("username").getAsString()); } catch (Exception ignored) {}
+                                        }
+                                        if (jo.has("display_name")) {
+                                            try { localPlayer.setDisplayName(jo.get("display_name").getAsString()); } catch (Exception ignored) {}
+                                        }
+                                        if (jo.has("avatar_url")) {
+                                            try { localPlayer.setAvatarUrl(jo.get("avatar_url").getAsString()); } catch (Exception ignored) {}
+                                        }
+                                        if (localPlayer.getDisplayName() == null || localPlayer.getDisplayName().isEmpty()) localPlayer.setDisplayName(localPlayer.getUsername());
+
+                                        System.out.println("Parsed LOGIN_SUCCESS: id=" + localPlayer.getId() + " username=" + localPlayer.getUsername() + " display_name=" + localPlayer.getDisplayName());
+
+                                        // If UI/controller already created, inject username and display name immediately
+                                        if (gameController != null) {
+                                            try {
+                                                gameController.setPlayerUsername(localPlayer.getUsername());
+                                                gameController.setPlayerAvatarUrl(localPlayer.getAvatarUrl());
+                                                // try to set the private playerDisplayName and call updatePlayerNames() via reflection
+                                                try {
+                                                    Field fld = gameController.getClass().getDeclaredField("playerDisplayName");
+                                                    fld.setAccessible(true);
+                                                    fld.set(gameController, localPlayer.getDisplayName());
+                                                } catch (NoSuchFieldException nsf) {
+                                                    // ignore if field not present
+                                                }
+                                                try {
+                                                    Method mu = gameController.getClass().getDeclaredMethod("updatePlayerNames");
+                                                    mu.setAccessible(true);
+                                                    mu.invoke(gameController);
+                                                } catch (NoSuchMethodException nsme) {
+                                                    // ignore if method not present
+                                                }
+                                            } catch (Exception ex) {
+                                                System.err.println("Failed to inject username/display_name into controller: " + ex.getMessage());
+                                                ex.printStackTrace();
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ex) {
+                                    System.err.println("Failed to parse LOGIN_SUCCESS JSON: " + ex.getMessage());
+                                }
+                            }
+                            // continue to next line (we still allow deliverToController to show any feedback if desired)
+                        }
+
                         // deliver to controller if UI active
                         if (gameController != null) {
                             deliverToController(l);
@@ -78,7 +141,27 @@ public class TestClient extends Application {
                                 while (gameController == null && tries++ < 40) {
                                     Thread.sleep(50);
                                 }
-                                if (gameController != null) deliverToController(l);
+                                if (gameController != null) {
+                                    // Ensure controller has username if we already learned it from LOGIN_SUCCESS
+                                    if (localPlayer.getUsername() != null && !localPlayer.getUsername().isEmpty()) {
+                                        try {
+                                            gameController.setPlayerUsername(localPlayer.getUsername());
+                                            try {
+                                                Field fld = gameController.getClass().getDeclaredField("playerDisplayName");
+                                                fld.setAccessible(true);
+                                                fld.set(gameController, localPlayer.getDisplayName() != null ? localPlayer.getDisplayName() : localPlayer.getUsername());
+                                            } catch (Exception ignored) {}
+                                            try {
+                                                Method mu = gameController.getClass().getDeclaredMethod("updatePlayerNames");
+                                                mu.setAccessible(true);
+                                                mu.invoke(gameController);
+                                            } catch (Exception ignored) {}
+                                        } catch (Exception ex) {
+                                            System.err.println("Failed to inject saved username/display into controller after switch: " + ex.getMessage());
+                                        }
+                                    }
+                                    deliverToController(l);
+                                }
                             }
                         }
                         System.out.print(">>> ");
@@ -121,11 +204,30 @@ public class TestClient extends Application {
     private void switchToGameplay() throws Exception {
         System.out.println("Switching to gameplay UI...");
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/pages/gameplay.fxml"));
-        Scene s = new Scene(loader.load(), 800, 620);
+        Scene s = new Scene(loader.load(), 800, 650);
         primaryStage.setScene(s);
         primaryStage.show();
         gameController = loader.getController();
-        gameController.setPlayerUsername("TestPlayer");
+
+        // If we already have username from LOGIN_SUCCESS, use it; otherwise keep a placeholder
+        if (localPlayer.getUsername() != null && !localPlayer.getUsername().isEmpty()) {
+            gameController.setPlayerUsername(localPlayer.getUsername());
+            // attempt to set display name if we already have it
+            if (localPlayer.getDisplayName() != null && !localPlayer.getDisplayName().isEmpty()) {
+                try {
+                    Field fld = gameController.getClass().getDeclaredField("playerDisplayName");
+                    fld.setAccessible(true);
+                    fld.set(gameController, localPlayer.getDisplayName());
+                } catch (Exception ignored) {}
+                try {
+                    Method mu = gameController.getClass().getDeclaredMethod("updatePlayerNames");
+                    mu.setAccessible(true);
+                    mu.invoke(gameController);
+                } catch (Exception ignored) {}
+            }
+        } else {
+            gameController.setPlayerUsername("TestPlayer");
+        }
 
         // create a wrapper client that uses this TestClient socket/out
         TestGameplayClientWrapper wrapper = new TestGameplayClientWrapper();
@@ -193,7 +295,11 @@ public class TestClient extends Application {
                 }
 
                 // non-JSON messages (pipe-delimited)
-                if (trimmed.startsWith("INFO|")) {
+                if (trimmed.startsWith("LOGIN_SUCCESS|") || trimmed.startsWith("LOGIN_SUCCESS |")) {
+                    // already handled in reader, but also surface as feedback
+                    String payload = trimmed.substring(trimmed.indexOf('|') + 1).trim();
+                    invokeControllerMethod("showTemporaryFeedback", new Class[]{String.class,int.class,String.class}, new Object[]{"Login OK: " + payload,3,""});
+                } else if (trimmed.startsWith("INFO|")) {
                     String info = trimmed.substring(Math.min(trimmed.length(), 5));
                     invokeControllerMethod("showTemporaryFeedback", new Class[]{String.class,int.class,String.class}, new Object[]{info,3,""});
                 } else if (trimmed.startsWith("ERROR|")) {

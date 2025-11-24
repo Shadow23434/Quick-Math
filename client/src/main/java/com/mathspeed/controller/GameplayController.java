@@ -18,6 +18,8 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -42,6 +44,8 @@ public class GameplayController {
 
     @FXML private Label playerNameLabel;
     @FXML private Label opponentNameLabel;
+    @FXML private ImageView playerAvatarImage;
+    @FXML private ImageView opponentAvatarImage;
     @FXML private Label playerScoreLabel;
     @FXML private Label opponentScoreLabel;
     @FXML private Label timerLabel;
@@ -69,8 +73,8 @@ public class GameplayController {
     @FXML private Label roundTransitionOpponentScore;
     @FXML private Label roundTransitionMessage;
 
-    private String playerDisplayName = "You";
-    private String opponentDisplayName = "Opponent";
+    private String playerDisplayName = "Bạn";
+    private String opponentDisplayName = "Đối thủ";
     private StringBuilder expressionBuilder;
     private volatile boolean hasSubmitted = false;
     private volatile boolean hasExited = false;
@@ -153,6 +157,48 @@ public class GameplayController {
         System.out.println("GameplayController.initialize instance=" + System.identityHashCode(this) + " playerUsername=" + playerUsername);
         updatePlayerNames();
         updateDisplay();
+
+        try {
+            String placeholder = getClass().getResource("/images/avatar-default.png").toExternalForm();
+            setPlayerAvatarUrl(placeholder);
+            setOpponentAvatarUrl(placeholder);
+        } catch (Exception ex) {
+            System.err.println("Không tìm thấy placeholder avatar resource: " + ex.getMessage());
+        }
+    }
+
+    public void setPlayerAvatarUrl(String urlOrResourcePath) {
+        if (urlOrResourcePath == null) return;
+        Platform.runLater(() -> {
+            try {
+                Image img = new Image(urlOrResourcePath, 56, 56, true, true, true);
+                playerAvatarImage.setImage(img);
+                applyCircleClip(playerAvatarImage, 28);
+            } catch (Exception ex) {
+                System.err.println("setPlayerAvatarUrl error: " + ex.getMessage());
+            }
+        });
+    }
+
+    public void setOpponentAvatarUrl(String urlOrResourcePath) {
+        if (urlOrResourcePath == null) return;
+        Platform.runLater(() -> {
+            try {
+                javafx.scene.image.Image img = new javafx.scene.image.Image(urlOrResourcePath, 56, 56, true, true, true);
+                opponentAvatarImage.setImage(img);
+                applyCircleClip(opponentAvatarImage, 28);
+            } catch (Exception ex) {
+                System.err.println("setOpponentAvatarUrl error: " + ex.getMessage());
+            }
+        });
+    }
+
+    // utility để tạo clip tròn (center = fitWidth/2)
+    private void applyCircleClip(javafx.scene.image.ImageView iv, double radius) {
+        if (iv == null) return;
+        javafx.scene.shape.Circle clip = new javafx.scene.shape.Circle(radius, radius, radius);
+        iv.setClip(clip);
+        // optional: add a subtle border by snapshotting clip and placing on container if needed
     }
 
     /**
@@ -272,7 +318,7 @@ public class GameplayController {
             baseSystemMs = System.currentTimeMillis();
             baseNano = System.nanoTime();
             System.out.println("Time sync done: offset=" + offsetMs.get() + " rtt=" + estimatedRttMs.get());
-            Platform.runLater(() -> showTemporaryFeedback("Đồng bộ thời gian hoàn tất", 1, ""));
+            Platform.runLater(() -> System.out.println("Đồng bộ thời gian hoàn tất"));
         }
     }
 
@@ -292,7 +338,7 @@ public class GameplayController {
         updateDisplay();
 
         // determine opponent display name
-        String opponent = "Opponent";
+        String opponent = "Đối thủ";
         if (info.players != null) {
             for (Player p : info.players) {
                 if (p == null) continue;
@@ -306,7 +352,7 @@ public class GameplayController {
             }
         }
         opponentDisplayName = opponent;
-        playerDisplayName = "You";
+        playerDisplayName = "Bạn";
 
         // compute countdown based on server start time if provided
         int countdownSec = 5;
@@ -408,6 +454,9 @@ public class GameplayController {
 
         // CASE C: no server timestamps or already expired - fallback to previous behavior
         int preCountdown = (round.getRound() == 1 && initialCountdownShown) ? 0 : ((round.getRound() == 1) ? 5 : 3);
+
+        System.out.println("handleNewRound: computed preCountdown=" + preCountdown + " for round=" + round.getRound()
+                + " initialCountdownShown=" + initialCountdownShown);
         if (preCountdown <= 0) {
             Platform.runLater(() -> beginRound(round));
         } else {
@@ -431,6 +480,10 @@ public class GameplayController {
     }
 
     private void startRoundCountdown(NewRound round, int seconds) {
+        System.out.println("startRoundCountdown called: round=" + (round!=null?round.getRound():"null")
+                + " seconds=" + seconds + " controller=" + System.identityHashCode(this));
+
+
         if (seconds <= 0) {
             beginRound(round);
             return;
@@ -918,7 +971,11 @@ public class GameplayController {
         }
     }
 
-    public void setPlayerUsername(String username) { this.playerUsername = username; }
+    public void setPlayerUsername(String username) {
+
+        System.out.println("setPlayerUsername called: " + username + " on controller=" + System.identityHashCode(this));
+        this.playerUsername = username;
+    }
 
     public void cleanup() {
         stopTimer();
