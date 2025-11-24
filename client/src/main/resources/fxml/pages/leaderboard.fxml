@@ -2,95 +2,74 @@
 
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import org.kordamp.ikonli.javafx.FontIcon?>
 <?import javafx.scene.image.ImageView?>
-
 <?import javafx.geometry.Insets?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
 <VBox xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.mathspeed.controller.LeaderboardController"
       styleClass="light-container">
-    <!-- Header Section (Separated Component) -->
+
+    <!-- Header Section -->
     <fx:include fx:id="dashboardHeader"
                 source="../component/header.fxml"
                 VBox.vgrow="NEVER"/>
 
-    <!-- Main Content Scrolls Below Header -->
-    <ScrollPane fitToWidth="true"
-                hbarPolicy="NEVER"
-                styleClass="dashboard-scroll-pane"
-                pickOnBounds="false"
-                VBox.vgrow="ALWAYS">
+    <!-- Main Scroll -->
+    <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="dashboard-scroll-pane" pickOnBounds="false" VBox.vgrow="ALWAYS">
         <VBox spacing="20" style="-fx-padding: 20 0 20 0;" alignment="TOP_CENTER">
+
             <!-- Page Title -->
-            <Label text="Leaderboard" styleClass="section-title" alignment="CENTER"
-                   style="-fx-font-size: 24px; -fx-font-weight: bold;">
-            </Label>
+            <Label text="Leaderboard" styleClass="section-title" alignment="CENTER" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
 
             <!-- Top 3 Podium -->
             <VBox spacing="15" styleClass="stats-card" alignment="CENTER">
                 <VBox.margin>
                     <Insets left="20" right="20"/>
                 </VBox.margin>
-                <Label text="Top 3 Champions" styleClass="section-title" graphicTextGap="8">
-                    <graphic>
-                        <ImageView fitWidth="30" preserveRatio="true">
-                            <image>
-                                <javafx.scene.image.Image url="/images/t1.png" />
-                            </image>
-                        </ImageView>
-                    </graphic>
-                </Label>
+                <Label text="Top 3 Champions" styleClass="section-title" graphicTextGap="8"/>
                 <HBox spacing="15" alignment="CENTER">
                     <!-- 2nd Place -->
                     <VBox alignment="CENTER" spacing="8" styleClass="podium-card">
                         <StackPane>
-                            <ImageView fitWidth="60" fitHeight="60" preserveRatio="true">
-                                <image>
-                                    <javafx.scene.image.Image url="https://i.pravatar.cc/150?img=25"/>
-                                </image>
+                            <ImageView fx:id="secondAvatar" fitWidth="60" fitHeight="60" preserveRatio="true">
                                 <clip>
                                     <javafx.scene.shape.Circle radius="30" centerX="30" centerY="30"/>
                                 </clip>
                             </ImageView>
                             <Label text="2" styleClass="rank-badge-silver" StackPane.alignment="TOP_RIGHT"/>
                         </StackPane>
-                        <Label fx:id="second_name" text="Alex" styleClass="podium-name"/>
-                        <Label fx:id="second_score" text="2,450 pts" styleClass="podium-score"/>
+                        <Label fx:id="second_name" styleClass="podium-name"/>
+                        <Label fx:id="second_score" styleClass="podium-score"/>
                     </VBox>
 
                     <!-- 1st Place -->
                     <VBox alignment="CENTER" spacing="8" styleClass="podium-card-gold">
                         <StackPane>
-                            <ImageView fitWidth="80" fitHeight="80" preserveRatio="true">
-                                <image>
-                                    <javafx.scene.image.Image url="https://i.pravatar.cc/150?img=32"/>
-                                </image>
+                            <ImageView fx:id="firstAvatar" fitWidth="80" fitHeight="80" preserveRatio="true">
                                 <clip>
                                     <javafx.scene.shape.Circle radius="40" centerX="40" centerY="40"/>
                                 </clip>
                             </ImageView>
                             <FontIcon iconLiteral="fas-crown" styleClass="crown-icon" StackPane.alignment="TOP_CENTER"/>
                         </StackPane>
-                        <Label fx:id="first_name" text="Jordan" styleClass="podium-name" style="-fx-font-size: 16px;"/>
-                        <Label fx:id="first_score" text="3,890 pts" styleClass="podium-score" style="-fx-font-size: 15px;"/>
+                        <Label fx:id="first_name" styleClass="podium-name" style="-fx-font-size: 16px;"/>
+                        <Label fx:id="first_score" styleClass="podium-score" style="-fx-font-size: 15px;"/>
                     </VBox>
 
                     <!-- 3rd Place -->
                     <VBox alignment="CENTER" spacing="8" styleClass="podium-card">
                         <StackPane>
-                            <ImageView fitWidth="60" fitHeight="60" preserveRatio="true">
-                                <image>
-                                    <javafx.scene.image.Image url="https://i.pravatar.cc/150?img=18"/>
-                                </image>
+                            <ImageView fx:id="thirdAvatar" fitWidth="60" fitHeight="60" preserveRatio="true">
                                 <clip>
                                     <javafx.scene.shape.Circle radius="30" centerX="30" centerY="30"/>
                                 </clip>
                             </ImageView>
                             <Label text="3" styleClass="rank-badge-bronze" StackPane.alignment="TOP_RIGHT"/>
                         </StackPane>
-                        <Label fx:id="third_name" text="Sarah" styleClass="podium-name"/>
-                        <Label fx:id="third_score" text="2,120 pts" styleClass="podium-score"/>
+                        <Label fx:id="third_name" styleClass="podium-name"/>
+                        <Label fx:id="third_score" styleClass="podium-score"/>
                     </VBox>
                 </HBox>
             </VBox>
@@ -101,9 +80,7 @@
                     <Insets left="20" right="20"/>
                 </VBox.margin>
                 <Label text="Rankings" styleClass="section-title"/>
-                <!-- country filter removed; show plain rankings -->
-                <VBox fx:id="leaderboardContainer" spacing="8">
-                </VBox>
+                <VBox fx:id="leaderboardContainer" spacing="8"/>
             </VBox>
 
             <!-- Your Rank Card -->
@@ -111,24 +88,17 @@
                 <VBox.margin>
                     <Insets left="20" right="20"/>
                 </VBox.margin>
-                <Label text="Your Rank" styleClass="section-title"
-                       style="-fx-text-fill: white; -fx-background-color: transparent;"/>
+                <Label text="Your Rank" styleClass="section-title" style="-fx-text-fill: white; -fx-background-color: transparent;"/>
                 <HBox spacing="15" alignment="CENTER">
-                    <Label fx:id="userRankLabel" text="#42" styleClass="rank-number"
-                           style="-fx-text-fill: white; -fx-font-size: 24px;"/>
+                    <Label fx:id="userRankLabel" styleClass="rank-number" style="-fx-text-fill: white; -fx-font-size: 24px;"/>
                     <ImageView fx:id="userAvatar" fitWidth="50" fitHeight="50" preserveRatio="true">
-                        <image>
-                            <javafx.scene.image.Image url="https://i.pravatar.cc/150?img=12"/>
-                        </image>
                         <clip>
                             <javafx.scene.shape.Circle radius="25" centerX="25" centerY="25"/>
                         </clip>
                     </ImageView>
                     <VBox spacing="2">
-                        <Label fx:id="userNameLabel" text="You" styleClass="leaderboard-name"
-                               style="-fx-text-fill: white;"/>
-                        <Label fx:id="userScoreLabel" text="1,234 pts" styleClass="leaderboard-score"
-                               style="-fx-text-fill: rgba(255,255,255,0.8);"/>
+                        <Label fx:id="userNameLabel" styleClass="leaderboard-name" style="-fx-text-fill: white;"/>
+                        <Label fx:id="userScoreLabel" styleClass="leaderboard-score" style="-fx-text-fill: rgba(255,255,255,0.8);"/>
                     </VBox>
                     <Region HBox.hgrow="ALWAYS"/>
                 </HBox>
