@@ -356,6 +356,11 @@ public class SceneManager {
         }
         root = loader.load();
         Object controller = loader.getController();
+
+          if (screen == Screen.LEADERBOARD && controller instanceof com.mathspeed.controller.LeaderboardController lc) {
+            lc.setCurrentUser(currentPlayer != null ? String.valueOf(currentPlayer.getId()) : null);
+        }
+
         // Cache controller
         controllerCache.put(screen, controller);
         loadStylesheetsForView(root, screen);
