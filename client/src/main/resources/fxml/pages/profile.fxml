@@ -13,7 +13,7 @@
     <BorderPane styleClass="header-section" VBox.vgrow="NEVER">
         <left>
             <HBox alignment="CENTER_LEFT" spacing="10">
-                <Label text="Profile" styleClass="user-greeting" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+                <Label text="Profile" styleClass="user-display-name" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
             </HBox>
         </left>
 
@@ -28,15 +28,6 @@
                     <graphic>
                         <FontIcon iconLiteral="fas-bell" styleClass="header-icon"/>
                     </graphic>
-                </Button>
-
-                <Button fx:id="reloadButton"
-                        text="🔄"
-                        onAction="#handleReload"
-                        styleClass="icon-button">
-                    <tooltip>
-                        <Tooltip text="Reload (F5)"/>
-                    </tooltip>
                 </Button>
             </HBox>
         </right>
@@ -64,9 +55,21 @@
 
                 <!-- User Info -->
                 <VBox spacing="5" alignment="CENTER">
-                    <Label fx:id="profileNameLabel" text="Player Name" styleClass="user-greeting" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill:-text-color"/>
-                    <Label fx:id="profileEmailLabel" text="player@null.com" styleClass="user-email" style="-fx-text-fill: -text-color"/>
-                    <Label fx:id="profileJoinedLabel" text="Joined: January 2025" styleClass="stat-label"/>
+                    <HBox spacing="8" alignment="CENTER" styleClass="display-name-row">
+                        <Label fx:id="profileDisplayNameLabel" text="Player Name" styleClass="user-display-name" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill:-text-color"/>
+                        <!-- Country flag (set by controller) -->
+                        <HBox spacing="6" alignment="CENTER_LEFT" styleClass="country-row">
+                            <ImageView fx:id="countryFlagView" fitWidth="24" fitHeight="16" preserveRatio="true" styleClass="country-flag" />
+                        </HBox>
+                    </HBox>
+                    <Label fx:id="countryNameLabel" text="(Vietnam)" styleClass="country-name" />
+                    <Label fx:id="profileUserNameLabel" text="player@null.com" styleClass="user-name" style="-fx-font-size: 16px; -fx-text-fill: -text-color"/>
+                    <!-- Gender with icon (icon set by controller) -->
+                    <HBox spacing="6" alignment="CENTER" styleClass="gender-badge">
+                        <FontIcon fx:id="genderIcon" iconLiteral="fas-user" styleClass="gender-icon" />
+                        <Label fx:id="genderLabel" text="Male" styleClass="gender-label" />
+                    </HBox>
+                    <Label fx:id="profileJoinedLabel" text="Joined: January 2025" styleClass="stat-label" style="-fx-font-size: 16px;"/>
                 </VBox>
             </VBox>
 
@@ -141,4 +144,3 @@
         </VBox>
     </ScrollPane>
 </VBox>
-

@@ -281,6 +281,7 @@
 
                     <!-- Loading Indicator -->
                     <ProgressIndicator fx:id="loadingIndicator"
+                                       styleClass="loading-spinner"
                                        visible="false"
                                        managed="false"
                                        prefWidth="30"

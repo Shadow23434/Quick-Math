@@ -36,12 +36,12 @@
                         </padding>
                         <left>
                             <VBox alignment="CENTER" spacing="10">
-                                <Label text="My Quiz" styleClass="stat-label"/>
+                                <Label text="Total Quizzes" styleClass="stat-label"/>
                                 <HBox alignment="CENTER_LEFT" spacing="10">
                                     <StackPane styleClass="stat-icon-bg">
                                         <FontIcon iconLiteral="fas-clipboard-list" styleClass="stat-icon"/>
                                     </StackPane>
-                                    <Label text="24" styleClass="stat-text"/>
+                                    <Label fx:id="totalQuizzesLabel" text="24" styleClass="stat-text"/>
                                 </HBox>
                             </VBox>
                         </left>
@@ -53,7 +53,7 @@
                                     <StackPane styleClass="stat-icon-bg">
                                         <FontIcon iconLiteral="fas-play-circle" styleClass="stat-icon"/>
                                     </StackPane>
-                                    <Label text="43" styleClass="stat-text"/>
+                                    <Label fx:id="gamesPlayedLabel" text="43" styleClass="stat-text"/>
                                 </HBox>
                             </VBox>
                         </center>
@@ -65,7 +65,7 @@
                                     <StackPane styleClass="stat-icon-bg">
                                         <FontIcon iconLiteral="fas-trophy" styleClass="stat-icon"/>
                                     </StackPane>
-                                    <Label text="14" styleClass="stat-text"/>
+                                    <Label fx:id="winsLabel" text="14" styleClass="stat-text"/>
                                 </HBox>
                             </VBox>
                         </right>
@@ -85,7 +85,7 @@
                                 <Button fx:id="findFriendsButton"
                                         text="Find Friends"
                                         styleClass="primary-button"
-                                        onAction="#handleSeeAllOnlineFriends"
+                                        onAction="#handleSeeAllFriends"
                                         maxWidth="120"/>
                             </VBox>
                         </StackPane>
@@ -117,8 +117,6 @@
 
                     <!-- Quiz Carousel - Centered in viewport -->
                     <StackPane fx:id="quizCarouselPane"
-                               prefHeight="200"
-                               alignment="CENTER"
                                style="-fx-background-color: transparent;"/>
                 </VBox>
 
@@ -131,10 +129,10 @@
                         <VBox.margin>
                             <Insets left="20" right="20"/>
                         </VBox.margin>
-                        <Label text="Online Friends" styleClass="section-title"/>
+                        <Label text="All Friends" styleClass="section-title"/>
                         <Region HBox.hgrow="ALWAYS"/>
                         <Hyperlink fx:id="seeAllFriendsLink" text="See All"
-                                   onAction="#handleSeeAllOnlineFriends"
+                                   onAction="#handleSeeAllFriends"
                                    styleClass="hyper-link"
                                    contentDisplay="RIGHT">
                             <graphic>

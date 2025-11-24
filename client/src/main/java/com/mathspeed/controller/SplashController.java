@@ -1,6 +1,6 @@
 package com.mathspeed.controller;
 
-import com.mathspeed.util.SplashSpinner;
+import com.mathspeed.common.SplashSpinner;
 import com.mathspeed.util.WindowSizing;
 import javafx.fxml.FXML;
 import javafx.scene.image.Image;

@@ -17,7 +17,7 @@
         <HBox alignment="CENTER_LEFT" spacing="10" onMouseClicked="#handleProfile" style="-fx-cursor: hand;">
             <ImageView fx:id="avatarImageView" fitWidth="40" fitHeight="40" preserveRatio="true" styleClass="avatar-image">
                 <image>
-                    <javafx.scene.image.Image url="https://i.pravatar.cc/150?img=12"/>
+                    <javafx.scene.image.Image url="https://tse1.mm.bing.net/th/id/OIP.pLa0MvBoBWBLYBwKtdbLhQAAAA?rs=1&amp;pid=ImgDetMain&amp;o=7&amp;rm=3"/>
                 </image>
                 <clip>
                     <javafx.scene.shape.Circle radius="20" centerX="20" centerY="20"/>

@@ -90,7 +90,7 @@ public class LeaderboardController {
     }
 
     private void loadLeaderboardData() {
-        logger.info("Loading leaderboard data for period: " + currentPeriod);
+//        logger.info("Loading leaderboard data for period: " + currentPeriod);
     }
 
     private void populateSampleData() {

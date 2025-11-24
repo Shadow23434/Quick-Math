@@ -52,9 +52,9 @@
             <FlowPane fx:id="friendsContainer"
                       hgap="15"
                       vgap="15"
-                      alignment="CENTER"
-                      prefWrapLength="320"
-                      style="-fx-padding: 0 20 20 20;">
+                      alignment="TOP_CENTER"
+                      prefWidth="320"
+                      style="-fx-padding: 0;">
                 <!-- Friend cards will be added dynamically -->
             </FlowPane>
         </VBox>

@@ -1,21 +1,20 @@
 package com.mathspeed.controller;
 
 import com.mathspeed.client.SceneManager;
+import com.mathspeed.client.SessionManager;
+import com.mathspeed.model.Player;
+import com.mathspeed.service.AuthService;
 import com.mathspeed.util.WindowSizing;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
+import javafx.application.Platform;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.time.LocalDate;
-import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 
 public class RegisterController {
     private static final Logger logger = LoggerFactory.getLogger(RegisterController.class);
@@ -620,43 +619,107 @@ public class RegisterController {
             return;
         }
 
-        // Map selected country name to ISO code (store country as code)
         String selectedCountryName = countryComboBox != null ? countryComboBox.getSelectionModel().getSelectedItem() : null;
         String countryCode = null;
         if (selectedCountryName != null && !selectedCountryName.isEmpty()) {
             countryCode = com.mathspeed.util.Countries.getCodeForName(selectedCountryName);
         }
 
-        // Selected gender (optional)
         String selectedGender = genderComboBox != null ? genderComboBox.getSelectionModel().getSelectedItem() : null;
 
         setLoading(true);
-        performRegistration(username, displayName, password, countryCode, selectedGender);
-    }
+        logger.info("Registering user: {} displayName={} countryCode={} gender={}", username, displayName, countryCode, selectedGender);
 
-    private void performRegistration(String username, String displayName, String password, String countryCode, String gender) {
-        logger.info("Registering user: {} displayName={} countryCode={} gender={}", username, displayName, countryCode, gender);
-        navigateToLogin();
+        AuthService authService = new AuthService();
+        authService.register(username, password, displayName, selectedGender, countryCode).thenAccept(regResponse -> {
+            if (regResponse.isSuccess()) {
+                logger.info("Registration successful for user: {}", username);
+                Platform.runLater(() -> {
+                    try {
+                        // Start session with token and player returned by server
+                        SessionManager.getInstance().startSession(regResponse.getToken(), regResponse.getPlayer());
+
+                        Stage stage = (Stage) registerButton.getScene().getWindow();
+
+                        SceneManager.getInstance().loadShellAsync(stage, regResponse.getPlayer(),
+                                () -> {
+                                    try {
+                                        if (loadingIndicator != null) { loadingIndicator.setVisible(false); loadingIndicator.setManaged(false); }
+                                        if (registerButton != null) registerButton.setDisable(false);
+                                        setLoading(false);
+                                    } catch (Exception ignored) {}
+                                },
+                                (ex) -> {
+                                    logger.error("Failed to load shell asynchronously", ex);
+                                }
+                        );
+                    } catch (Exception e) {
+                        logger.error("Error while navigating to main screen after registration", e);
+                        showError("Error opening main screen. Please try logging in.");
+                        setLoading(false);
+                    }
+                });
+            } else {
+                String errorMsg = regResponse.getMessage() != null ? regResponse.getMessage() : "Registration failed";
+                logger.warn("Registration failed for user: {} - {}", username, errorMsg);
+                // UI changes must be on FX thread
+                Platform.runLater(() -> {
+                    showError(errorMsg);
+                    setLoading(false);
+                });
+            }
+        }).exceptionally(ex -> {
+            logger.error("Error during registration for user: {}", username, ex);
+            Platform.runLater(() -> {
+                showError("An error occurred during registration. Please try again.");
+                setLoading(false);
+            });
+            return null;
+        });
     }
 
     private void showError(String message) {
-        errorLabel.setText(message);
-        errorLabel.setVisible(true);
-        errorLabel.setManaged(true);
+        if (Platform.isFxApplicationThread()) {
+            errorLabel.setText(message);
+            errorLabel.setVisible(true);
+            errorLabel.setManaged(true);
+        } else {
+            Platform.runLater(() -> {
+                errorLabel.setText(message);
+                errorLabel.setVisible(true);
+                errorLabel.setManaged(true);
+            });
+        }
     }
 
     private void setLoading(boolean loading) {
-        registerButton.setDisable(loading);
-        usernameField.setDisable(loading);
-        displayNameField.setDisable(loading);
-        if (genderComboBox != null) genderComboBox.setDisable(loading);
-        passwordHiddenField.setDisable(loading);
-        passwordVisibleField.setDisable(loading);
-        confirmPasswordHiddenField.setDisable(loading);
-        confirmPasswordVisibleField.setDisable(loading);
-        termsCheckBox.setDisable(loading);
-        loadingIndicator.setVisible(loading);
-        loadingIndicator.setManaged(loading);
+        if (Platform.isFxApplicationThread()) {
+            registerButton.setDisable(loading);
+            usernameField.setDisable(loading);
+            displayNameField.setDisable(loading);
+            if (genderComboBox != null) genderComboBox.setDisable(loading);
+            passwordHiddenField.setDisable(loading);
+            passwordVisibleField.setDisable(loading);
+            confirmPasswordHiddenField.setDisable(loading);
+            confirmPasswordVisibleField.setDisable(loading);
+            termsCheckBox.setDisable(loading);
+            loadingIndicator.setVisible(loading);
+            loadingIndicator.setManaged(loading);
+        } else {
+            Platform.runLater(() -> {
+                registerButton.setDisable(loading);
+                usernameField.setDisable(loading);
+                displayNameField.setDisable(loading);
+                if (genderComboBox != null) genderComboBox.setDisable(loading);
+                passwordHiddenField.setDisable(loading);
+                passwordVisibleField.setDisable(loading);
+                confirmPasswordHiddenField.setDisable(loading);
+                confirmPasswordVisibleField.setDisable(loading);
+                termsCheckBox.setDisable(loading);
+                loadingIndicator.setVisible(loading);
+                loadingIndicator.setManaged(loading);
+            });
+        }
     }
 
     @FXML

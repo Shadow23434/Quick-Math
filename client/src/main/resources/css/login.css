@@ -1,6 +1,6 @@
 /* Error Label */
 .error-label {
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-text-fill: #d32f2f;
     -fx-background-color: #ffebee;
     -fx-padding: 10;
@@ -9,7 +9,7 @@
 }
 
 .register-text {
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
     -fx-fill: -text-color;
     -fx-font-size: 13px;
 }
@@ -24,10 +24,15 @@
 .loading-message {
     -fx-text-fill: white;
     -fx-font-size: 15px;
-    -fx-font-family: "Poppins Medium";
+    -fx-font-family: "Roboto Medium";
 }
 
 /* Spinner inherits theme colors optionally */
 .progress-indicator:indeterminate .spinner {
     -fx-background-color: transparent;
+}
+
+/* Ensure the loading overlay spinner uses the app accent color */
+.progress-indicator.loading-spinner, .loading-spinner {
+    -fx-progress-color: #725bf5; /* match requested color */
 }
