@@ -83,7 +83,8 @@ public class GameplayController {
     private int opponentScore;
     private int timeRemaining;
     private int currentRound;
-    private int currentLevel;
+    private int totalRounds;
+//    private int currentLevel;
     private NetworkGameplay gameClient;
     private Timeline timer;
     private Timeline countdownTimer;
@@ -115,7 +116,8 @@ public class GameplayController {
         opponentScore = 0;
         timeRemaining = 30;
         currentRound = 0;
-        currentLevel = 1;
+        totalRounds = 10;
+//        currentLevel = 1;
         gson = new Gson();
 
         // Ensure overlay covers whole scene by binding to scene when available
@@ -331,7 +333,8 @@ public class GameplayController {
         playerScore = 0;
         opponentScore = 0;
         currentRound = 0;
-        currentLevel = 1;
+        totalRounds = 0;
+//        currentLevel = 1;
         hasSubmitted = false;
         hasExited = false;
         if (expressionBuilder != null) expressionBuilder.setLength(0);
@@ -421,7 +424,7 @@ public class GameplayController {
             // start visual countdown (per-second) but schedule precise start at msUntilStart
             Platform.runLater(() -> {
                 if (countdownLabel != null) countdownLabel.setText(String.valueOf(secsToShow));
-                if (countdownMessageLabel != null) countdownMessageLabel.setText("Bắt đầu vòng " + round.getRound() + " trong...");
+                if (countdownMessageLabel != null) countdownMessageLabel.setText("Bắt đầu câu " + round.getRound() + " trong...");
                 // show a per-second overlay (this will be stopped by preRoundStartPause when time arrives)
                 startRoundCountdown(round, secsToShow);
             });
@@ -462,7 +465,7 @@ public class GameplayController {
         } else {
             Platform.runLater(() -> {
                 if (countdownLabel != null) countdownLabel.setText(String.valueOf(preCountdown));
-                if (countdownMessageLabel != null) countdownMessageLabel.setText("Bắt đầu vòng " + round.getRound() + " trong...");
+                if (countdownMessageLabel != null) countdownMessageLabel.setText("Bắt đầu câu " + round.getRound() + " trong...");
                 startRoundCountdown(round, preCountdown);
             });
         }
@@ -488,7 +491,7 @@ public class GameplayController {
             beginRound(round);
             return;
         }
-        showCountdownOverlay(seconds, "Bắt đầu vòng " + round.getRound() + " trong...", () -> beginRound(round));
+        showCountdownOverlay(seconds, "Bắt đầu câu " + round.getRound() + " trong...", () -> beginRound(round));
     }
 
     private void showCountdownOverlay(int seconds, String message, Runnable onFinished) {
@@ -607,7 +610,7 @@ public class GameplayController {
         if (round == null) return;
 
         currentRound = round.getRound();
-        currentLevel = round.getDifficulty();
+//        currentLevel = round.getDifficulty();
         targetNumber = round.getTarget();
         hasSubmitted = false;
         if (expressionBuilder != null) expressionBuilder.setLength(0);
@@ -874,42 +877,93 @@ public class GameplayController {
             System.err.println("handleRoundResult mapping error: " + ex.getMessage());
         }
 
-        showTemporaryFeedback("Vòng " + result.round_number + " kết thúc", 2, "Chờ vòng tiếp theo...");
+        showTemporaryFeedback("Câu " + result.round_number + " kết thúc", 2, "Chờ câu tiếp theo...");
         updateDisplay();
     }
 
-    private void handleGameEnd(RoundResult finalResult) {
-        stopTimer();
-        stopCountdown();
-        stopRoundTransition();
-        showTemporaryFeedback("Game kết thúc!", 4, "");
-        updateDisplay();
-        // showMatchResult called by caller that passed the final JSON
-    }
 
-    private void showMatchResult(String rawJson) {
+    private void showMatchResult(Object payload) {
+        // payload may be a String (raw JSON) or a RoundResult instance
         Platform.runLater(() -> {
             try {
                 URL fxmlUrl = getClass().getResource("/fxml/pages/matchresult.fxml");
                 if (fxmlUrl == null) fxmlUrl = getClass().getResource("/fxml/match_result.fxml");
                 if (fxmlUrl == null) {
-                    System.err.println("match_result.fxml not found");
+                    System.err.println("showMatchResult: match_result.fxml not found");
                     return;
                 }
+
                 FXMLLoader loader = new FXMLLoader(fxmlUrl);
                 Parent root = loader.load();
                 Object ctrl = loader.getController();
-                if (ctrl instanceof com.mathspeed.controller.MatchResultController) {
-                    ((com.mathspeed.controller.MatchResultController) ctrl).populateFromJson(rawJson);
+                if (ctrl == null) {
+                    System.err.println("showMatchResult: controller is null for FXML " + fxmlUrl);
+                } else {
+                    System.out.println("showMatchResult: loaded controller " + ctrl.getClass().getName());
                 }
+
+                // Prefer passing model directly if controller supports it
+                if (payload instanceof com.mathspeed.model.RoundResult) {
+                    com.mathspeed.model.RoundResult rr = (com.mathspeed.model.RoundResult) payload;
+                    try {
+                        // try direct method
+                        java.lang.reflect.Method m = ctrl.getClass().getMethod("populateFromRoundResult", com.mathspeed.model.RoundResult.class);
+                        m.invoke(ctrl, rr);
+                        System.out.println("showMatchResult: invoked populateFromRoundResult");
+                    } catch (NoSuchMethodException nsme) {
+                        // fallback: try populateFromJson using json generated from model
+                        try {
+                            java.lang.reflect.Method m2 = ctrl.getClass().getMethod("populateFromJson", String.class);
+                            String json = new com.google.gson.Gson().toJson(rr);
+                            m2.invoke(ctrl, json);
+                            System.out.println("showMatchResult: controller has no populateFromRoundResult; invoked populateFromJson(gson.toJson(rr)) as fallback");
+                        } catch (NoSuchMethodException | IllegalAccessException | java.lang.reflect.InvocationTargetException ex) {
+                            System.err.println("showMatchResult: controller has no populateFromRoundResult or populateFromJson");
+                            ex.printStackTrace();
+                        }
+                    } catch (IllegalAccessException | java.lang.reflect.InvocationTargetException ex) {
+                        System.err.println("showMatchResult: error invoking populateFromRoundResult:");
+                        ex.printStackTrace();
+                    }
+                } else if (payload instanceof String) {
+                    String rawJson = (String) payload;
+                    // try to call populateFromJson
+                    try {
+                        java.lang.reflect.Method m = ctrl.getClass().getMethod("populateFromJson", String.class);
+                        m.invoke(ctrl, rawJson);
+                        System.out.println("showMatchResult: invoked populateFromJson with raw JSON");
+                    } catch (NoSuchMethodException nsme) {
+                        // maybe controller supports populateFromRoundResult and we can parse JSON -> RoundResult
+                        try {
+                            com.mathspeed.model.RoundResult rr = new com.google.gson.Gson().fromJson(rawJson, com.mathspeed.model.RoundResult.class);
+                            java.lang.reflect.Method m2 = ctrl.getClass().getMethod("populateFromRoundResult", com.mathspeed.model.RoundResult.class);
+                            m2.invoke(ctrl, rr);
+                            System.out.println("showMatchResult: controller has populateFromRoundResult; parsed JSON to RoundResult and invoked it");
+                        } catch (Exception ex) {
+                            System.err.println("showMatchResult: can't populate controller from raw JSON");
+                            ex.printStackTrace();
+                        }
+                    } catch (IllegalAccessException | java.lang.reflect.InvocationTargetException ex) {
+                        System.err.println("showMatchResult: error invoking populateFromJson:");
+                        ex.printStackTrace();
+                    }
+                } else {
+                    System.err.println("showMatchResult: unsupported payload type: " + (payload != null ? payload.getClass().getName() : "null"));
+                }
+
+                // show the window modal
                 Stage stage = new Stage();
                 stage.initModality(Modality.APPLICATION_MODAL);
                 stage.setTitle("Kết quả trận đấu");
                 stage.setScene(new Scene(root));
                 stage.setResizable(false);
+                stage.sizeToScene();
+                stage.centerOnScreen();
                 stage.show();
+
             } catch (IOException ioe) {
-                System.err.println("Failed to show match result: " + ioe.getMessage());
+                System.err.println("showMatchResult: failed to load FXML: " + ioe.getMessage());
+                ioe.printStackTrace();
             }
         });
     }
@@ -951,7 +1005,7 @@ public class GameplayController {
         if (targetLabel != null) targetLabel.setText(String.valueOf(targetNumber));
         if (expressionLabel != null) expressionLabel.setText(expressionBuilder.toString());
         if (roundLabel != null) roundLabel.setText(String.valueOf(currentRound));
-        if (levelLabel != null) levelLabel.setText(String.valueOf(currentLevel));
+//        if (levelLabel != null) levelLabel.setText(String.valueOf(currentLevel));
         if (playerNameLabel != null) playerNameLabel.setText(playerDisplayName);
 
         if (timerLabel != null) {
@@ -975,6 +1029,11 @@ public class GameplayController {
 
         System.out.println("setPlayerUsername called: " + username + " on controller=" + System.identityHashCode(this));
         this.playerUsername = username;
+    }
+
+    public void setTotalRounds(int totalRounds) {
+        this.totalRounds = Math.max(0, totalRounds);
+        Platform.runLater(this::updateDisplay);
     }
 
     public void cleanup() {
@@ -1013,4 +1072,98 @@ public class GameplayController {
         });
         System.out.println("Temporary feedback: " + message + " (for " + seconds + "s)");
     }
+
+    private Stage matchResultStage;
+    private com.mathspeed.controller.MatchResultController matchResultController;
+
+    /**
+     * Open (or reuse) the modal Match Result window and populate it from the provided RoundResult model.
+     * Safe to call from any thread.
+     */
+    private void openMatchResultStage(com.mathspeed.model.RoundResult rr) {
+        if (rr == null) return;
+        // ensure on FX thread
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(() -> openMatchResultStage(rr));
+            return;
+        }
+
+        try {
+            // load and cache once
+            if (matchResultStage == null || matchResultController == null) {
+                URL fxmlUrl = getClass().getResource("/fxml/pages/matchresult.fxml");
+                if (fxmlUrl == null) fxmlUrl = getClass().getResource("/fxml/match_result.fxml");
+                if (fxmlUrl == null) {
+                    System.err.println("openMatchResultStage: matchresult.fxml not found");
+                    return;
+                }
+                FXMLLoader loader = new FXMLLoader(fxmlUrl);
+                Parent root = loader.load();
+                Object ctrl = loader.getController();
+                if (ctrl instanceof com.mathspeed.controller.MatchResultController) {
+                    matchResultController = (com.mathspeed.controller.MatchResultController) ctrl;
+                } else {
+                    System.err.println("openMatchResultStage: controller is not MatchResultController - actual: " + (ctrl != null ? ctrl.getClass().getName() : "null"));
+                }
+
+                matchResultStage = new Stage();
+                matchResultStage.initModality(Modality.APPLICATION_MODAL);
+                matchResultStage.setTitle("Kết quả trận đấu");
+                matchResultStage.setScene(new Scene(root));
+                matchResultStage.setResizable(false);
+            }
+
+            // Populate UI from model (controller must provide populateFromRoundResult)
+            if (matchResultController != null) {
+                try {
+                    matchResultController.populateFromRoundResult(rr);
+                } catch (Exception ex) {
+                    // fallback: if controller only supports JSON string, call populateFromJson
+                    try {
+                        matchResultController.getClass().getMethod("populateFromJson", String.class)
+                                .invoke(matchResultController, gson.toJson(rr));
+                    } catch (NoSuchMethodException | IllegalAccessException | java.lang.reflect.InvocationTargetException ignored) {
+                        System.err.println("openMatchResultStage: controller has no populateFromRoundResult/populateFromJson");
+                    }
+                }
+            }
+
+            // show modal
+            matchResultStage.sizeToScene();
+            matchResultStage.centerOnScreen();
+            if (!matchResultStage.isShowing()) matchResultStage.show();
+            else matchResultStage.toFront();
+
+        } catch (IOException ioe) {
+            System.err.println("openMatchResultStage: failed to load match result FXML: " + ioe.getMessage());
+            ioe.printStackTrace();
+        }
+    }
+
+    /**
+     * Optional helper to close cached match result window (if you want to reuse).
+     */
+    private void closeMatchResultStage() {
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(this::closeMatchResultStage);
+            return;
+        }
+        try {
+            if (matchResultStage != null && matchResultStage.isShowing()) matchResultStage.close();
+        } catch (Exception ignored) {}
+        matchResultStage = null;
+        matchResultController = null;
+    }
+
+    private void handleGameEnd(RoundResult finalResult) {
+        stopTimer();
+        stopCountdown();
+        stopRoundTransition();
+        showTemporaryFeedback("Game kết thúc!", 4, "");
+        updateDisplay();
+
+        // show using model directly (preferred)
+        showMatchResult(finalResult);
+    }
+
 }

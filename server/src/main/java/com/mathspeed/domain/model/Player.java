@@ -153,9 +153,9 @@ public class Player {
 
     public String toJson(){
         return "{"
-                + "\"id\":" + id + ","
+                + "\"id\":\"" + id + "\","
                 + "\"username\":\"" + username + "\","
-                + "\"display_name\":" + displayName + "\","
+                + "\"display_name\":\"" + displayName + "\","
                 + "\"avatar_url\":\"" + avatarUrl + "\","
                 + "\"gender\":\"" + gender + "\","
                 + "\"country_code\":\"" + countryCode

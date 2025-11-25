@@ -1,204 +1,241 @@
 package com.mathspeed.controller;
 
-import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.mathspeed.model.Player;
 import com.mathspeed.model.RoundResult;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
 
-import java.util.List;
+import java.io.StringReader;
+import java.util.*;
 
 /**
- * Controller for match_result.fxml
+ * MatchResultController using com.mathspeed.model.Player as player model.
  *
- * - Added handler for "Trang chủ" button (onBackToHome).
- * - Fixed FXML-related issue "Cannot resolve file 'alice'" by avoiding FXML resource-style strings (leading '@')
- *   and ensuring username/display_name labels are populated at runtime rather than hard-coded in FXML.
+ * - Populate UI with server JSON (GAME_OVER / ROUND_RESULT / GAME_END).
+ * - Shows: winner/tie, each player's correct count and total play time.
+ * - Usage: load FXML, obtain controller, then call populateFromJson(serverJson).
  */
 public class MatchResultController {
 
     @FXML private Label winnerLabel;
     @FXML private Label summaryLabel;
 
-    @FXML private Label playerDisplayName;
-    @FXML private Label playerUsername;
-    @FXML private Label playerScore;
-    @FXML private Label playerTotalTime;
+    @FXML private Label playerAName;
+    @FXML private Label playerAScore;
+    @FXML private Label playerATime;
 
-    @FXML private Label opponentDisplayName;
-    @FXML private Label opponentUsername;
-    @FXML private Label opponentScore;
-    @FXML private Label opponentTotalTime;
+    @FXML private Label playerBName;
+    @FXML private Label playerBScore;
+    @FXML private Label playerBTime;
 
-    @FXML private ListView<String> roundListView;
-
-    @FXML private Button rematchButton;
     @FXML private Button homeButton;
-
-    @FXML private Label noteLabel;
-
-    private final Gson gson = new Gson();
-
-    // callbacks (set by caller)
-    private Runnable onClose;
-    private Runnable onBackToLobby;
-    private Runnable onRematch;
+    // optional callback if host app wants to handle navigation
     private Runnable onBackToHome;
 
-    @FXML
-    public void initialize() {
-        // default UI state (leave fields blank to be filled at runtime)
-        winnerLabel.setText("Kết quả trận đấu");
-        summaryLabel.setText("");
-        roundListView.getItems().clear();
-    }
-
-    public void setOnClose(Runnable r) { this.onClose = r; }
-    public void setOnBackToLobby(Runnable r) { this.onBackToLobby = r; }
-    public void setOnRematch(Runnable r) { this.onRematch = r; }
     public void setOnBackToHome(Runnable r) { this.onBackToHome = r; }
 
+    @FXML
+    private void onBackToHome() {
+        if (onBackToHome != null) onBackToHome.run();
+    }
+
     /**
-     * Populate from raw server JSON (expects GAME_OVER, ROUND_RESULT or similar payload).
+     * Populate UI with server JSON (GAME_OVER / ROUND_RESULT / GAME_END).
+     * Shows: winner/tie, each player's correct count and total play time.
      */
     public void populateFromJson(String json) {
-        if (json == null || json.isEmpty()) return;
+        if (json == null || json.trim().isEmpty()) return;
+        Platform.runLater(() -> {
+            try {
+                JsonElement je = JsonParser.parseReader(new StringReader(json));
+                if (!je.isJsonObject()) {
+                    showErrorState("Dữ liệu không hợp lệ");
+                    return;
+                }
+                JsonObject jo = je.getAsJsonObject();
+
+                // Extract players into model.Player list if present
+                List<Player> players = new ArrayList<>();
+                if (jo.has("players") && jo.get("players").isJsonArray()) {
+                    JsonArray parr = jo.getAsJsonArray("players");
+                    for (JsonElement pel : parr) {
+                        if (!pel.isJsonObject()) continue;
+                        JsonObject p = pel.getAsJsonObject();
+                        Player pl = new Player();
+                        pl.setId(safeGet(p, "id"));
+                        pl.setUsername(safeGet(p, "username"));
+                        String dn = safeGet(p, "display_name");
+                        if (dn == null || dn.isEmpty()) dn = pl.getUsername();
+                        pl.setDisplayName(dn);
+                        pl.setAvatarUrl(safeGet(p, "avatar_url"));
+                        pl.setCountryCode(safeGet(p, "country_code"));
+                        players.add(pl);
+                    }
+                }
+
+                // Scores and times mapping
+                Map<String, Long> scoresMap = new LinkedHashMap<>();
+                Map<String, Long> timesMap = new HashMap<>();
+                if (jo.has("scores") && jo.get("scores").isJsonObject()) {
+                    for (var e : jo.getAsJsonObject("scores").entrySet()) {
+                        try { scoresMap.put(e.getKey(), e.getValue().getAsLong()); } catch (Exception ignored) {}
+                    }
+                }
+                if (jo.has("total_play_time_ms") && jo.get("total_play_time_ms").isJsonObject()) {
+                    for (var e : jo.getAsJsonObject("total_play_time_ms").entrySet()) {
+                        try { timesMap.put(e.getKey(), e.getValue().getAsLong()); } catch (Exception ignored) {}
+                    }
+                }
+
+                // If players array not present, infer from scoresMap order (create Player models with id only)
+                if (players.isEmpty()) {
+                    int i = 0;
+                    for (var entry : scoresMap.entrySet()) {
+                        Player p = new Player();
+                        p.setId(entry.getKey());
+                        p.setDisplayName("Người chơi " + (i == 0 ? "A" : "B"));
+                        players.add(p);
+                        i++;
+                        if (players.size() >= 2) break;
+                    }
+                }
+
+                // Ensure exactly two players (pad if necessary)
+                while (players.size() < 2) players.add(new Player());
+
+                Player A = players.get(0);
+                Player B = players.get(1);
+
+                // Assign scores/times by id if available; otherwise assign by order of scoresMap
+                if (A.getId() != null && scoresMap.containsKey(A.getId())) {
+                    // nothing else
+                }
+                if (B.getId() != null && scoresMap.containsKey(B.getId())) {
+                    // nothing else
+                }
+
+                // If ids present, extract scores
+                if (A.getId() != null && scoresMap.containsKey(A.getId())) {
+                    try { AScoreSet(A, scoresMap.get(A.getId())); } catch (Exception ignored) {}
+                }
+                if (B.getId() != null && scoresMap.containsKey(B.getId())) {
+                    try { AScoreSet(B, scoresMap.get(B.getId())); } catch (Exception ignored) {}
+                }
+
+                // If ids missing or scoresMap wasn't keyed by these ids, assign by order
+                if ((A.getId() == null || !scoresMap.containsKey(A.getId())) ||
+                        (B.getId() == null || !scoresMap.containsKey(B.getId()))) {
+                    int idx = 0;
+                    for (var entry : scoresMap.entrySet()) {
+                        if (idx == 0) AScoreSet(A, entry.getValue());
+                        else if (idx == 1) AScoreSet(B, entry.getValue());
+                        idx++;
+                    }
+                }
+
+                // Assign times by id if available
+                if (A.getId() != null && timesMap.containsKey(A.getId())) {
+                    ASetTime(A, timesMap.get(A.getId()));
+                }
+                if (B.getId() != null && timesMap.containsKey(B.getId())) {
+                    ASetTime(B, timesMap.get(B.getId()));
+                }
+
+                // Determine winner: prefer explicit "winner" field, else compare scores
+                String winnerId = null;
+                if (jo.has("winner") && !jo.get("winner").isJsonNull()) winnerId = safeGet(jo, "winner");
+                if (winnerId == null || winnerId.isEmpty()) {
+                    if (jo.has("round_winner") && !jo.get("round_winner").isJsonNull()) winnerId = safeGet(jo, "round_winner");
+                }
+
+                boolean tie = false;
+                String winnerName = null;
+                long aScore = getScore(A);
+                long bScore = getScore(B);
+                if (winnerId != null && !winnerId.isEmpty()) {
+                    if (A.getId() != null && A.getId().equals(winnerId)) winnerName = displayNameOrFallback(A);
+                    else if (B.getId() != null && B.getId().equals(winnerId)) winnerName = displayNameOrFallback(B);
+                } else {
+                    if (aScore == bScore) tie = true;
+                    else winnerName = (aScore > bScore) ? displayNameOrFallback(A) : displayNameOrFallback(B);
+                }
+
+                // Update UI
+                if (tie) {
+                    winnerLabel.setText("Hòa");
+                    summaryLabel.setText(String.format("%s %d - %d %s", displayNameOrFallback(A), aScore, bScore, displayNameOrFallback(B)));
+                } else {
+                    winnerLabel.setText("Người chiến thắng: " + (winnerName != null ? winnerName : "—"));
+                    summaryLabel.setText(String.format("%s %d - %d %s", displayNameOrFallback(A), aScore, bScore, displayNameOrFallback(B)));
+                }
+
+                playerAName.setText(displayNameOrFallback(A));
+                playerAScore.setText(String.valueOf(aScore));
+                playerATime.setText(formatMillis(getTotalTimeMs(A)));
+
+                playerBName.setText(displayNameOrFallback(B));
+                playerBScore.setText(String.valueOf(bScore));
+                playerBTime.setText(formatMillis(getTotalTimeMs(B)));
+
+            } catch (Exception ex) {
+                showErrorState("Không thể đọc dữ liệu kết quả");
+                ex.printStackTrace();
+            }
+        });
+    }
+
+    // Helpers to attach score/time to Player via a simple Map inside the Player object is not present
+    // so we store these values in local maps using player's id; to keep simple, we'll store values in transient maps.
+    // But because Player model doesn't have score/time fields, we'll use temporary maps here.
+    // For simplicity in this controller we keep two maps keyed by Player instance identity (not ideal but acceptable here).
+    private final Map<Player, Long> scoreByPlayer = new IdentityHashMap<>();
+    private final Map<Player, Long> timeByPlayer = new IdentityHashMap<>();
+
+    private void AScoreSet(Player p, long score) {
+        scoreByPlayer.put(p, score);
+    }
+
+    private void ASetTime(Player p, long ms) {
+        timeByPlayer.put(p, ms);
+    }
+
+    private long getScore(Player p) {
+        return scoreByPlayer.getOrDefault(p, 0L);
+    }
+
+    private long getTotalTimeMs(Player p) {
+        return timeByPlayer.getOrDefault(p, 0L);
+    }
+
+    private String displayNameOrFallback(Player p) {
+        if (p == null) return "Người chơi";
+        if (p.getDisplayName() != null && !p.getDisplayName().isEmpty()) return p.getDisplayName();
+        if (p.getUsername() != null && !p.getUsername().isEmpty()) return p.getUsername();
+        return "Người chơi";
+    }
+
+    private void showErrorState(String msg) {
+        winnerLabel.setText("Kết quả");
+        summaryLabel.setText(msg);
+        playerAName.setText("-");
+        playerAScore.setText("-");
+        playerATime.setText("-");
+        playerBName.setText("-");
+        playerBScore.setText("-");
+        playerBTime.setText("-");
+    }
+
+    private static String safeGet(JsonObject o, String key) {
         try {
-            JsonElement je = JsonParser.parseString(json);
-            if (!je.isJsonObject()) return;
-            JsonObject jo = je.getAsJsonObject();
-
-            // Try to extract player info from "players" array (if present)
-            String pAId = null, pAusername = null, pAdisplay = null;
-            String pBId = null, pBusername = null, pBdisplay = null;
-
-            JsonElement playersEl = jo.get("players");
-            if (playersEl != null && playersEl.isJsonArray() && playersEl.getAsJsonArray().size() >= 2) {
-                JsonObject a = playersEl.getAsJsonArray().get(0).isJsonObject() ? playersEl.getAsJsonArray().get(0).getAsJsonObject() : null;
-                JsonObject b = playersEl.getAsJsonArray().get(1).isJsonObject() ? playersEl.getAsJsonArray().get(1).getAsJsonObject() : null;
-                if (a != null) {
-                    pAId = a.has("id") ? a.get("id").getAsString() : null;
-                    pAusername = a.has("username") ? a.get("username").getAsString() : null;
-                    pAdisplay = a.has("display_name") ? a.get("display_name").getAsString() : pAusername;
-                }
-                if (b != null) {
-                    pBId = b.has("id") ? b.get("id").getAsString() : null;
-                    pBusername = b.has("username") ? b.get("username").getAsString() : null;
-                    pBdisplay = b.has("display_name") ? b.get("display_name").getAsString() : pBusername;
-                }
-            }
-
-            // Scores and times
-            long pAScore = 0, pBScore = 0;
-            long pATime = 0, pBTime = 0;
-
-            JsonObject scoresObj = jo.has("scores") && jo.get("scores").isJsonObject() ? jo.getAsJsonObject("scores") : null;
-            JsonObject timesObj = jo.has("total_play_time_ms") && jo.get("total_play_time_ms").isJsonObject() ? jo.getAsJsonObject("total_play_time_ms") : null;
-
-            if (scoresObj != null) {
-                if (pAId != null && scoresObj.has(pAId)) pAScore = scoresObj.get(pAId).getAsLong();
-                if (pBId != null && scoresObj.has(pBId)) pBScore = scoresObj.get(pBId).getAsLong();
-                if (pAId == null || pBId == null) {
-                    int i = 0;
-                    for (var entry : scoresObj.entrySet()) {
-                        if (i == 0) pAScore = entry.getValue().getAsLong();
-                        else if (i == 1) pBScore = entry.getValue().getAsLong();
-                        i++;
-                    }
-                }
-            }
-
-            if (timesObj != null) {
-                if (pAId != null && timesObj.has(pAId)) pATime = timesObj.get(pAId).getAsLong();
-                if (pBId != null && timesObj.has(pBId)) pBTime = timesObj.get(pBId).getAsLong();
-                if (pAId == null || pBId == null) {
-                    int i = 0;
-                    for (var entry : timesObj.entrySet()) {
-                        if (i == 0) pATime = entry.getValue().getAsLong();
-                        else if (i == 1) pBTime = entry.getValue().getAsLong();
-                        i++;
-                    }
-                }
-            }
-
-            if (pAusername == null) { pAusername = "Player A"; pAdisplay = pAusername; }
-            if (pBusername == null) { pBusername = "Player B"; pBdisplay = pBusername; }
-
-            final String finalPAname = pAdisplay;
-            final String finalPAuser = pAusername;
-            final String finalPBname = pBdisplay;
-            final String finalPBuser = pBusername;
-            final long finalPScore = pAScore;
-            final long finalPTime = pATime;
-            final long finalOScore = pBScore;
-            final long finalOTime = pBTime;
-
-            String winnerId = null;
-            if (jo.has("round_winner")) winnerId = jo.get("round_winner").isJsonNull() ? null : jo.get("round_winner").getAsString();
-            if ((winnerId == null || winnerId.isEmpty()) && jo.has("winner")) winnerId = jo.get("winner").isJsonNull() ? null : jo.get("winner").getAsString();
-
-            final String winnerText;
-            if (winnerId != null) {
-                if (pAId != null && pAId.equals(winnerId)) winnerText = finalPAname;
-                else if (pBId != null && pBId.equals(winnerId)) winnerText = finalPBname;
-                else winnerText = "Người chiến thắng";
-            } else {
-                if (finalPScore > finalOScore) winnerText = finalPAname;
-                else if (finalOScore > finalPScore) winnerText = finalPBname;
-                else winnerText = "Hòa";
-            }
-
-            Platform.runLater(() -> {
-                winnerLabel.setText("Người chiến thắng: " + winnerText);
-                summaryLabel.setText(finalPAname + " " + finalPScore + " - " + finalOScore + " " + finalPBname);
-
-                playerDisplayName.setText(finalPAname);
-                playerUsername.setText(finalPAuser != null ? finalPAuser : "");
-                playerScore.setText(String.valueOf(finalPScore));
-                playerTotalTime.setText(formatMillis(finalPTime));
-
-                opponentDisplayName.setText(finalPBname);
-                opponentUsername.setText(finalPBuser != null ? finalPBuser : "");
-                opponentScore.setText(String.valueOf(finalOScore));
-                opponentTotalTime.setText(formatMillis(finalOTime));
-
-                roundListView.getItems().clear();
-                // If detailed round history exists in payload, populate list; otherwise show placeholder
-                if (jo.has("round_history")) {
-                    try {
-                        JsonElement rh = jo.get("round_history");
-                        if (rh.isJsonObject()) {
-                            JsonObject rhObj = rh.getAsJsonObject();
-                            // example structure: { "playerId": [ {round_index:..., correct:..., ...}, ... ], ... }
-                            // We'll attempt to display round-by-round per index using playerA's history if present
-                            var entries = rhObj.entrySet();
-                            for (var entry : entries) {
-                                var arr = entry.getValue().getAsJsonArray();
-                                for (JsonElement elem : arr) {
-                                    JsonObject r = elem.getAsJsonObject();
-                                    int idx = r.has("round_index") ? r.get("round_index").getAsInt() : -1;
-                                    boolean correct = r.has("correct") && r.get("correct").getAsBoolean();
-                                    long rt = r.has("round_play_time_ms") ? r.get("round_play_time_ms").getAsLong() : 0L;
-                                    roundListView.getItems().add("Vòng " + (idx + 1) + " - " + (correct ? "Đúng" : "Sai") + " - " + formatMillis(rt));
-                                }
-                                break; // only show first player's history to avoid duplication
-                            }
-                        }
-                    } catch (Exception ignore) { /* fall back */ }
-                }
-                if (roundListView.getItems().isEmpty()) {
-                    roundListView.getItems().add("Không có dữ liệu chi tiết vòng.");
-                }
-            });
-
-        } catch (Exception ex) {
-            System.err.println("MatchResultController: failed to populate from json: " + ex.getMessage());
-        }
+            if (o != null && o.has(key) && !o.get(key).isJsonNull()) return o.get(key).getAsString();
+        } catch (Exception ignored) {}
+        return null;
     }
 
     private static String formatMillis(long ms) {
@@ -209,30 +246,54 @@ public class MatchResultController {
         return String.format("%02d:%02d", min, sec);
     }
 
-    // ----------------- UI Actions -----------------
+    public void populateFromRoundResult(RoundResult rr) {
+        if (rr == null) return;
+        Platform.runLater(() -> {
+            try {
+                List<RoundResult.PlayerResult> players = rr.players;
+                RoundResult.PlayerResult A = players != null && players.size() > 0 ? players.get(0) : null;
+                RoundResult.PlayerResult B = players != null && players.size() > 1 ? players.get(1) : null;
 
-    @FXML
-    private void onClose() {
-        if (onClose != null) onClose.run();
-    }
+                String winnerText = "—";
+                if (rr.round_winner != null && !rr.round_winner.isEmpty()) {
+                    if (A != null && rr.round_winner.equals(A.id)) winnerText = A.username;
+                    else if (B != null && rr.round_winner.equals(B.id)) winnerText = B.username;
+                    else winnerText = rr.round_winner;
+                } else {
+                    int aScore = A != null ? A.total_score : 0;
+                    int bScore = B != null ? B.total_score : 0;
+                    if (aScore > bScore) winnerText = A != null ? A.username : "Người chiến thắng";
+                    else if (bScore > aScore) winnerText = B != null ? B.username : "Người chiến thắng";
+                    else winnerText = "Hòa";
+                }
 
-    @FXML
-    private void onBackToLobby() {
-        if (onBackToLobby != null) onBackToLobby.run();
-    }
+                winnerLabel.setText("Người chiến thắng: " + winnerText);
 
-    @FXML
-    private void onRematch() {
-        if (onRematch != null) onRematch.run();
-    }
+                String aName = A != null ? A.username : "Người chơi A";
+                String bName = B != null ? B.username : "Người chơi B";
+                int aScore = A != null ? A.total_score : 0;
+                int bScore = B != null ? B.total_score : 0;
+                summaryLabel.setText(String.format("%s %d - %d %s", aName, aScore, bScore, bName));
 
-    @FXML
-    private void onBackToHome() {
-        if (onBackToHome != null) {
-            onBackToHome.run();
-            return;
-        }
-        // default behavior: call back to lobby if home callback not provided
-        if (onBackToLobby != null) onBackToLobby.run();
+                playerAName.setText(aName);
+                playerAScore.setText(String.valueOf(aScore));
+                playerATime.setText(formatMillis(A != null ? A.total_play_time_ms : 0L));
+
+                playerBName.setText(bName);
+                playerBScore.setText(String.valueOf(bScore));
+                playerBTime.setText(formatMillis(B != null ? B.total_play_time_ms : 0L));
+            } catch (Exception ex) {
+                // on error, set simple fallback
+                winnerLabel.setText("Kết quả");
+                summaryLabel.setText("Không thể hiển thị kết quả");
+                playerAName.setText("-");
+                playerAScore.setText("-");
+                playerATime.setText("-");
+                playerBName.setText("-");
+                playerBScore.setText("-");
+                playerBTime.setText("-");
+                ex.printStackTrace();
+            }
+        });
     }
 }
