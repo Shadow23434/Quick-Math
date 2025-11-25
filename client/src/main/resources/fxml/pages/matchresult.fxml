@@ -23,14 +23,17 @@
         <HBox spacing="20" alignment="CENTER">
             <!-- Local / Player A -->
             <VBox spacing="6" alignment="CENTER_LEFT" VBox.vgrow="ALWAYS">
-                <Label fx:id="playerNameLabel" text="Bạn" styleClass="player-label"/>
+                <!-- changed fx:id -> playerAName -->
+                <Label fx:id="playerAName" text="Bạn" styleClass="player-label"/>
                 <HBox spacing="8" alignment="CENTER_LEFT">
                     <Label text="Số câu đúng:" style="-fx-font-size:12px;"/>
-                    <Label fx:id="playerScoreLabel" text="0" styleClass="score-text"/>
+                    <!-- changed fx:id -> playerAScore -->
+                    <Label fx:id="playerAScore" text="0" styleClass="score-text"/>
                 </HBox>
                 <HBox spacing="8" alignment="CENTER_LEFT">
                     <Label text="Tổng thời gian:" style="-fx-font-size:12px;"/>
-                    <Label fx:id="totalPlayerTime" text="00:30" style="-fx-font-size:14px; -fx-font-weight:600;"/>
+                    <!-- changed fx:id -> playerATime -->
+                    <Label fx:id="playerATime" text="00:30" style="-fx-font-size:14px; -fx-font-weight:600;"/>
                 </HBox>
             </VBox>
 
@@ -38,14 +41,17 @@
 
             <!-- Opponent / Player B -->
             <VBox spacing="6" alignment="CENTER_LEFT" VBox.vgrow="ALWAYS">
-                <Label fx:id="opponentNameLabel" text="Đối thủ" styleClass="opponent-label"/>
+                <!-- changed fx:id -> playerBName -->
+                <Label fx:id="playerBName" text="Đối thủ" styleClass="opponent-label"/>
                 <HBox spacing="8" alignment="CENTER_LEFT">
                     <Label text="Số câu đúng:" style="-fx-font-size:12px;"/>
-                    <Label fx:id="opponentScoreLabel" text="0" styleClass="score-text"/>
+                    <!-- changed fx:id -> playerBScore -->
+                    <Label fx:id="playerBScore" text="0" styleClass="score-text"/>
                 </HBox>
                 <HBox spacing="8" alignment="CENTER_LEFT">
                     <Label text="Tổng thời gian:" style="-fx-font-size:12px;"/>
-                    <Label fx:id="totalOpponentTime" text="00:00" style="-fx-font-size:14px; -fx-font-weight:600;"/>
+                    <!-- changed fx:id -> playerBTime -->
+                    <Label fx:id="playerBTime" text="00:00" style="-fx-font-size:14px; -fx-font-weight:600;"/>
                 </HBox>
             </VBox>
         </HBox>
@@ -53,7 +59,8 @@
         <Region prefHeight="8"/>
 
         <HBox spacing="12" alignment="CENTER">
-            <Button text="Đóng" onAction="#onBackToHome" prefWidth="120"/>
+            <!-- add fx:id so controller.homeButton is injected; onAction keeps calling controller method -->
+            <Button fx:id="homeButton" text="Đóng" onAction="#onBackToHome" prefWidth="120"/>
         </HBox>
     </VBox>
 </StackPane>
