@@ -1,3 +1,4 @@
+// (Chỉ phần file đã chỉnh — copy đè toàn bộ GameplayController.java với nội dung bên dưới)
 package com.mathspeed.controller;
 
 import com.mathspeed.model.*;
@@ -31,6 +32,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.*;
 
 /**
  * GameplayController (updated)
@@ -84,7 +86,7 @@ public class GameplayController {
     private int timeRemaining;
     private int currentRound;
     private int totalRounds;
-//    private int currentLevel;
+    //    private int currentLevel;
     private NetworkGameplay gameClient;
     private Timeline timer;
     private Timeline countdownTimer;
@@ -94,6 +96,9 @@ public class GameplayController {
     private String playerUsername; // must be set externally to identify local player
 
     private volatile boolean initialCountdownShown = false;
+
+    // Keep last match start info so we can map ids -> display_name when showing match result
+    private MatchStartInfo lastMatchStartInfo;
 
     // Time sync
     private final AtomicLong offsetMs = new AtomicLong(0L);
@@ -328,6 +333,9 @@ public class GameplayController {
 
     private void handleMatchStart(MatchStartInfo info) {
         if (info == null) return;
+
+        // save last match start info so we can map ids -> display_name later
+        this.lastMatchStartInfo = info;
 
         // reset state
         playerScore = 0;
@@ -902,6 +910,21 @@ public class GameplayController {
                     System.out.println("showMatchResult: loaded controller " + ctrl.getClass().getName());
                 }
 
+                // If controller is MatchResultController and we have lastMatchStartInfo, pass id->display_name map
+                if (ctrl instanceof com.mathspeed.controller.MatchResultController) {
+                    com.mathspeed.controller.MatchResultController mrc = (com.mathspeed.controller.MatchResultController) ctrl;
+                    if (this.lastMatchStartInfo != null && this.lastMatchStartInfo.players != null) {
+                        Map<String, String> map = new HashMap<>();
+                        for (Player p : this.lastMatchStartInfo.players) {
+                            if (p == null) continue;
+                            String id = p.getId();
+                            String dn = p.getDisplayName() != null ? p.getDisplayName() : (p.getUsername() != null ? p.getUsername() : null);
+                            if (id != null && dn != null) map.put(id, dn);
+                        }
+                        if (!map.isEmpty()) mrc.setIdToDisplayName(map);
+                    }
+                }
+
                 // Prefer passing model directly if controller supports it
                 if (payload instanceof com.mathspeed.model.RoundResult) {
                     com.mathspeed.model.RoundResult rr = (com.mathspeed.model.RoundResult) payload;
@@ -927,6 +950,23 @@ public class GameplayController {
                     }
                 } else if (payload instanceof String) {
                     String rawJson = (String) payload;
+
+                    // If controller is MatchResultController and we have lastMatchStartInfo, ensure its id->display_name map is set
+                    Object ctrlObj = ctrl;
+                    if (ctrlObj instanceof com.mathspeed.controller.MatchResultController) {
+                        com.mathspeed.controller.MatchResultController mrc = (com.mathspeed.controller.MatchResultController) ctrlObj;
+                        if (this.lastMatchStartInfo != null && this.lastMatchStartInfo.players != null) {
+                            Map<String, String> map = new HashMap<>();
+                            for (Player p : this.lastMatchStartInfo.players) {
+                                if (p == null) continue;
+                                String id = p.getId();
+                                String dn = p.getDisplayName() != null ? p.getDisplayName() : (p.getUsername() != null ? p.getUsername() : null);
+                                if (id != null && dn != null) map.put(id, dn);
+                            }
+                            if (!map.isEmpty()) mrc.setIdToDisplayName(map);
+                        }
+                    }
+
                     // try to call populateFromJson
                     try {
                         java.lang.reflect.Method m = ctrl.getClass().getMethod("populateFromJson", String.class);
@@ -1104,6 +1144,18 @@ public class GameplayController {
                     matchResultController = (com.mathspeed.controller.MatchResultController) ctrl;
                 } else {
                     System.err.println("openMatchResultStage: controller is not MatchResultController - actual: " + (ctrl != null ? ctrl.getClass().getName() : "null"));
+                }
+
+                // pass id->display_name map if we have it from lastMatchStartInfo
+                if (matchResultController != null && this.lastMatchStartInfo != null && this.lastMatchStartInfo.players != null) {
+                    Map<String, String> map = new HashMap<>();
+                    for (Player p : this.lastMatchStartInfo.players) {
+                        if (p == null) continue;
+                        String id = p.getId();
+                        String dn = p.getDisplayName() != null ? p.getDisplayName() : (p.getUsername() != null ? p.getUsername() : null);
+                        if (id != null && dn != null) map.put(id, dn);
+                    }
+                    if (!map.isEmpty()) matchResultController.setIdToDisplayName(map);
                 }
 
                 matchResultStage = new Stage();

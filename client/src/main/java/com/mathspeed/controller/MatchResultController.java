@@ -45,6 +45,18 @@ public class MatchResultController {
         if (onBackToHome != null) onBackToHome.run();
     }
 
+    // Map from player id -> display name provided either by JSON players array or injected by caller
+    private Map<String, String> idToDisplayName = new HashMap<>();
+
+    /**
+     * Allow host to inject mapping id -> display name (useful when server result JSON doesn't include players[]).
+     */
+    public void setIdToDisplayName(Map<String, String> map) {
+        if (map == null) return;
+        this.idToDisplayName.clear();
+        this.idToDisplayName.putAll(map);
+    }
+
     /**
      * Populate UI with server JSON (GAME_OVER / ROUND_RESULT / GAME_END).
      * Shows: winner/tie, each player's correct count and total play time.
@@ -60,7 +72,7 @@ public class MatchResultController {
                 }
                 JsonObject jo = je.getAsJsonObject();
 
-                // Extract players into model.Player list if present
+                // Extract players into model.Player list if present and populate idToDisplayName
                 List<Player> players = new ArrayList<>();
                 if (jo.has("players") && jo.get("players").isJsonArray()) {
                     JsonArray parr = jo.getAsJsonArray("players");
@@ -76,10 +88,13 @@ public class MatchResultController {
                         pl.setAvatarUrl(safeGet(p, "avatar_url"));
                         pl.setCountryCode(safeGet(p, "country_code"));
                         players.add(pl);
+                        if (pl.getId() != null && dn != null) {
+                            idToDisplayName.put(pl.getId(), dn);
+                        }
                     }
                 }
 
-                // Scores and times mapping
+                // Scores and times mapping keyed by player id
                 Map<String, Long> scoresMap = new LinkedHashMap<>();
                 Map<String, Long> timesMap = new HashMap<>();
                 if (jo.has("scores") && jo.get("scores").isJsonObject()) {
@@ -99,7 +114,10 @@ public class MatchResultController {
                     for (var entry : scoresMap.entrySet()) {
                         Player p = new Player();
                         p.setId(entry.getKey());
-                        p.setDisplayName("Người chơi " + (i == 0 ? "A" : "B"));
+                        // prefer display name injected via idToDisplayName if available
+                        String dn = idToDisplayName.get(entry.getKey());
+                        if (dn == null || dn.isEmpty()) dn = "Người chơi " + (i == 0 ? "A" : "B");
+                        p.setDisplayName(dn);
                         players.add(p);
                         i++;
                         if (players.size() >= 2) break;
@@ -112,39 +130,45 @@ public class MatchResultController {
                 Player A = players.get(0);
                 Player B = players.get(1);
 
-                // Assign scores/times by id if available; otherwise assign by order of scoresMap
-                if (A.getId() != null && scoresMap.containsKey(A.getId())) {
-                    // nothing else
-                }
-                if (B.getId() != null && scoresMap.containsKey(B.getId())) {
-                    // nothing else
-                }
+                // Use id-keyed maps for scores and times
+                // Populate local score/time maps
+                scoreById.clear();
+                timeById.clear();
 
-                // If ids present, extract scores
-                if (A.getId() != null && scoresMap.containsKey(A.getId())) {
-                    try { AScoreSet(A, scoresMap.get(A.getId())); } catch (Exception ignored) {}
-                }
-                if (B.getId() != null && scoresMap.containsKey(B.getId())) {
-                    try { AScoreSet(B, scoresMap.get(B.getId())); } catch (Exception ignored) {}
-                }
-
-                // If ids missing or scoresMap wasn't keyed by these ids, assign by order
-                if ((A.getId() == null || !scoresMap.containsKey(A.getId())) ||
-                        (B.getId() == null || !scoresMap.containsKey(B.getId()))) {
-                    int idx = 0;
-                    for (var entry : scoresMap.entrySet()) {
-                        if (idx == 0) AScoreSet(A, entry.getValue());
-                        else if (idx == 1) AScoreSet(B, entry.getValue());
+                // Use scoresMap directly (if scoresMap keys are ids)
+                int idx = 0;
+                for (var entry : scoresMap.entrySet()) {
+                    String id = entry.getKey();
+                    long val = entry.getValue();
+                    // if id matches A or B use that id, else if A/B have null id, assign by order
+                    if (A.getId() != null && A.getId().equals(id)) scoreById.put(id, val);
+                    else if (B.getId() != null && B.getId().equals(id)) scoreById.put(id, val);
+                    else {
+                        // fallback: assign by order if A/B ids not matched
+                        if (idx == 0 && A.getId() != null) scoreById.put(A.getId(), val);
+                        else if (idx == 0 && A.getId() == null) {
+                            // assign to generated A (use its id if any)
+                        } else if (idx == 1 && B.getId() != null) scoreById.put(B.getId(), val);
                         idx++;
                     }
                 }
 
-                // Assign times by id if available
-                if (A.getId() != null && timesMap.containsKey(A.getId())) {
-                    ASetTime(A, timesMap.get(A.getId()));
+                // If direct mapping above didn't fill (e.g. A/B ids null), assign by order to A/B instances via their ids (may be null)
+                if (!scoresMap.isEmpty()) {
+                    idx = 0;
+                    for (var entry : scoresMap.entrySet()) {
+                        if (idx == 0) {
+                            if (A.getId() != null) scoreById.put(A.getId(), entry.getValue());
+                        } else if (idx == 1) {
+                            if (B.getId() != null) scoreById.put(B.getId(), entry.getValue());
+                        }
+                        idx++;
+                    }
                 }
-                if (B.getId() != null && timesMap.containsKey(B.getId())) {
-                    ASetTime(B, timesMap.get(B.getId()));
+
+                // Assign times by id
+                for (var e : timesMap.entrySet()) {
+                    timeById.put(e.getKey(), e.getValue());
                 }
 
                 // Determine winner: prefer explicit "winner" field, else compare scores
@@ -168,20 +192,20 @@ public class MatchResultController {
 
                 // Update UI
                 if (tie) {
-                    winnerLabel.setText("Hòa");
-                    summaryLabel.setText(String.format("%s %d - %d %s", displayNameOrFallback(A), aScore, bScore, displayNameOrFallback(B)));
+                    if (winnerLabel != null) winnerLabel.setText("Hòa");
+                    if (summaryLabel != null) summaryLabel.setText(String.format("%s %d - %d %s", displayNameOrFallback(A), aScore, bScore, displayNameOrFallback(B)));
                 } else {
-                    winnerLabel.setText("Người chiến thắng: " + (winnerName != null ? winnerName : "—"));
-                    summaryLabel.setText(String.format("%s %d - %d %s", displayNameOrFallback(A), aScore, bScore, displayNameOrFallback(B)));
+                    if (winnerLabel != null) winnerLabel.setText("Người chiến thắng: " + (winnerName != null ? winnerName : "—"));
+                    if (summaryLabel != null) summaryLabel.setText(String.format("%s %d - %d %s", displayNameOrFallback(A), aScore, bScore, displayNameOrFallback(B)));
                 }
 
-                playerAName.setText(displayNameOrFallback(A));
-                playerAScore.setText(String.valueOf(aScore));
-                playerATime.setText(formatMillis(getTotalTimeMs(A)));
+                if (playerAName != null) playerAName.setText(displayNameOrFallback(A));
+                if (playerAScore != null) playerAScore.setText(String.valueOf(aScore));
+                if (playerATime != null) playerATime.setText(formatMillis(getTotalTimeMs(A)));
 
-                playerBName.setText(displayNameOrFallback(B));
-                playerBScore.setText(String.valueOf(bScore));
-                playerBTime.setText(formatMillis(getTotalTimeMs(B)));
+                if (playerBName != null) playerBName.setText(displayNameOrFallback(B));
+                if (playerBScore != null) playerBScore.setText(String.valueOf(bScore));
+                if (playerBTime != null) playerBTime.setText(formatMillis(getTotalTimeMs(B)));
 
             } catch (Exception ex) {
                 showErrorState("Không thể đọc dữ liệu kết quả");
@@ -190,45 +214,48 @@ public class MatchResultController {
         });
     }
 
-    // Helpers to attach score/time to Player via a simple Map inside the Player object is not present
-    // so we store these values in local maps using player's id; to keep simple, we'll store values in transient maps.
-    // But because Player model doesn't have score/time fields, we'll use temporary maps here.
-    // For simplicity in this controller we keep two maps keyed by Player instance identity (not ideal but acceptable here).
-    private final Map<Player, Long> scoreByPlayer = new IdentityHashMap<>();
-    private final Map<Player, Long> timeByPlayer = new IdentityHashMap<>();
+    // Use id-keyed maps for score/time to avoid instance-identity issues
+    private final Map<String, Long> scoreById = new HashMap<>();
+    private final Map<String, Long> timeById = new HashMap<>();
 
     private void AScoreSet(Player p, long score) {
-        scoreByPlayer.put(p, score);
+        if (p != null && p.getId() != null) scoreById.put(p.getId(), score);
     }
 
     private void ASetTime(Player p, long ms) {
-        timeByPlayer.put(p, ms);
+        if (p != null && p.getId() != null) timeById.put(p.getId(), ms);
     }
 
     private long getScore(Player p) {
-        return scoreByPlayer.getOrDefault(p, 0L);
+        if (p != null && p.getId() != null) return scoreById.getOrDefault(p.getId(), 0L);
+        return 0L;
     }
 
     private long getTotalTimeMs(Player p) {
-        return timeByPlayer.getOrDefault(p, 0L);
+        if (p != null && p.getId() != null) return timeById.getOrDefault(p.getId(), 0L);
+        return 0L;
     }
 
     private String displayNameOrFallback(Player p) {
         if (p == null) return "Người chơi";
+        if (p.getId() != null && idToDisplayName.containsKey(p.getId())) {
+            String dn = idToDisplayName.get(p.getId());
+            if (dn != null && !dn.isEmpty()) return dn;
+        }
         if (p.getDisplayName() != null && !p.getDisplayName().isEmpty()) return p.getDisplayName();
         if (p.getUsername() != null && !p.getUsername().isEmpty()) return p.getUsername();
         return "Người chơi";
     }
 
     private void showErrorState(String msg) {
-        winnerLabel.setText("Kết quả");
-        summaryLabel.setText(msg);
-        playerAName.setText("-");
-        playerAScore.setText("-");
-        playerATime.setText("-");
-        playerBName.setText("-");
-        playerBScore.setText("-");
-        playerBTime.setText("-");
+        if (winnerLabel != null) winnerLabel.setText("Kết quả");
+        if (summaryLabel != null) summaryLabel.setText(msg);
+        if (playerAName != null) playerAName.setText("-");
+        if (playerAScore != null) playerAScore.setText("-");
+        if (playerATime != null) playerATime.setText("-");
+        if (playerBName != null) playerBName.setText("-");
+        if (playerBScore != null) playerBScore.setText("-");
+        if (playerBTime != null) playerBTime.setText("-");
     }
 
     private static String safeGet(JsonObject o, String key) {
@@ -254,44 +281,54 @@ public class MatchResultController {
                 RoundResult.PlayerResult A = players != null && players.size() > 0 ? players.get(0) : null;
                 RoundResult.PlayerResult B = players != null && players.size() > 1 ? players.get(1) : null;
 
+                // prefer display_name mapping (if caller supplied id->display_name) when possible
+                String aName = "Người chơi A";
+                String bName = "Người chơi B";
+                if (A != null) {
+                    if (A.id != null && idToDisplayName.containsKey(A.id)) aName = idToDisplayName.get(A.id);
+                    else if (A.username != null && !A.username.isEmpty()) aName = A.username;
+                }
+                if (B != null) {
+                    if (B.id != null && idToDisplayName.containsKey(B.id)) bName = idToDisplayName.get(B.id);
+                    else if (B.username != null && !B.username.isEmpty()) bName = B.username;
+                }
+
                 String winnerText = "—";
                 if (rr.round_winner != null && !rr.round_winner.isEmpty()) {
-                    if (A != null && rr.round_winner.equals(A.id)) winnerText = A.username;
-                    else if (B != null && rr.round_winner.equals(B.id)) winnerText = B.username;
+                    if (A != null && rr.round_winner.equals(A.id)) winnerText = aName;
+                    else if (B != null && rr.round_winner.equals(B.id)) winnerText = bName;
                     else winnerText = rr.round_winner;
                 } else {
                     int aScore = A != null ? A.total_score : 0;
                     int bScore = B != null ? B.total_score : 0;
-                    if (aScore > bScore) winnerText = A != null ? A.username : "Người chiến thắng";
-                    else if (bScore > aScore) winnerText = B != null ? B.username : "Người chiến thắng";
+                    if (aScore > bScore) winnerText = aName;
+                    else if (bScore > aScore) winnerText = bName;
                     else winnerText = "Hòa";
                 }
 
-                winnerLabel.setText("Người chiến thắng: " + winnerText);
+                if (winnerLabel != null) winnerLabel.setText("Người chiến thắng: " + winnerText);
 
-                String aName = A != null ? A.username : "Người chơi A";
-                String bName = B != null ? B.username : "Người chơi B";
                 int aScore = A != null ? A.total_score : 0;
                 int bScore = B != null ? B.total_score : 0;
-                summaryLabel.setText(String.format("%s %d - %d %s", aName, aScore, bScore, bName));
+                if (summaryLabel != null) summaryLabel.setText(String.format("%s %d - %d %s", aName, aScore, bScore, bName));
 
-                playerAName.setText(aName);
-                playerAScore.setText(String.valueOf(aScore));
-                playerATime.setText(formatMillis(A != null ? A.total_play_time_ms : 0L));
+                if (playerAName != null) playerAName.setText(aName);
+                if (playerAScore != null) playerAScore.setText(String.valueOf(aScore));
+                if (playerATime != null) playerATime.setText(formatMillis(A != null ? A.total_play_time_ms : 0L));
 
-                playerBName.setText(bName);
-                playerBScore.setText(String.valueOf(bScore));
-                playerBTime.setText(formatMillis(B != null ? B.total_play_time_ms : 0L));
+                if (playerBName != null) playerBName.setText(bName);
+                if (playerBScore != null) playerBScore.setText(String.valueOf(bScore));
+                if (playerBTime != null) playerBTime.setText(formatMillis(B != null ? B.total_play_time_ms : 0L));
             } catch (Exception ex) {
                 // on error, set simple fallback
-                winnerLabel.setText("Kết quả");
-                summaryLabel.setText("Không thể hiển thị kết quả");
-                playerAName.setText("-");
-                playerAScore.setText("-");
-                playerATime.setText("-");
-                playerBName.setText("-");
-                playerBScore.setText("-");
-                playerBTime.setText("-");
+                if (winnerLabel != null) winnerLabel.setText("Kết quả");
+                if (summaryLabel != null) summaryLabel.setText("Không thể hiển thị kết quả");
+                if (playerAName != null) playerAName.setText("-");
+                if (playerAScore != null) playerAScore.setText("-");
+                if (playerATime != null) playerATime.setText("-");
+                if (playerBName != null) playerBName.setText("-");
+                if (playerBScore != null) playerBScore.setText("-");
+                if (playerBTime != null) playerBTime.setText("-");
                 ex.printStackTrace();
             }
         });
