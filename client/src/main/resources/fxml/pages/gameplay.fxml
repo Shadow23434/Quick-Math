@@ -2,35 +2,33 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<?import javafx.scene.image.ImageView?>
 <StackPane xmlns="http://javafx.com/javafx/21"
            xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="com.mathspeed.controller.GameplayController"
-           prefHeight="720"
-           prefWidth="480">
+           prefHeight="700.0"
+           prefWidth="480.0">
 
-    <!-- Main Game View -->
     <VBox styleClass="gameplay-view"
-          stylesheets="@../../css/gameplay.css">
+          stylesheets="@../../css/gameplay.css"
+          spacing="5.0"
+          alignment="TOP_CENTER"
+          maxWidth="900.0"
+          VBox.vgrow="ALWAYS">
 
         <!-- Header -->
-        <!-- Header (with avatars) -->
-        <HBox spacing="20" alignment="CENTER" styleClass="gameplay-header">
-            <VBox.margin>
-                <Insets top="5" right="10" left="10" bottom="5"/>
-            </VBox.margin>
+        <HBox spacing="20.0" alignment="CENTER" styleClass="gameplay-header">
             <padding>
-                <Insets top="5" right="10" bottom="5" left="10"/>
+                <Insets top="5.0" right="10.0" bottom="5.0" left="10.0"/>
             </padding>
 
             <!-- Player -->
-            <VBox alignment="CENTER" spacing="6" styleClass="score-container">
-                <!-- avatar -->
+            <VBox alignment="CENTER" spacing="4.0" styleClass="score-container">
                 <ImageView fx:id="playerAvatarImage"
-                           fitWidth="56" fitHeight="56"
+                           fitWidth="50.0" fitHeight="50.0"
                            pickOnBounds="true"
                            preserveRatio="true"
                            styleClass="avatar-image"/>
@@ -39,18 +37,17 @@
             </VBox>
 
             <!-- Timer -->
-            <VBox alignment="CENTER" spacing="1" styleClass="timer-container">
-                <HBox alignment="CENTER" spacing="2">
+            <VBox alignment="CENTER" spacing="1.0" styleClass="timer-container">
+                <HBox alignment="CENTER" spacing="4.0">
                     <FontIcon iconLiteral="fas-hourglass-end" styleClass="timer-icon"/>
                     <Label fx:id="timerLabel" text="30s" styleClass="timer-text"/>
                 </HBox>
             </VBox>
 
             <!-- Opponent -->
-            <VBox alignment="CENTER" spacing="6" styleClass="score-container">
-                <!-- avatar -->
+            <VBox alignment="CENTER" spacing="4.0" styleClass="score-container">
                 <ImageView fx:id="opponentAvatarImage"
-                           fitWidth="56" fitHeight="56"
+                           fitWidth="50.0" fitHeight="50.0"
                            pickOnBounds="true"
                            preserveRatio="true"
                            styleClass="avatar-image"/>
@@ -59,29 +56,22 @@
             </VBox>
         </HBox>
 
-        <!-- Round and Level Info -->
-        <HBox spacing="15" alignment="CENTER" styleClass="game-info-container">
+        <!-- Round Info -->
+        <HBox spacing="15.0" alignment="CENTER" styleClass="game-info-container">
             <VBox.margin>
-                <Insets top="3" right="10" left="10" bottom="3"/>
+                <Insets top="2.0" right="10.0" left="10.0" bottom="2.0"/>
             </VBox.margin>
 
-            <VBox alignment="CENTER" spacing="1" styleClass="round-container">
-                <Label text="Vòng" styleClass="info-label"/>
-                <Label fx:id="roundLabel" text="1" styleClass="round-text"/>
-            </VBox>
-
-            <Separator orientation="VERTICAL" styleClass="info-separator"/>
-
-            <VBox alignment="CENTER" spacing="1" styleClass="level-container">
-                <Label text="Mức" styleClass="info-label"/>
-                <Label fx:id="levelLabel" text="1" styleClass="level-text"/>
+            <VBox alignment="CENTER" spacing="1.0" styleClass="round-container">
+                <Label text="Câu số" styleClass="info-label"/>
+                <Label fx:id="roundLabel" text="1 / 20" styleClass="round-text"/>
             </VBox>
         </HBox>
 
         <!-- Target Number -->
-        <VBox spacing="2" alignment="CENTER">
+        <VBox spacing="4.0" alignment="CENTER">
             <VBox.margin>
-                <Insets top="3" right="10" left="10" bottom="3"/>
+                <Insets top="4.0" right="10.0" left="10.0" bottom="2.0"/>
             </VBox.margin>
             <Label text="Mục tiêu" styleClass="target-label"/>
             <Label fx:id="targetLabel" text="42" styleClass="target-number"/>
@@ -90,76 +80,78 @@
         <!-- Game Status -->
         <VBox alignment="CENTER">
             <VBox.margin>
-                <Insets top="2" right="10" left="10" bottom="2"/>
+                <Insets top="2.0" right="10.0" left="10.0" bottom="2.0"/>
             </VBox.margin>
             <Label fx:id="gameStatusLabel"
                    text="Waiting for game to start..."
                    styleClass="game-status-text"
                    wrapText="true"
-                   alignment="CENTER"/>
+                   alignment="CENTER"
+                   maxWidth="720.0"/>
         </VBox>
 
         <!-- Expression Input -->
-        <VBox spacing="4" alignment="CENTER" styleClass="input-section">
+        <VBox spacing="5.0" alignment="CENTER" styleClass="input-section">
             <VBox.margin>
-                <Insets top="3" right="10" left="10" bottom="3"/>
+                <Insets top="4.0" right="12.0" left="12.0" bottom="4.0"/>
             </VBox.margin>
 
-            <VBox styleClass="expression-container" alignment="CENTER" prefHeight="45">
+            <VBox styleClass="expression-container" alignment="CENTER_LEFT" prefHeight="44.0" maxWidth="800.0">
                 <padding>
-                    <Insets top="5" right="8" bottom="5" left="8"/>
+                    <Insets top="6.0" right="10.0" bottom="6.0" left="10.0"/>
                 </padding>
                 <Label fx:id="expressionLabel"
                        text=""
                        styleClass="expression-text"
                        wrapText="true"
-                       alignment="CENTER"/>
+                       alignment="CENTER_LEFT"
+                       maxWidth="800"/>
             </VBox>
 
             <!-- Buttons -->
-            <HBox spacing="10" alignment="CENTER" styleClass="button-row">
+            <HBox spacing="12.0" alignment="CENTER" styleClass="button-row">
                 <Button fx:id="submitButton"
                         text="Nộp"
                         styleClass="submit-button"
-                        prefWidth="100"
-                        prefHeight="36"
+                        prefWidth="100.0"
+                        prefHeight="34.0"
                         onAction="#handleSubmit"/>
 
                 <Button fx:id="exitButton"
                         text="Thoát"
                         styleClass="exit-button"
-                        prefWidth="100"
-                        prefHeight="36"
+                        prefWidth="100.0"
+                        prefHeight="34.0"
                         onAction="#handleExit"/>
             </HBox>
         </VBox>
 
         <!-- Operators -->
-        <VBox spacing="2" alignment="CENTER">
+        <VBox spacing="5.0" alignment="CENTER">
             <VBox.margin>
-                <Insets top="2" right="10" left="10" bottom="2"/>
+                <Insets top="4.0" right="10.0" left="10.0" bottom="4.0"/>
             </VBox.margin>
 
-            <HBox spacing="4" alignment="CENTER" styleClass="operators-row">
-                <Button text="+" styleClass="operator-button" prefWidth="38" prefHeight="35" onAction="#handleOperatorInput"/>
-                <Button text="-" styleClass="operator-button" prefWidth="38" prefHeight="35" onAction="#handleOperatorInput"/>
-                <Button text="×" styleClass="operator-button" prefWidth="38" prefHeight="35" onAction="#handleOperatorInput"/>
-                <Button text="÷" styleClass="operator-button" prefWidth="38" prefHeight="35" onAction="#handleOperatorInput"/>
+            <HBox spacing="8.0" alignment="CENTER">
+                <Button text="+" styleClass="operator-button" prefWidth="42.0" prefHeight="38.0" onAction="#handleOperatorInput"/>
+                <Button text="-" styleClass="operator-button" prefWidth="42.0" prefHeight="38.0" onAction="#handleOperatorInput"/>
+                <Button text="×" styleClass="operator-button" prefWidth="42.0" prefHeight="38.0" onAction="#handleOperatorInput"/>
+                <Button text="÷" styleClass="operator-button" prefWidth="42.0" prefHeight="38.0" onAction="#handleOperatorInput"/>
 
                 <Separator orientation="VERTICAL" styleClass="operator-separator"/>
 
-                <Button text="(" styleClass="bracket-button" prefWidth="38" prefHeight="35" onAction="#handleBracketInput"/>
-                <Button text=")" styleClass="bracket-button" prefWidth="38" prefHeight="35" onAction="#handleBracketInput"/>
+                <Button text="(" styleClass="bracket-button" prefWidth="42.0" prefHeight="38.0" onAction="#handleBracketInput"/>
+                <Button text=")" styleClass="bracket-button" prefWidth="42.0" prefHeight="38.0" onAction="#handleBracketInput"/>
             </HBox>
         </VBox>
 
         <!-- Numbers -->
-        <VBox spacing="2" alignment="CENTER" VBox.vgrow="ALWAYS">
+        <VBox spacing="8.0" alignment="CENTER" VBox.vgrow="ALWAYS">
             <VBox.margin>
-                <Insets top="2" right="10" left="10" bottom="10"/>
+                <Insets top="6.0" right="10.0" left="10.0" bottom="15.0"/>
             </VBox.margin>
 
-            <GridPane hgap="3" vgap="3" alignment="TOP_CENTER" styleClass="numbers-grid">
+            <GridPane hgap="8.0" vgap="8.0" alignment="CENTER" styleClass="numbers-grid">
                 <Button text="1" styleClass="number-button" GridPane.rowIndex="0" GridPane.columnIndex="0" onAction="#handleNumberInput"/>
                 <Button text="2" styleClass="number-button" GridPane.rowIndex="0" GridPane.columnIndex="1" onAction="#handleNumberInput"/>
                 <Button text="3" styleClass="number-button" GridPane.rowIndex="0" GridPane.columnIndex="2" onAction="#handleNumberInput"/>
@@ -173,8 +165,8 @@
 
                 <Button fx:id="backspaceButton"
                         styleClass="backspace-button"
-                        prefWidth="60"
-                        prefHeight="60"
+                        prefWidth="52.0"
+                        prefHeight="52.0"
                         GridPane.rowIndex="1"
                         GridPane.columnIndex="4"
                         onAction="#handleBackspace">
@@ -189,11 +181,14 @@
     <!-- Countdown Overlay -->
     <StackPane fx:id="countdownOverlay"
                styleClass="countdown-overlay"
-               visible="false">
+               visible="false"
+               managed="false"
+               pickOnBounds="false"
+               StackPane.alignment="CENTER">
 
         <VBox fx:id="countdownContainer"
               alignment="CENTER"
-              spacing="20"
+              spacing="20.0"
               styleClass="countdown-container">
 
             <Label fx:id="countdownMessageLabel"

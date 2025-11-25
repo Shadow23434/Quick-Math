@@ -2,86 +2,58 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <StackPane xmlns="http://javafx.com/javafx/21"
            xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="com.mathspeed.controller.MatchResultController"
            prefWidth="480"
-           prefHeight="720">
+           prefHeight="360">
 
-    <VBox spacing="12" alignment="TOP_CENTER" stylesheets="@../../css/matchresult.css" styleClass="result-view" prefWidth="420">
-        <padding>
-            <Insets top="18" right="18" left="18" bottom="18"/>
-        </padding>
+    <VBox spacing="16" alignment="CENTER" style="-fx-padding:20;">
+        <!-- Winner / Result -->
+        <Label fx:id="winnerLabel"
+               text="Kết quả trận đấu"
+               style="-fx-font-size:20px; -fx-font-weight:600;"/>
 
-        <!-- Header -->
-        <HBox spacing="12" alignment="CENTER_LEFT">
-            <Label text="Kết quả trận đấu" styleClass="title-label"/>
-            <Pane HBox.hgrow="ALWAYS"/>
-            <Button text="Đóng" onAction="#onClose" styleClass="small-button"/>
-        </HBox>
+        <!-- Summary line (e.g. Alice 3 - 1 Bob) -->
+        <Label fx:id="summaryLabel"
+               text="Bạn thắng"
+               style="-fx-font-size:14px; -fx-text-fill:#555555;"/>
 
-        <!-- Winner Banner -->
-        <VBox alignment="CENTER" spacing="6" styleClass="winner-banner">
-            <Label fx:id="winnerLabel" text="Người chiến thắng: ?" styleClass="winner-text"/>
-            <Label fx:id="summaryLabel" text="Bạn thắng 3 - 2" styleClass="summary-text"/>
-        </VBox>
-
-        <!-- Players summary -->
-        <HBox spacing="12" alignment="CENTER" styleClass="players-summary" prefHeight="140">
-            <VBox spacing="8" alignment="CENTER" styleClass="player-card" HBox.hgrow="ALWAYS">
-                <Label text="Bạn" styleClass="card-title"/>
-                <Label fx:id="playerDisplayName" text="" styleClass="name-label"/>
-                <!-- removed leading '@' to avoid FXML resource parsing issues -->
-                <Label fx:id="playerUsername" text="" styleClass="username-label"/>
-                <HBox spacing="10" alignment="CENTER">
-                    <VBox alignment="CENTER">
-                        <Label text="Điểm" styleClass="stat-label"/>
-                        <Label fx:id="playerScore" text="0" styleClass="stat-value"/>
-                    </VBox>
-                    <VBox alignment="CENTER">
-                        <Label text="Tổng thời gian" styleClass="stat-label"/>
-                        <Label fx:id="playerTotalTime" text="00:00" styleClass="stat-value"/>
-                    </VBox>
+        <HBox spacing="20" alignment="CENTER">
+            <!-- Local / Player A -->
+            <VBox spacing="6" alignment="CENTER_LEFT" VBox.vgrow="ALWAYS">
+                <Label fx:id="playerNameLabel" text="Bạn" styleClass="player-label"/>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="Số câu đúng:" style="-fx-font-size:12px;"/>
+                    <Label fx:id="playerScoreLabel" text="0" styleClass="score-text"/>
+                </HBox>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="Tổng thời gian:" style="-fx-font-size:12px;"/>
+                    <Label fx:id="totalPlayerTime" text="00:30" style="-fx-font-size:14px; -fx-font-weight:600;"/>
                 </HBox>
             </VBox>
 
-            <Separator orientation="VERTICAL"/>
+            <Separator orientation="VERTICAL" prefHeight="120"/>
 
-            <VBox spacing="8" alignment="CENTER" styleClass="player-card" HBox.hgrow="ALWAYS">
-                <Label text="Đối thủ" styleClass="card-title"/>
-                <Label fx:id="opponentDisplayName" text="" styleClass="name-label"/>
-                <!-- removed leading '@' to avoid FXML resource parsing issues -->
-                <Label fx:id="opponentUsername" text="" styleClass="username-label"/>
-                <HBox spacing="10" alignment="CENTER">
-                    <VBox alignment="CENTER">
-                        <Label text="Điểm" styleClass="stat-label"/>
-                        <Label fx:id="opponentScore" text="0" styleClass="stat-value"/>
-                    </VBox>
-                    <VBox alignment="CENTER">
-                        <Label text="Tổng thời gian" styleClass="stat-label"/>
-                        <Label fx:id="opponentTotalTime" text="00:00" styleClass="stat-value"/>
-                    </VBox>
+            <!-- Opponent / Player B -->
+            <VBox spacing="6" alignment="CENTER_LEFT" VBox.vgrow="ALWAYS">
+                <Label fx:id="opponentNameLabel" text="Đối thủ" styleClass="opponent-label"/>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="Số câu đúng:" style="-fx-font-size:12px;"/>
+                    <Label fx:id="opponentScoreLabel" text="0" styleClass="score-text"/>
+                </HBox>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="Tổng thời gian:" style="-fx-font-size:12px;"/>
+                    <Label fx:id="totalOpponentTime" text="00:00" style="-fx-font-size:14px; -fx-font-weight:600;"/>
                 </HBox>
             </VBox>
         </HBox>
 
-        <!-- Round-by-round list -->
-        <VBox spacing="6" alignment="TOP_LEFT" VBox.vgrow="ALWAYS">
-            <Label text="Lịch sử vòng" styleClass="section-title"/>
-            <ListView fx:id="roundListView" prefHeight="260" styleClass="round-list"/>
-        </VBox>
+        <Region prefHeight="8"/>
 
-        <!-- Actions -->
-        <HBox spacing="10" alignment="CENTER">
-            <Button text="Đấu lại" onAction="#onRematch" fx:id="rematchButton" styleClass="primary-button" prefWidth="120"/>
-            <Button text="Về Lobby" onAction="#onBackToLobby" styleClass="secondary-button" prefWidth="120"/>
-            <!-- New Home button to return to main/home screen -->
-            <Button text="Trang chủ" onAction="#onBackToHome" styleClass="secondary-button" prefWidth="120" fx:id="homeButton"/>
+        <HBox spacing="12" alignment="CENTER">
+            <Button text="Đóng" onAction="#onBackToHome" prefWidth="120"/>
         </HBox>
-
-        <Region VBox.vgrow="ALWAYS"/>
-        <Label fx:id="noteLabel" text="(Thông tin hiển thị dựa trên dữ liệu server)" styleClass="note-label"/>
     </VBox>
 </StackPane>
